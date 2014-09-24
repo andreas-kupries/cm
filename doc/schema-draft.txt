@@ -1,0 +1,182 @@
+
+-- Database schema for conference mgmt
+
+table city	-- we have been outside US in past
+	cid
+	name
+	state
+	nation
+
+table hotel	-- normally the location too.
+		-- not really needed to model separation, except in the transport info block
+	hid
+	cid	references city
+	name
+	streetaddress
+	zipcode
+	book-fax	nullable	-- defaults to the local-*
+	book-link	nullable
+	book-phone	nullable
+	local-fax
+	local-link
+	local-phone
+	transportation		-- html block for transport info (maps, descriptions, etc)
+
+table rate			-- rates change from year to year
+	hid	references hotel
+	cid	references conference
+	rate		-- per night
+	groupcode	-- !!!
+	reserved-from	-- date, check against conference date range?
+	reserved-to	-- date, ditto?
+
+table person		-- lots of uses
+	pid
+	family name
+	first name
+	tag		-- for html anchors
+	bio text
+	affiliation
+	cfpreceiver	-- flag, bool
+	nocfptemp	-- ditto
+
+table mailinglist	-- CFP destinations
+	mid
+	title
+	email
+	link
+	cfpreceiver	-- flag
+	nocfptemp	-- flag
+
+-- maybe a campaign table filled from person and mailing list, per
+-- conference, and shrinking as (temp) disablements happen.
+
+
+table email
+	mid
+	pid	references person
+	email
+	inactive	-- flag, mark outdated addresses
+
+table link
+	lid
+	pid references person
+	link
+	description
+
+table tutorial
+	tid
+	tag	-- unique within speaker! for html
+	speaker	references person
+	title
+	prereq
+	description
+
+table conference
+	cid
+	title
+	year
+	hid	references hotel
+	startdate			-- [*]
+	enddate
+	chair	references person
+	fchair	references person
+	pchair	references person	-- responsible for transport info
+
+	talklength	-- minutes	 -- here we can configure
+	sessionlen	-- in #talks max -- basic scheduling.
+					 -- shorter talks => longer sessions.
+					 -- standard: 30 min x3
+
+	-- [Ad *] from this we can compute a basic timeline
+	--	for deadlines and actions (cfp's, submission
+	--	deadline, material deadline, etc)
+	--	Should possibly save it in a table, and allow
+	--	for conversion into ical and other calender formats.
+	--
+	-->	Google Calendar of the Conference, Mgmt + Public
+
+table tutorial_selection
+	cid	references conference
+	tid	references tutorial
+	day	-- 1,2,... (offset to start of conference, 1-based)
+	hid	references half
+	track	-- 1,2,...
+
+table half	-- fixed content
+	hid	-- 1,2,3
+	text	-- morning,afternoon,evening
+
+table submission
+	sid
+	cid	references conference
+	abstract
+	summary
+	invited	-- keynotes are a special submission made by mgmt
+
+table submitter
+	sid	references submission
+	pid	references person
+	note	-- distinguish author, co-author, if wanted
+
+table pcommittee
+	cid	references conference
+	pid	references person
+
+table talk
+	tid
+	cid	references conference
+	tpid	references talktype
+	stid	reference talkstate
+	sid	references submission	nullable
+	isremote -- hangout, skype, other ?
+
+table talker
+	tid	references talk
+	pid	references person
+
+	-- We allow multiple speakers => panel, co-presentation
+	-- Note: Presenter is not necessarily any of the submitters
+
+table talktype	-- fixed contents
+	tid	-- invited, submitted, keynote, panel
+	text
+
+table talkstate -- fixed contents
+	tid	-- material pending, received
+	text
+
+table schedule
+	cid	references conference
+	day			-- 3,4,... (offset to start of conference, 1-based)
+	sid			-- session within day
+	ssid	nullable	-- slot within session, null => whole session talk (keynotes)
+	tid	references talk
+
+table registered (== attendees)
+	cid	references conference
+	pid	references person	-- !isgroup
+	walkin				-- late-register fee
+	tid1	references tutorial	-- tutorial selection
+	tid2	references tutorial	-- all nullable
+	tid3	references tutorial
+	tid4	references tutorial
+	talk	references talk nullable -- presenter discount
+
+table booked	-- hotel bookings
+	cid	references conference
+	pid	references person
+
+table notes
+	cid	references conference
+	pid	references person	nullable
+	text
+	-- general notes, and attached to people
+	-- ex: we know that P will not use the con hotel
+
+-- speaker state is derivable from the contents of
+--	talk, registered, booked, plus notes
+
+-- should possibly also store (templated) text blocks, i.e. for web
+-- site, cfp mail, various author mails (instructions, ping for booking,
+-- ping for register, etc)
