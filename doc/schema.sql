@@ -1,7 +1,7 @@
 -- Database schema for conference mgmt
 
 CREATE TABLE city (	-- we have been outside US in past
-	cid		INTEGER PRIMARY KEY AUTOINCREMENT,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	name		TEXT,
 	state		TEXT,
 	nation		TEXT,
@@ -10,30 +10,40 @@ CREATE TABLE city (	-- we have been outside US in past
 CREATE TABLE hotel (
 	-- normally the location too.
 	-- not really needed to model separation, except in the transport info block
-	hid		INTEGER PRIMARY KEY AUTOINCREMENT,
-	cid		INTEGER REFERENCES city,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	name		TEXT,
+	city		INTEGER REFERENCES city,
 	streetaddress	TEXT	UNIQUE,
 	zipcode		TEXT,
-	book-fax	TEXT	NULLABLE,	-- defaults to the local-*
-	book-link	TEXT	NULLABLE,
-	book-phone	TEXT	NULLABLE,
-	local-fax	TEXT	UNIQUE,
-	local-link	TEXT	UNIQUE,
-	local-phone	TEXT	UNIQUE,
-	transportation	TEXT,			-- html block (maps, descriptions, etc)
+	book_fax	TEXT	NULLABLE,	-- defaults to the local-*
+	book_link	TEXT	NULLABLE,
+	book_phone	TEXT	NULLABLE,
+	local_fax	TEXT	UNIQUE,
+	local_link	TEXT	UNIQUE,
+	local_phone	TEXT	UNIQUE,
+	transportation	TEXT			-- html block (maps, descriptions, etc)
+);
+CREATE TABLE hotel_staff (
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	hotel		INTEGER REFERENCES hotel,
+	familyname	TEXT,
+	firstname	TEXT,
+	position	TEXT,
+	email		TEXT,
+	phone		TEXT,
+	UNIQUE (hotel, familyname, firstname) -- maybe add position? (multiple positions for same person).
 );
 CREATE TABLE rate (				-- rates change from year to year
-	hid		INTEGER	REFERENCES hotel,
-	cid		INTEGER	REFERENCES conference,
+	con		INTEGER	REFERENCES conference,
+	hotel		INTEGER	REFERENCES hotel,
 	rate		INTEGER,		-- per night, pennies, i.e. stored x100.
 	groupcode	TEXT,
 	begindate	INTEGER,		-- date [epoch]
 	enddate		INTEGER,		-- date [epoch]
-	UNIQUE (hid, cid)
+	UNIQUE (con, hotel)
 );
 CREATE TABLE person (
-	pid		INTEGER PRIMARY KEY AUTOINCREMENT,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	tag		TEXT	UNIQUE,		-- for html anchors
 	familyname	TEXT,
 	firstname	TEXT,
@@ -43,7 +53,7 @@ CREATE TABLE person (
 	nocfptemp	INTEGER			-- mark temp CFP deactivation
 );
 CREATE TABLE mailinglist (	-- CFP destinations
-	mid		INTEGER PRIMARY KEY AUTOINCREMENT,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	title		TEXT	UNIQUE,
 	email		TEXT	UNIQUE,
 	link		TEXT	UNIQUE,
@@ -51,20 +61,21 @@ CREATE TABLE mailinglist (	-- CFP destinations
 	nocfptemp	INTEGER			-- flag
 );
 CREATE TABLE email (
-	mid		INTEGER PRIMARY KEY AUTOINCREMENT,
-	pid		INTEGER	REFERENCES person,
+	id		INTEGER	PRIMARY KEY AUTOINCREMENT,
+	person		INTEGER	REFERENCES person,
 	email		TEXT	UNIQUE,
-	inactive	INTEGER			-- mark outdated addresses
+	inactive	INTEGER,		-- mark outdated addresses
+	UNIQUE (person, email)
 );
 CREATE TABLE link (
-	lid		INTEGER PRIMARY KEY AUTOINCREMENT,
-	pid 		INTEGER	REFERENCES person,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	person 		INTEGER	REFERENCES person,
 	link		TEXT,
 	title		TEXT,
-	UNIQUE (pid, link)
+	UNIQUE (person, link)
 );
 CREATE TABLE tutorial (
-	tid		INTEGER PRIMARY KEY AUTOINCREMENT,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	speaker		INTEGER	REFERENCES person,
 	tag		TEXT,			-- for html anchors
 	title		TEXT,
@@ -74,19 +85,19 @@ CREATE TABLE tutorial (
 	UNIQUE (speaker, title)
 );
 CREATE TABLE conference (
-	cid		INTEGER PRIMARY KEY AUTOINCREMENT,
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	title		TEXT	UNIQUE,
 	year		INTEGER,
-	hid		INTEGER	REFERENCES hotel,
+	city		INTEGER	REFERENCES city,
 	startdate	INTEGER,		-- [*], date [epoch]
 	enddate		INTEGER,		--	date [epoch]
-	chair		INTEGER	REFERENCES person,
-	fchair		INTEGER	REFERENCES person,
-	pchair		INTEGER	REFERENCES person,	-- responsible for transport info
-	talklength	INTEGER,			-- minutes	 -- here we can configure
-	sessionlen	INTEGER				-- in #talks max -- basic scheduling.
-					 				 -- shorter talks => longer sessions.
-					 				 -- standard: 30 min x3
+	talklength	INTEGER,			-- minutes	  here we configure
+	sessionlen	INTEGER,			-- in #talks max  basic scheduling parameters.
+					 		-- 		  shorter talks => longer sessions.
+					 		-- 		  standard: 30 min x3
+	hotel		INTEGER	NULLABLE REFERENCES hotel	-- We will not immediately know where we will be
+	--	constraint: city == hotel->city, if hotel NOT NULL
+
 	-- [Ad *] from this we can compute a basic timeline
 	--	for deadlines and actions (cfp's, submission
 	--	deadline, material deadline, etc)
@@ -95,87 +106,108 @@ CREATE TABLE conference (
 	--
 	-->	Google Calendar of the Conference, Mgmt + Public
 );
-CREATE TABLE tutorial (_selection
-	cid	INTEGER	REFERENCES conference
-	tid	INTEGER	REFERENCES tutorial
-	day	-- 1,2,... (offset to start of conference, 1-based)
-	hid	INTEGER	REFERENCES half
-	track	-- 1,2,...
+CREATE TABLE conference_staff (
+	con		INTEGER	REFERENCES conference,
+	person		INTEGER	REFERENCES person,
+	role		INTEGER	REFERENCES staff_role,
+	UNIQUE (con, person, role)
+	-- Multiple people can have the same role (ex: program commitee)
+	-- One person can have multiple roles (ex: prg.chair, prg. committee)
 );
-CREATE TABLE half (	-- fixed content
-	hid	-- 1,2,3
-	text	-- morning,afternoon,evening
+CREATE TABLE staff_role (	-- semi-fixed content
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	text		TEXT	UNIQUE	-- chair, facilities chair, program chair, program committee,
+					-- web admin, proceedings editor, hotel liason, ...
+);
+CREATE TABLE tutorial_schedule (
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	con		INTEGER	REFERENCES conference,
+	day		INTEGER,			-- 0,1,... (offset from start of conference, 0-based)
+	half		INTEGER	REFERENCES dayhalf,
+	track		INTEGER,			-- 1,2,...
+	tutorial	INTEGER	NULLABLE REFERENCES tutorial,	-- While setting up the con
+	UNIQUE (con, tutorial),
+	UNIQUE (con, day, half, track)
+);
+CREATE TABLE dayhalf (	-- fixed content
+	id		INTEGER	PRIMARY KEY,	-- 1,2,3
+	text		TEXT	UNIQUE		-- morning,afternoon,evening
 );
 CREATE TABLE submission (
-	sid
-	cid	INTEGER	REFERENCES conference
-	abstract
-	summary
-	invited	-- keynotes are a special submission made by mgmt
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	con		INTEGER	REFERENCES conference,
+	abstract	TEXT,
+	summary		TEXT,
+	invited		INTEGER				-- keynotes are a special submission made by mgmt
 );
 CREATE TABLE submitter (
-	sid	INTEGER	REFERENCES submission
-	pid	INTEGER	REFERENCES person
-	note	-- distinguish author, co-author, if wanted
-);
-CREATE TABLE pcommittee (
-	cid	INTEGER	REFERENCES conference
-	pid	INTEGER	REFERENCES person
+	submission	INTEGER	REFERENCES submission,
+	person		INTEGER	REFERENCES person,
+	note		TEXT,				-- distinguish author, co-author, if wanted
+	UNIQUE (submission, person)
 );
 CREATE TABLE talk (
-	tid
-	cid	INTEGER	REFERENCES conference
-	tpid	INTEGER	REFERENCES talktype
-	stid	reference talkstate
-	sid	INTEGER	REFERENCES submission	nullable
-	isremote -- hangout, skype, other ?
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+	con		INTEGER	REFERENCES conference,
+	type		INTEGER	REFERENCES talk_type,
+	state		INTEGER REFERENCES talk_state,
+	submission	INTEGER	REFERENCES submission,
+	isremote	INTEGER,			 -- hangout, skype, other ? => TEXT?
+	UNIQUE (con, submission)
+	-- constraint: con == submission->con
 );
 CREATE TABLE talker (
-	tid	INTEGER	REFERENCES talk
-	pid	INTEGER	REFERENCES person
-
-	-- We allow multiple speakers => panel, co-presentation
-	-- Note: Presenter is not necessarily any of the submitters
+	talk		INTEGER	REFERENCES talk,
+	person		INTEGER	REFERENCES person,
+	UNIQUE (talk, person)
+	-- We allow multiple speakers => panels, co-presentation
+	-- Note: Presenter is not necessarily any of the submitters of the submission behind the talk
 );
-CREATE TABLE talktype (	-- fixed contents
-	tid	-- invited, submitted, keynote, panel
-	text
+CREATE TABLE talk_type (	-- fixed contents
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,	-- invited, submitted, keynote, panel
+	text		TEXT	UNIQUE
 );
-CREATE TABLE talkstate ( -- fixed contents
-	tid	-- material pending, received
-	text
+CREATE TABLE talk_state (	-- fixed contents
+	id		INTEGER PRIMARY KEY AUTOINCREMENT,	-- material pending, received
+	text		TEXT	UNIQUE
 );
 CREATE TABLE schedule (
-	cid	INTEGER	REFERENCES conference
-	day			-- 3,4,... (offset to start of conference, 1-based)
-	sid			-- session within day
-	ssid	nullable	-- slot within session, null => whole session talk (keynotes)
-	tid	INTEGER	REFERENCES talk
+	con		INTEGER	REFERENCES conference,
+	day		INTEGER,				-- 2,3,4,... (offset from start of conference, 0-based)
+	session		INTEGER,				-- session within the day
+	slot		INTEGER	NULLABLE,			-- slot within the session, null => whole session talk (keynotes)
+	talk		INTEGER	NULLABLE REFERENCES talk,	-- While setting things up
+	UNIQUE (con, day, session, slot)
+	-- constraint: con == talk->con (== talk->submission->con)
 );
-CREATE TABLE registered ( (== attendees)
-	cid	INTEGER	REFERENCES conference
-	pid	INTEGER	REFERENCES person	-- !isgroup
-	walkin				-- late-register fee
-	tid1	INTEGER	REFERENCES tutorial	-- tutorial selection
-	tid2	INTEGER	REFERENCES tutorial	-- all nullable
-	tid3	INTEGER	REFERENCES tutorial
-	tid4	INTEGER	REFERENCES tutorial
-	talk	INTEGER	REFERENCES talk nullable -- presenter discount
+CREATE TABLE register ( -- conference registrations <=> attendee register
+	con		INTEGER	REFERENCES conference,
+	person		INTEGER	REFERENCES person,
+	walkin		INTEGER,						-- late-register fee
+	tut1		INTEGER	NULLABLE REFERENCES tutorial_schedule,	-- tutorial selection
+	tut2		INTEGER	NULLABLE REFERENCES tutorial_schedule,	-- all nullable
+	tut3		INTEGER	NULLABLE REFERENCES tutorial_schedule,
+	tut4		INTEGER	NULLABLE REFERENCES tutorial_schedule,
+	talk		INTEGER	NULLABLE REFERENCES talk,		-- presenter discount
+	UNIQUE (con, person)
+	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
 );
 CREATE TABLE booked (	-- hotel bookings
-	cid	INTEGER	REFERENCES conference
-	pid	INTEGER	REFERENCES person
+	con		INTEGER	REFERENCES conference,
+	person		INTEGER	REFERENCES person,
+	UNIQUE (con, person)
 );
 CREATE TABLE notes (
-	cid	INTEGER	REFERENCES conference
-	pid	INTEGER	REFERENCES person	nullable
-	text
+	con		INTEGER	REFERENCES conference,
+	person		INTEGER	NULLABLE REFERENCES person,
+	text		TEXT
 	-- general notes, and attached to people
 	-- ex: we know that P will not use the con hotel
 );
+
 -- speaker state is derivable from the contents of
 --	talk, registered, booked, plus notes
-
+--
 -- should possibly also store (templated) text blocks, i.e. for web
 -- site, cfp mail, various author mails (instructions, ping for booking,
 -- ping for register, etc)
