@@ -151,7 +151,9 @@ cmdr create cm::cm [file tail $::argv0] {
     # # ## ### ##### ######## ############# ######################
     ## Common pieces across the various commands.
 
-    # Global option, and state based on it.
+    common *all* {}
+
+    # Global options, and state based on it.
 
     option database {
 	Path to the database of managed conferences
@@ -159,15 +161,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias db
 	alias D
 	validate rwfile
-	#default ~/.cm/managed
-	generate [cm::call db find]
+	generate [cm::call db default-location]
     }
     state managed {
 	The database we are working with.
     } {
-	generate [lambda p {
-	    ... $p config @database
-	}]
+	generate [cm::call db make]
     }
 
     option debug {
@@ -175,7 +174,8 @@ cmdr create cm::cm [file tail $::argv0] {
     } {
 	undocumented
 	argument section
-	validate str
+	validate [cm::vt debug]
+	default {}
     }
 
     option colormode {
@@ -186,7 +186,7 @@ cmdr create cm::cm [file tail $::argv0] {
     } {
 	argument mode
 	label color
-	validate  [call@vtype colormode]
+	validate  [cm::vt colormode]
 	# React early to user settings.
 	when-set [lambda {p x} {
 	    switch -exact -- $x {
@@ -217,11 +217,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	# -- name, state, nation
 	# -- (1:n) locations
 
-	private add {
-	} [cm::call city add]
+	private create {
+	    description { Create a new city for locations }
+	    input name   { description {Name of the city}        }
+	    input state  { description {State the city is in}    }
+	    input nation { description {Nation the state is in}  }
+	} [cm::call city cmd_create]
 
 	private list {
-	} [cm::call city table]
+	    description { Show a table of all known cities }
+	} [cm::call city cmd_list]
 
 	# remove
 	# modify

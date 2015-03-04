@@ -23,7 +23,7 @@ package require Tcl 8.5
 package require debug
 package require debug::caller
 package require cm::atexit
-package require cmd::color
+package require cmdr::color
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -78,7 +78,7 @@ proc ::cm::db::make {p} {
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::db::do {args} {
-    debug.fcm/db {1st call, create and short-circuit all following}
+    debug.cm/db {1st call, create and short-circuit all following}
     # Drop the procedure.
     rename ::cm::db::do {}
 

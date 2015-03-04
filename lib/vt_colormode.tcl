@@ -14,11 +14,14 @@ debug prefix validate/colormode {[debug caller] | }
 # # ## ### ##### ######## ############# #####################
 ## Definition
 
+namespace eval ::cm {
+    namespace export validate
+    namespace ensemble create
+}
 namespace eval ::cm::validate {
     namespace export colormode
     namespace ensemble create
 }
-
 namespace eval ::cm::validate::colormode {
     namespace export default validate complete release process-early
     namespace ensemble create

@@ -20,11 +20,14 @@ package require cm::debug
 # # ## ### ##### ######## ############# #####################
 ## Definition
 
+namespace eval ::cm {
+    namespace export validate
+    namespace ensemble create
+}
 namespace eval ::cm::validate {
     namespace export debug
     namespace ensemble create
 }
-
 namespace eval ::cm::validate::debug {
     namespace export default validate complete release levels process-early
     namespace ensemble create
