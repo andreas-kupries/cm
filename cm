@@ -24,34 +24,16 @@ debug header {[::cmdr color {black bg-cyan} [clock format [clock seconds]]] }
 
 package require cm
 package require cm::validate::colormode
+package require cm::validate::debug
 #package require cm::atexit
 
 # # ## ### ##### ######## ############# ######################
+## Process a few flags early (color mode, debug narrative)
+## Note: color mode before debug flags so that debug output
+##       can be colorized immediately.
 
 cm validate colormode process-early $argv
-
-# (1) Process all --debug flags we can find. This is done before cmdr
-#     gets hold of the command line to enable the debugging of the
-#     innards of cmdr itself.
-# 
-# (2) Further activate debugging early when specified through the
-#     environment
-#
-# TODO: Put both of these into Cmdr, as convenience commands.
-
-set copy $argv
-while {[llength $copy]} {
-    set copy [lassign $copy first]
-    if {$first ne "--debug"} continue
-    set copy [lassign $copy tag]
-    debug on $tag
-}
-
-if {[info exists env(CM_DEBUG)]} {
-    foreach tag [split $env(CM_DEBUG) ,] {
-	debug on [string trim $tag]
-    }
-}
+cm validate debug     process-early $argv
 
 # # ## ### ##### ######## ############# ######################
 ## Invoke the application code.

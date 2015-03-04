@@ -25,7 +25,8 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::debug {
-    namespace export levels
+    namespace export cmd_levels
+    namespace export thelevels
     namespace ensemble create
 
     namespace import ::cm::table::do
@@ -34,7 +35,18 @@ namespace eval ::cm::debug {
 
 # # ## ### ##### ######## #############
 
-proc ::cm::debug::levels {config} {
+proc ::cm::debug::cmd_levels {config} {
+    [table t {Level} {
+	foreach level [lsort -dict [thelevels]]  {
+	    $t add $level
+	}
+    }] show
+    return
+}
+
+# # ## ### ##### ######## #############
+
+proc ::cm::debug::thelevels {} {
     # First ensure that all possible cm packages are loaded, so that
     # all possible debug levels are declared and known.
 
@@ -46,12 +58,7 @@ proc ::cm::debug::levels {config} {
     package require cmdr::color
     package require cmdr::ask
 
-    [table t {Level} {
-	foreach level [lsort -dict [debug names]]  {
-	    $t add $level
-	}
-    }] show
-    return
+    return [debug names]
 }
 
 # # ## ### ##### ######## #############
