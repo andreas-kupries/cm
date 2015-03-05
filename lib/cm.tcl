@@ -223,20 +223,56 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input state  { description {State the city is in}    }
 	    input nation { description {Nation the state is in}  }
 	} [cm::call city cmd_create]
+	alias new
+	alias add
 
 	private list {
 	    description { Show a table of all known cities }
 	} [cm::call city cmd_list]
 
-	# remove
-	# modify
+	# remove - if not used
+	# modify - change state, nation
     }
     alias cities = city list
 
     # # ## ### ##### ######## ############# ######################
     ## Manage locations, i.e. hotels, resorts, etc.
 
+    officer hotel {
+	# -- name, city, streetaddress, zip, book/local (fax, phone, url), transport
+	# -- (n:1) city
+	# -- (1:n) hotel_staff
+	# -- (1:n) conference
 
+	private create {
+	    description { Create a new hotel }
+
+	    input name          { Name of the hotel }                 { optional ; interact }
+	    state city          { City the hotel is in }              { generate [cm::call city select] }
+	    input streetaddress { Location of the hotel in the city } { optional ; interact }
+	    input zipcode       { Postal code of the location }       { optional ; interact }
+
+	    # Contact details, and staff information to be set after
+	    # the fact (of creation).
+
+	} [cm::call hotel cmd_create]
+	alias new
+	alias add
+
+	private list {
+	    description { Show a table of all known hotels }
+	} [cm::call hotel cmd_list]
+
+	private show {
+	    description { Show all details for a specific hotel }
+	    # TODO: hotel identification (name?)
+	} [cm::call hotel cmd_show]
+
+	# remove - if not used
+	# modify - change name, city, street, zip, contact details
+    }
+    alias hotels    = hotel list
+    alias locations = hotel list
 
     # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.
@@ -268,7 +304,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		which we can enable to gain a (partial) narrative
 		of the application-internal actions.
 	    }
-	} [cm::call debug levels]
+	} [cm::call debug cmd_levels]
     }
 }
 

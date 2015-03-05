@@ -10,31 +10,32 @@ CREATE TABLE city (	-- we have been outside US in past
 CREATE TABLE hotel (
 	-- normally the location too.
 	-- not really needed to model separation, except in the transport info block
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	name		TEXT,
-	city		INTEGER REFERENCES city,
-	streetaddress	TEXT	UNIQUE,
-	zipcode		TEXT,
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	name		TEXT    NOT NULL,
+	city		INTEGER NOT NULL REFERENCES city,
+	streetaddress	TEXT    NOT NULL,
+	zipcode		TEXT    NOT NULL,
 	book_fax	TEXT	NULLABLE,	-- defaults to the local-*
 	book_link	TEXT	NULLABLE,
 	book_phone	TEXT	NULLABLE,
 	local_fax	TEXT	UNIQUE,
 	local_link	TEXT	UNIQUE,
 	local_phone	TEXT	UNIQUE,
-	transportation	TEXT			-- html block (maps, descriptions, etc)
+	transportation	TEXT,			-- html block (maps, descriptions, etc)
+	UNIQUE (city, streetaddress)
 );
 CREATE TABLE hotel_staff (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	hotel		INTEGER REFERENCES hotel,
+	position	TEXT,
 	familyname	TEXT,
 	firstname	TEXT,
-	position	TEXT,
 	email		TEXT,
 	phone		TEXT,
-	UNIQUE (hotel, familyname, firstname) -- maybe add position? (multiple positions for same person).
+	UNIQUE (hotel, position, familyname, firstname) -- Same person may have multiple positions
 );
 CREATE TABLE rate (				-- rates change from year to year
-	con		INTEGER	REFERENCES conference,
+	conference	INTEGER	REFERENCES conference,
 	hotel		INTEGER	REFERENCES hotel,
 	rate		INTEGER,		-- per night, pennies, i.e. stored x100.
 	groupcode	TEXT,

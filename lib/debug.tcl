@@ -52,7 +52,11 @@ proc ::cm::debug::thelevels {} {
 
     #package require cm::
     package require cm::table
+    package require cm::util
+    package require cm::city
+    package require cm::hotel
     package require cm::validate::colormode
+    package require cm::validate::debug
 
     package require cmdr::tty
     package require cmdr::color

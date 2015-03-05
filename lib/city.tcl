@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::ask
 package require debug
 package require debug::caller
 package require dbutil
@@ -33,10 +34,12 @@ package require cm::db
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm::city {
-    namespace export cmd_create cmd_list
+    namespace export cmd_create cmd_list \
+	select
     namespace ensemble create
 
     namespace import ::cmdr::color
+    namespace import ::cmdr::ask
     #namespace import ::cm::util
     namespace import ::cm::db
 
@@ -54,6 +57,8 @@ debug prefix cm/city {[debug caller] | }
 proc ::cm::city::cmd_list {config} {
     debug.cm/city {}
     Setup
+    db show-location
+
     [table t {Name State Nation} {
 	db do eval {
 	    SELECT name, state, nation
@@ -69,6 +74,8 @@ proc ::cm::city::cmd_list {config} {
 proc ::cm::city::cmd_create {config} {
     debug.cm/city {}
     Setup
+    db show-location
+
     # try to insert, report failure as user error
 
     set name   [$config @name]
@@ -101,11 +108,58 @@ proc ::cm::city::cmd_create {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::city::known {p} {
+    debug.cm/city {}
+    set config [$p config self]
+    Setup
+
+    set known {}
+    db do eval {
+	SELECT id, name, state, nation
+	FROM city
+    } {
+	# TODO: see if we can express this in SQL
+	set str $name
+	if {$state ne {}} {append str /$state}
+	append str " \[$nation\]"
+
+	lappend known $str $id
+    }
+    # dict: label -> id
+    return $known
+}
+
+proc ::cm::city::select {p} {
+    debug.cm/city {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set cities [known $p]
+    set choices [lsort -dict [dict keys $cities]]
+
+    switch -exact [llength $choices] {
+	1 { $p undefined! }
+	2 {
+	    # Single choice, return
+	    # TODO: print note
+	    return [lindex $cities 1]
+	}
+    }
+
+    set choice [ask menu "" "Which city: " $choices]
+
+    # Map to id
+    return [dict get $cities $choice]
+}
+
 proc ::cm::city::Setup {} {
     debug.cm/city {}
+
     upvar 1 config config
-    db do ;# Initialize db access.
-    db show-location
+    db do version;# Initialize db access.
 
     if {![dbutil initialize-schema ::cm::db::do error city {
 	{
