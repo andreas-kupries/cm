@@ -25,6 +25,7 @@
 package require Tcl 8.5
 package require debug
 package require debug::caller
+package require cmdr::color
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -36,8 +37,10 @@ namespace eval ::cm {
 
 namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
-	max-length strip-prefix open
+	max-length strip-prefix open user-error highlight-current
     namespace ensemble create
+
+    namespace import ::cmdr::color
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -45,6 +48,28 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::highlight-current {xvar id args} {
+    upvar 1 $xvar cid [lindex $args 0] current
+    if {$cid != $id} {
+	set current {}
+	return 
+    }
+    set current *
+    foreach v $args {
+	upvar 1 $v str
+	set str [color bold $str]
+    }
+    return
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::user-error {msg args} {
+    return -code error -errorcode [list CM USER {*}$args] $msg
+}
 
 # # ## ### ##### ######## ############# #####################
 
