@@ -68,6 +68,7 @@ proc ::cm::main {argv} {
 	debug.cm {trap - general, internal error}
 	debug.cm {[debug pdict $o]}
 	# TODO: nicer formatting of internal errors.
+	puts stderr [cmdr color error $::errorCode]
 	puts stderr [cmdr color error $::errorInfo]
 	return 1
     }
@@ -449,6 +450,27 @@ cmdr create cm::cm [file tail $::argv0] {
 	common *all* -extend {
 	    section Advanced Testing
 	}
+
+	private mail-address {
+	    description {
+		Parse the specified address into parts, and determine
+		if it is lexically ok for us, or not, and why not in
+		case of the latter.
+	    }
+	    input address {
+		The address to parse and test.
+	    } { }
+	} [cm::call mailer cmd_test_address]
+
+	private mail-setup {
+	    description {
+		Generate a test mail and send it using the current
+		mail configuration.
+	    }
+	    input destination {
+		The destination address to send the test mail to.
+	    } { }
+	} [cm::call mailer cmd_test_mail_config]
     }
 
     # # ## ### ##### ######## ############# ######################

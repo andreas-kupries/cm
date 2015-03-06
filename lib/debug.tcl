@@ -57,10 +57,12 @@ proc ::cm::debug::thelevels {} {
     package require cm::contact
     package require cm::enums
     package require cm::hotel
+    package require cm::mailer
     package require cm::table
     package require cm::util
     package require cm::validate::colormode
     package require cm::validate::debug
+    package require cm::validate::mail-address
 
     package require cmdr::ask
     package require cmdr::color
