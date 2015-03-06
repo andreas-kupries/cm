@@ -38,7 +38,7 @@ namespace eval ::cm {
 namespace eval ::cm::hotel {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	select label
+	cmd_map select label
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -177,15 +177,36 @@ proc ::cm::hotel::cmd_show {config} {
     return
 }
 
+
+proc ::cm::hotel::cmd_map {config} {
+    debug.cm/hotel {}
+    Setup
+    db show-location
+
+    set id      [current]
+    set details [details $id]
+
+    puts "Working with hotel \"[color name [get $id]]\" ..."
+
+    set map [read stdin]
+
+    dict set details transport $map
+
+    puts -nonewline "Saving ... "
+    write $id $details
+    puts [color good OK]
+    return
+}
+
 proc ::cm::hotel::cmd_contact {config} {
     debug.cm/hotel {}
     Setup
     db show-location
 
-    set id [current]
-    puts "Working with hotel \"[color name [get $id]]\" ..."
+    set id      [current]
+    set details [details $id]
 
-    set d [details $id]
+    puts "Working with hotel \"[color name [get $id]]\" ..."
     foreach {key label} {
 	bookphone  {Booking Phone}
 	bookfax    {Booking FAX  }
@@ -194,15 +215,15 @@ proc ::cm::hotel::cmd_contact {config} {
 	localfax   {Local   FAX  }
 	locallink  {Local   Url  }
     } {
-	set v [dict get $d $key]
-	# Interact
+	set v [dict get $details $key]
 	set new [ask string $label $v]
-	dict set d $key $new
+	dict set details $key $new
     }
 
     puts -nonewline "Saving ... "
-    write $id $d
+    write $id $details
     puts [color good OK]
+    return
 }
 
 # # ## ### ##### ######## ############# ######################

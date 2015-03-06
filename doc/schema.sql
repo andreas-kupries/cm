@@ -97,6 +97,7 @@ CREATE TABLE conference (
 					 		-- 		  shorter talks => longer sessions.
 					 		-- 		  standard: 30 min x3
 	hotel		INTEGER REFERENCES hotel	-- We will not immediately know where we will be
+	sessions	INTEGER REFERENCES hotel	-- While sessions are usually at the hotel, they may not be.
 	--	constraint: city == hotel->city, if hotel NOT NULL
 
 	-- [Ad *] from this we can compute a basic timeline

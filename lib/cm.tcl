@@ -251,6 +251,9 @@ cmdr create cm::cm [file tail $::argv0] {
     ## Manage cities
 
     officer city {
+	description {
+	    Manage the cities containing relevant locations
+	}
 	# -- name, state, nation
 	# -- (1:n) locations
 
@@ -278,6 +281,9 @@ cmdr create cm::cm [file tail $::argv0] {
     ## Manage locations, i.e. hotels, resorts, etc.
 
     officer hotel {
+	description {
+	    Manage hotels and other locations (when hotel != session)
+	}
 	# -- name, city, streetaddress, zip, book/local (fax, phone, url), transport
 	# -- (n:1) city
 	# -- (1:n) hotel_staff
@@ -326,8 +332,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Set the contact information of the current hotel }
 	} [cm::call hotel cmd_contact]
 
+	private map {
+	    section {Hotel Management}
+	    description {
+		Set the map, directions, transport information of the current hotel.
+		Note: The data is read from stdin.
+	    }
+	} [cm::call hotel cmd_map]
+	alias directions
+	alias transport
+	alias note
+
 	# remove - if not used
-	# modify - change name, city, street, zip, contact details
+	# modify - change name, street, zip, city (rename, relocate/move)
     }
     alias hotels    = hotel list
     alias locations = hotel list
