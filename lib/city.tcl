@@ -21,9 +21,6 @@ package require cmdr::ask
 package require debug
 package require debug::caller
 package require dbutil
-#package require interp
-#package require linenoise
-#package require textutil::adjust
 package require try
 
 package require cm::table
@@ -33,9 +30,13 @@ package require cm::db
 
 # # ## ### ##### ######## ############# ######################
 
+namespace eval ::cm {
+    namespace export city
+    namespace ensemble create
+}
 namespace eval ::cm::city {
     namespace export cmd_create cmd_list \
-	select
+	select label
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -81,12 +82,9 @@ proc ::cm::city::cmd_create {config} {
     set name   [$config @name]
     set state  [$config @state]
     set nation [$config @nation]
+    set label  [label $name $state $nation]
 
-    set str $name
-    if {$state ne {}} {append str /$state}
-    append str " \[$nation\]"
-
-    puts -nonewline "Creating city \"[color note $str]\" ... "
+    puts -nonewline "Creating city \"[color note $label]\" ... "
 
     try {
 	db do transaction {
@@ -108,24 +106,31 @@ proc ::cm::city::cmd_create {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::city::label {name state nation} {
+    debug.cm/city {}
+
+    set label $name
+    if {$state ne {}} {append label "/$state"}
+    append label "-$nation"
+    return $label
+}
+
 proc ::cm::city::known {p} {
     debug.cm/city {}
+
     set config [$p config self]
     Setup
 
+    # dict: label -> id
     set known {}
+
     db do eval {
 	SELECT id, name, state, nation
 	FROM city
     } {
-	# TODO: see if we can express this in SQL
-	set str $name
-	if {$state ne {}} {append str /$state}
-	append str " \[$nation\]"
-
-	lappend known $str $id
+	dict set known [label $name $state $nation] $id
     }
-    # dict: label -> id
+
     return $known
 }
 
@@ -137,12 +142,12 @@ proc ::cm::city::select {p} {
     }
 
     # dict: label -> id
-    set cities [known $p]
+    set cities  [known $p]
     set choices [lsort -dict [dict keys $cities]]
 
     switch -exact [llength $choices] {
-	1 { $p undefined! }
-	2 {
+	0 { $p undefined! }
+	1 {
 	    # Single choice, return
 	    # TODO: print note
 	    return [lindex $cities 1]
@@ -151,7 +156,7 @@ proc ::cm::city::select {p} {
 
     set choice [ask menu "" "Which city: " $choices]
 
-    # Map to id
+    # Map back to id
     return [dict get $cities $choice]
 }
 

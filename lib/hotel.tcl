@@ -20,25 +20,31 @@ package require cmdr::color
 package require debug
 package require debug::caller
 package require dbutil
-#package require interp
-#package require linenoise
-#package require textutil::adjust
 package require try
 
 package require cm::table
-#package require cm::util
+package require cm::city
+package require cm::config::core
 package require cm::db
 #package require cm::validate::hotel
 
 # # ## ### ##### ######## ############# ######################
 
+namespace eval ::cm {
+    namespace export hotel
+    namespace ensemble create
+}
 namespace eval ::cm::hotel {
-    namespace export cmd_create cmd_list
+    namespace export \
+	cmd_create cmd_list cmd_select cmd_show cmd_contact \
+	select label
     namespace ensemble create
 
     namespace import ::cmdr::color
-    #namespace import ::cm::util
     namespace import ::cm::db
+    namespace import ::cm::city
+    namespace import ::cm::config::core
+    rename core config
 
     namespace import ::cm::table::do
     rename do table
@@ -56,18 +62,44 @@ proc ::cm::hotel::cmd_list {config} {
     Setup
     db show-location
 
-    [table t {Name Street Zip City} {
+    set cid [config get* @current-hotel {}]
+
+    [table t {{} Name Street Zip City Issues} {
 	db do eval {
-	    SELECT H.name                 AS name,
+	    SELECT H.id                   AS id,
+                   H.name                 AS name,
 	           H.streetaddress        AS street,
 	           H.zipcode              AS zip,
-	           C.name||", "||C.nation AS city
+	           C.name                 AS city,
+	           C.state                AS state,
+	           C.nation               AS nation,
+	           H.book_fax             AS bf,
+	           H.book_link            AS bl,
+	           H.book_phone           AS bp,
+	           H.local_fax            AS lf,
+	           H.local_link           AS ll,
+	           H.local_phone          AS lp
+	    -- todo: count staff
 	    FROM  hotel H,
-	          city C
+	          city  C
 	    WHERE C.id = H.city
 	    ORDER BY H.name, city
 	} {
-	    $t add $name $street $zip $city
+	    set city [city label $city $state $nation]
+
+	    set issues {}
+	    # TODO: Issue and issue when hotel not staffed (count == 0)
+	    if {($bf eq {}) && ($lf eq {})} { lappend issues [color bad "Booking FAX missing"] }
+	    if {($bl eq {}) && ($lf eq {})} { lappend issues [color bad "Booking URL missing"] }
+	    if {($bp eq {}) && ($lf eq {})} { lappend issues [color bad "Booking Phone missing"] }
+	    if {[llength $issues]} {
+		set issues [join $issues \n]
+	    }
+
+	    set current [expr {($id == $cid)
+			       ? "*"
+			       : ""}]
+	    $t add $current $name $street $zip $city $issues
 	}
     }] show
     return
@@ -82,10 +114,10 @@ proc ::cm::hotel::cmd_create {config} {
     set name   [$config @name]
     set cityid [$config @city]
     set street [$config @streetaddress]
-    set zip [$config @zipcode]
+    set zip    [$config @zipcode]
 
     set str $name
-    puts -nonewline "Creating hotel \"[color note $str]\" ... "
+    puts -nonewline "Creating hotel \"[color name $str]\" ... "
 
     try {
 	db do transaction {
@@ -108,13 +140,134 @@ proc ::cm::hotel::cmd_create {config} {
     return
 }
 
+proc ::cm::hotel::cmd_select {config} {
+    debug.cm/hotel {}
+    Setup
+    db show-location
+
+    set id [$config @hotel]
+
+    puts -nonewline "Setting current hotel to \"[color name [get $id]]\" ... "
+    config assign @current-hotel $id
+    puts [color good OK]
+    return
+}
+
+proc ::cm::hotel::cmd_show {config} {
+    debug.cm/hotel {}
+    Setup
+    db show-location
+
+    set id [config get @current-hotel]
+
+    ... get details ...
+
+    puts [color name ...]
+    [table t {Property Value} {
+    }] show
+    return
+}
+
+proc ::cm::hotel::cmd_contact {config} {
+    debug.cm/hotel {}
+    Setup
+    db show-location
+
+    set id [config get @current-hotel]
+
+    ... current values ... ask for new values ...
+
+    puts -nonewline "Saving ... "
+    config assign current-hotel $id
+    puts [color good OK]
+
+}
+
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::hotel::label {name city} {
+    debug.cm/hotel {}
+    return "$name ($city)"
+}
+
+proc ::cm::hotel::known {p} {
+    debug.cm/hotel {}
+
+    set config [$p config self]
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT H.id     AS id,
+	       H.name   AS name,
+	       C.name   AS city,
+	       C.state  AS state,
+	       C.nation AS nation
+	FROM  hotel H,
+	      city  C
+	WHERE C.id = H.city
+    } {
+	dict set known [label $name [city label $city $state $nation]] $id
+    }
+
+    debug.cm/hotel {==> ($known)}
+    return $known
+}
+
+proc ::cm::hotel::get {id} {
+    debug.cm/hotel {}
+    upvar 1 config config
+    Setup
+
+    lassign [db do eval {
+	SELECT H.name   AS name,
+	       C.name   AS city,
+	       C.state  AS state,
+	       C.nation AS nation
+	FROM  hotel H,
+	      city  C
+	WHERE C.id = H.city
+	AND   H.id = :id
+    }] name city state nation
+
+    return [label $name [city label $city $state $nation]]
+}
+
+proc ::cm::hotel::select {p} {
+    debug.cm/hotel {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set hotels  [known $p]
+    set choices [lsort -dict [dict keys $hotels]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note
+	    return [lindex $hotels 1]
+	}
+    }
+
+    set choice [ask menu "" "Which hotel: " $choices]
+
+    # Map back to id
+    return [dict get $hotels $choice]
+}
 
 proc ::cm::hotel::Setup {} {
     debug.cm/hotel {}
     upvar 1 config config
     db do version ;# Initialize db access.
+
+    ::cm::config::core::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error hotel {
 	{
