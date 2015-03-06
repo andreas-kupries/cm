@@ -100,6 +100,13 @@ proc ::cm::vt {p args} {
     } $p {*}$args
 }
 
+proc ::cm::cvt {p args} {
+    lambda {p args} {
+	package require cmdr::validate::$p
+	cmdr::validate::$p {*}$args
+    } $p {*}$args
+}
+
 proc ::cm::sequence {args} {
     lambda {cmds p x} {
 	foreach c $cmds {
@@ -348,6 +355,93 @@ cmdr create cm::cm [file tail $::argv0] {
     }
     alias hotels    = hotel list
     alias locations = hotel list
+
+    # # ## ### ##### ######## ############# ######################
+    ## Manage conferences
+
+    officer conference {
+	description {
+	    Manage conferences
+	}
+	# -- (n:1) city, hotel, session
+	# -- (n:1) hotel, session
+	# title, year, start, end, talk-length, session-length
+	# alignment (specific weekday, or none), length in days
+
+	private create {
+	    section {Conference Management}
+	    description { Create a new conference }
+
+	    input title {
+		Name of the conference
+	    } { optional ; interact }
+
+	    input year {
+		Year of the conference
+	    } { optional ; interact ; validate [cm::cvt year] }
+
+	    input alignment {
+		Alignment within the week
+	    } { optional ; validate [cm::cvt weekday] ; default -1 }
+
+	    input start {
+		Start date
+	    } { optional ; interact ; validate [cm::cvt date] }
+
+	    input length {
+		Length in days
+	    } { optional ; interact ; validate [cm::cvt posint] }
+
+	    # Set later: hotel, session, city
+
+	} [cm::call conference cmd_create]
+	alias new
+	alias add
+
+	private list {
+	    section {Conference Management}
+	    description { Show a table of all known conferences }
+	} [cm::call conference cmd_list]
+
+	private select {
+	    section {Conference Management}
+	    description { Select a specific conference for further operation }
+	    input conference {
+		Conference to operate on in the future - The "current" conference
+	    } {
+		optional
+		# TODO: validator <=> conference identification (name + city)
+		generate [cm::call conference select]
+	    }
+	} [cm::call conference cmd_select]
+
+	private show {
+	    section {Conference Management}
+	    description { Show the details of the current conference }
+	} [cm::call conference cmd_show]
+
+	private center {
+	    section {Conference Management}
+	    description { Select the location for presentations }
+	    input hotel { Conference hotel } {
+		# TODO: validator <=> hotel identification (name + city)
+		optional ; generate [cm::call hotel select]
+	    }
+	} [cm::call conference cmd_center]
+
+	private hotel {
+	    section {Conference Management}
+	    description { Select the conference hotel }
+	    input hotel { Conference hotel } {
+		# TODO: validator <=> hotel identification (name + city)
+		optional ; generate [cm::call hotel select]
+	    }
+	} [cm::call conference cmd_hotel]
+
+	# remove - if not used
+	# modify - change title, start, length, alignment
+    }
+    alias conferences = conference list
 
     # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.
