@@ -36,7 +36,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::city {
     namespace export cmd_create cmd_list \
-	select label
+	select label get
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -105,6 +105,20 @@ proc ::cm::city::cmd_create {config} {
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::city::get {id} {
+    debug.cm/city {}
+    upvar 1 config config
+    Setup
+
+    lassign [db do eval {
+	SELECT name, state, nation
+	FROM  city
+	WHERE id = :id
+    }] name state nation
+
+    return [label $name $state $nation]
+}
 
 proc ::cm::city::label {name state nation} {
     debug.cm/city {}
