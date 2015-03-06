@@ -17,10 +17,6 @@ package require Tcl 8.5
 package require cmdr::color
 package require tls
 package require smtp
-
-puts XXX=[package ifneeded smtp [package present smtp]]
-
-
 package require mime
 package require cm::table
 package require cm::config::core
@@ -257,7 +253,9 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
     set token [mime::initialize -string $corpus]
 
     foreach dst $receivers {
-	puts "    To: $dst"
+	puts -nonewline "    To: [color name $dst] ... "
+	flush stdout
+
 	try {
 	    # Can the 'From' be configured via -header here ?
 	    # I.e. mconfig ? Alternate: -originator
@@ -270,10 +268,11 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 	    }
 	} finally {
 	}
+	puts [color good OK]
     }
 
     mime::finalize $token
-    puts "    Sent"
+    puts Done
 
     variable mailcounter
     incr     mailcounter
