@@ -7,9 +7,7 @@ CREATE TABLE city (	-- we have been outside US in past
 	nation		TEXT,
 	UNIQUE (name, state, nation)
 );
-CREATE TABLE hotel (
-	-- normally the location too.
-	-- not really needed to model separation, except in the transport info block
+CREATE TABLE location (
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	name		TEXT    NOT NULL,
 	city		INTEGER NOT NULL REFERENCES city,
@@ -24,61 +22,74 @@ CREATE TABLE hotel (
 	transportation	TEXT,		-- html block (maps, descriptions, etc)
 	UNIQUE (city, streetaddress)
 );
-CREATE TABLE hotel_staff (
+CREATE TABLE location_staff (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	hotel		INTEGER REFERENCES hotel,
+	location	INTEGER REFERENCES location,
 	position	TEXT,
 	familyname	TEXT,
 	firstname	TEXT,
 	email		TEXT,
 	phone		TEXT,
-	UNIQUE (hotel, position, familyname, firstname) -- Same person may have multiple positions
+	UNIQUE (location, position, familyname, firstname) -- Same person may have multiple positions
 );
 CREATE TABLE rate (				-- rates change from year to year
 	conference	INTEGER	REFERENCES conference,
-	hotel		INTEGER	REFERENCES hotel,
+	location	INTEGER	REFERENCES location,
 	rate		INTEGER,		-- per night, pennies, i.e. stored x100.
 	groupcode	TEXT,
 	begindate	INTEGER,		-- date [epoch]
 	enddate		INTEGER,		-- date [epoch]
-	UNIQUE (con, hotel)
+	UNIQUE (con, location)
 );
-CREATE TABLE person (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE contact (
+	-- General data for any type of contact:
+	-- actual person, mailing list, company
+	-- The flags determine what we can do with a contact.
+
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	tag		TEXT	UNIQUE,		-- for html anchors
-	familyname	TEXT,
-	firstname	TEXT,
+	familyname	TEXT	NOT NULL,	-- company or list name here
+	firstname	TEXT,			-- NULL for lists and companies
 	biography	TEXT,
-	affiliation	TEXT,
-	cfpreceiver	INTEGER,		-- mark CFP receivers
-	nocfptemp	INTEGER			-- mark temp CFP deactivation
-);
-CREATE TABLE mailinglist (	-- CFP destinations
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	title		TEXT	UNIQUE,
-	email		TEXT	UNIQUE,
-	link		TEXT	UNIQUE,
-	cfpreceiver	INTEGER,		-- flag
-	nocfptemp	INTEGER			-- flag
+	affiliation	INTEGER REFERENCES contact,	-- company, if any
+
+	can_recvmail	INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
+	can_register	INTEGER NOT NULL,	-- actual person can register for attendance
+	can_book	INTEGER NOT NULL,	-- actual person can book hotels
+	can_talk	INTEGER NOT NULL,	-- actual person can do presentation
+	can_submit	INTEGER NOT NULL,	-- actual person, or company can submit talks
+
+	-- Note: Deactivation of contact in a campaign is handled by the contact/campaign linkage
 );
 CREATE TABLE email (
-	id		INTEGER	PRIMARY KEY AUTOINCREMENT,
-	person		INTEGER	REFERENCES person,
-	email		TEXT	UNIQUE,
-	inactive	INTEGER,		-- mark outdated addresses
-	UNIQUE (person, email)
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	email		TEXT	NOT NULL UNIQUE,
+	contact		INTEGER	NOT NULL REFERENCES contact,
+	inactive	INTEGER	NOT NULL 	-- mark outdated addresses
 );
 CREATE TABLE link (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	person 		INTEGER	REFERENCES person,
-	link		TEXT,
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	contact		INTEGER	NOT NULL REFERENCES contact,
+	link		TEXT	NOT NULL, -- same link text can be used by multiple contacts
 	title		TEXT,
-	UNIQUE (person, link)
+	UNIQUE (contact, link)
+);
+CREATE TABLE campaign (
+	-- Email campaign for a conference.
+
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	con	 	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
+	template	INTEGER NOT NULL 	REFERENCES config,	-- mail text template
+);
+CREATE TABLE campaign_item (
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	email		INTEGER NOT NULL REFERENCES email,	-- contact is indirect
+	campaign	INTEGER	NOT NULL REFERENCES campaign
 );
 CREATE TABLE tutorial (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	speaker		INTEGER	REFERENCES person,
-	tag		TEXT,			-- for html anchors
+	speaker		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
+	tag		TEXT,				-- for html anchors
 	title		TEXT,
 	prereq		TEXT,
 	description	TEXT,
@@ -96,8 +107,8 @@ CREATE TABLE conference (
 	sessionlen	INTEGER,			-- in #talks max  basic scheduling parameters.
 					 		-- 		  shorter talks => longer sessions.
 					 		-- 		  standard: 30 min x3
-	hotel		INTEGER REFERENCES hotel	-- We will not immediately know where we will be
-	sessions	INTEGER REFERENCES hotel	-- While sessions are usually at the hotel, they may not be.
+	hotel		INTEGER REFERENCES location	-- We will not immediately know where we will be
+	sessions	INTEGER REFERENCES location	-- While sessions are usually at the hotel, they may not be.
 	--	constraint: city == hotel->city, if hotel NOT NULL
 
 	-- [Ad *] from this we can compute a basic timeline
@@ -110,9 +121,9 @@ CREATE TABLE conference (
 );
 CREATE TABLE conference_staff (
 	con		INTEGER	REFERENCES conference,
-	person		INTEGER	REFERENCES person,
+	contact		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
 	role		INTEGER	REFERENCES staff_role,
-	UNIQUE (con, person, role)
+	UNIQUE (con, contact, role)
 	-- Multiple people can have the same role (ex: program commitee)
 	-- One person can have multiple roles (ex: prg.chair, prg. committee)
 );
@@ -143,10 +154,10 @@ CREATE TABLE submission (
 	invited		INTEGER				-- keynotes are a special submission made by mgmt
 );
 CREATE TABLE submitter (
-	submission	INTEGER	REFERENCES submission,
-	person		INTEGER	REFERENCES person,
+	submission	INTEGER	REFERENCES submission,	-- can_register||can_book||can_talk||can_submit
+	contact		INTEGER	REFERENCES contact,
 	note		TEXT,				-- distinguish author, co-author, if wanted
-	UNIQUE (submission, person)
+	UNIQUE (submission, contact)
 );
 CREATE TABLE talk (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,8 +171,8 @@ CREATE TABLE talk (
 );
 CREATE TABLE talker (
 	talk		INTEGER	REFERENCES talk,
-	person		INTEGER	REFERENCES person,
-	UNIQUE (talk, person)
+	contact		INTEGER	REFERENCES contact,	-- can_talk
+	UNIQUE (talk, contact)
 	-- We allow multiple speakers => panels, co-presentation
 	-- Note: Presenter is not necessarily any of the submitters of the submission behind the talk
 );
@@ -184,24 +195,25 @@ CREATE TABLE schedule (
 );
 CREATE TABLE register ( -- conference registrations <=> attendee register
 	con		INTEGER	REFERENCES conference,
-	person		INTEGER	REFERENCES person,
+	contact		INTEGER	REFERENCES contact,		-- can_register
 	walkin		INTEGER,				-- late-register fee
 	tut1		INTEGER REFERENCES tutorial_schedule,	-- tutorial selection
 	tut2		INTEGER REFERENCES tutorial_schedule,	-- all nullable
 	tut3		INTEGER REFERENCES tutorial_schedule,
 	tut4		INTEGER REFERENCES tutorial_schedule,
 	talk		INTEGER REFERENCES talk,		-- presenter discount
-	UNIQUE (con, person)
+	UNIQUE (con, contact)
 	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
 );
 CREATE TABLE booked (	-- hotel bookings
 	con		INTEGER	REFERENCES conference,
-	person		INTEGER	REFERENCES person,
-	UNIQUE (con, person)
+	contact		INTEGER	REFERENCES contact,	-- can_book
+	hotel		INTEGER	REFERENCES location,	-- may not be the conference hotel!
+	UNIQUE (con, pcontact)
 );
 CREATE TABLE notes (
 	con		INTEGER	REFERENCES conference,
-	person		INTEGER REFERENCES person,
+	contact		INTEGER REFERENCES contact,
 	text		TEXT
 	-- general notes, and attached to people
 	-- ex: we know that P will not use the con hotel

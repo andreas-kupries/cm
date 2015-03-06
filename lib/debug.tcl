@@ -51,16 +51,24 @@ proc ::cm::debug::thelevels {} {
     # all possible debug levels are declared and known.
 
     #package require cm::
+    package require cm::campaign
+    package require cm::city
+    package require cm::conference
+    package require cm::contact
+    package require cm::enums
+    package require cm::hotel
     package require cm::table
     package require cm::util
-    package require cm::city
-    package require cm::hotel
     package require cm::validate::colormode
     package require cm::validate::debug
 
-    package require cmdr::tty
-    package require cmdr::color
     package require cmdr::ask
+    package require cmdr::color
+    package require cmdr::tty
+    package require cmdr::validate::date
+    package require cmdr::validate::posint
+    package require cmdr::validate::weekday
+    package require cmdr::validate::year
 
     return [debug names]
 }
