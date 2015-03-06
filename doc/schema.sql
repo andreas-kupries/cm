@@ -15,13 +15,13 @@ CREATE TABLE hotel (
 	city		INTEGER NOT NULL REFERENCES city,
 	streetaddress	TEXT    NOT NULL,
 	zipcode		TEXT    NOT NULL,
-	book_fax	TEXT	NULLABLE,	-- defaults to the local-*
-	book_link	TEXT	NULLABLE,
-	book_phone	TEXT	NULLABLE,
+	book_fax	TEXT,		-- defaults to the local-*
+	book_link	TEXT,
+	book_phone	TEXT,
 	local_fax	TEXT	UNIQUE,
 	local_link	TEXT	UNIQUE,
 	local_phone	TEXT	UNIQUE,
-	transportation	TEXT,			-- html block (maps, descriptions, etc)
+	transportation	TEXT,		-- html block (maps, descriptions, etc)
 	UNIQUE (city, streetaddress)
 );
 CREATE TABLE hotel_staff (
@@ -96,7 +96,7 @@ CREATE TABLE conference (
 	sessionlen	INTEGER,			-- in #talks max  basic scheduling parameters.
 					 		-- 		  shorter talks => longer sessions.
 					 		-- 		  standard: 30 min x3
-	hotel		INTEGER	NULLABLE REFERENCES hotel	-- We will not immediately know where we will be
+	hotel		INTEGER REFERENCES hotel	-- We will not immediately know where we will be
 	--	constraint: city == hotel->city, if hotel NOT NULL
 
 	-- [Ad *] from this we can compute a basic timeline
@@ -126,7 +126,7 @@ CREATE TABLE tutorial_schedule (
 	day		INTEGER,			-- 0,1,... (offset from start of conference, 0-based)
 	half		INTEGER	REFERENCES dayhalf,
 	track		INTEGER,			-- 1,2,...
-	tutorial	INTEGER	NULLABLE REFERENCES tutorial,	-- While setting up the con
+	tutorial	INTEGER REFERENCES tutorial,	-- While setting up the con
 	UNIQUE (con, tutorial),
 	UNIQUE (con, day, half, track)
 );
@@ -174,22 +174,22 @@ CREATE TABLE talk_state (	-- fixed contents
 );
 CREATE TABLE schedule (
 	con		INTEGER	REFERENCES conference,
-	day		INTEGER,				-- 2,3,4,... (offset from start of conference, 0-based)
-	session		INTEGER,				-- session within the day
-	slot		INTEGER	NULLABLE,			-- slot within the session, null => whole session talk (keynotes)
-	talk		INTEGER	NULLABLE REFERENCES talk,	-- While setting things up
+	day		INTEGER,			-- 2,3,4,... (offset from start of conference, 0-based)
+	session		INTEGER,			-- session within the day
+	slot		INTEGER,			-- slot within the session, null => whole session talk (keynotes)
+	talk		INTEGER REFERENCES talk,	-- While setting things up
 	UNIQUE (con, day, session, slot)
 	-- constraint: con == talk->con (== talk->submission->con)
 );
 CREATE TABLE register ( -- conference registrations <=> attendee register
 	con		INTEGER	REFERENCES conference,
 	person		INTEGER	REFERENCES person,
-	walkin		INTEGER,						-- late-register fee
-	tut1		INTEGER	NULLABLE REFERENCES tutorial_schedule,	-- tutorial selection
-	tut2		INTEGER	NULLABLE REFERENCES tutorial_schedule,	-- all nullable
-	tut3		INTEGER	NULLABLE REFERENCES tutorial_schedule,
-	tut4		INTEGER	NULLABLE REFERENCES tutorial_schedule,
-	talk		INTEGER	NULLABLE REFERENCES talk,		-- presenter discount
+	walkin		INTEGER,				-- late-register fee
+	tut1		INTEGER REFERENCES tutorial_schedule,	-- tutorial selection
+	tut2		INTEGER REFERENCES tutorial_schedule,	-- all nullable
+	tut3		INTEGER REFERENCES tutorial_schedule,
+	tut4		INTEGER REFERENCES tutorial_schedule,
+	talk		INTEGER REFERENCES talk,		-- presenter discount
 	UNIQUE (con, person)
 	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
 );
@@ -200,7 +200,7 @@ CREATE TABLE booked (	-- hotel bookings
 );
 CREATE TABLE notes (
 	con		INTEGER	REFERENCES conference,
-	person		INTEGER	NULLABLE REFERENCES person,
+	person		INTEGER REFERENCES person,
 	text		TEXT
 	-- general notes, and attached to people
 	-- ex: we know that P will not use the con hotel
