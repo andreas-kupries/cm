@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::ask
 package require debug
 package require debug::caller
 package require dbutil
@@ -41,6 +42,7 @@ namespace eval ::cm::hotel {
     namespace ensemble create
 
     namespace import ::cmdr::color
+    namespace import ::cmdr::ask
     namespace import ::cm::db
     namespace import ::cm::city
     namespace import ::cm::config::core
@@ -64,7 +66,7 @@ proc ::cm::hotel::cmd_list {config} {
 
     set cid [config get* @current-hotel {}]
 
-    [table t {{} Name Street Zip City Issues} {
+    [table t {{} Name Street Zip City} {
 	db do eval {
 	    SELECT H.id                   AS id,
                    H.name                 AS name,
@@ -72,34 +74,21 @@ proc ::cm::hotel::cmd_list {config} {
 	           H.zipcode              AS zip,
 	           C.name                 AS city,
 	           C.state                AS state,
-	           C.nation               AS nation,
-	           H.book_fax             AS bf,
-	           H.book_link            AS bl,
-	           H.book_phone           AS bp,
-	           H.local_fax            AS lf,
-	           H.local_link           AS ll,
-	           H.local_phone          AS lp
-	    -- todo: count staff
+	           C.nation               AS nation
 	    FROM  hotel H,
 	          city  C
 	    WHERE C.id = H.city
 	    ORDER BY H.name, city
 	} {
-	    set city [city label $city $state $nation]
-
-	    set issues {}
-	    # TODO: Issue and issue when hotel not staffed (count == 0)
-	    if {($bf eq {}) && ($lf eq {})} { lappend issues [color bad "Booking FAX missing"] }
-	    if {($bl eq {}) && ($lf eq {})} { lappend issues [color bad "Booking URL missing"] }
-	    if {($bp eq {}) && ($lf eq {})} { lappend issues [color bad "Booking Phone missing"] }
-	    if {[llength $issues]} {
-		set issues [join $issues \n]
+	    set city    [city label $city $state $nation]
+	    set issues  [issues [details $id]]
+	    if {$issues ne {}} {
+		append name \n $issues
 	    }
-
 	    set current [expr {($id == $cid)
 			       ? "*"
 			       : ""}]
-	    $t add $current $name $street $zip $city $issues
+	    $t add $current $name $street $zip $city
 	}
     }] show
     return
@@ -116,8 +105,7 @@ proc ::cm::hotel::cmd_create {config} {
     set street [$config @streetaddress]
     set zip    [$config @zipcode]
 
-    set str $name
-    puts -nonewline "Creating hotel \"[color name $str]\" ... "
+    puts -nonewline "Creating hotel \"[color name $name]\" ... "
 
     try {
 	db do transaction {
@@ -129,6 +117,7 @@ proc ::cm::hotel::cmd_create {config} {
 			NULL)
 	    }
 	}
+	set id [db do last_insert_rowid]
     } on error {e o} {
 	# TODO: trap only proper insert error, if possible.
 	puts [color bad $e]
@@ -137,6 +126,11 @@ proc ::cm::hotel::cmd_create {config} {
 
     puts [color good OK]
     puts [color warning {Please remember to set the contact details and staff information}]
+
+    puts -nonewline "Setting as current hotel ... "
+    config assign @current-hotel $id
+    puts [color good OK]
+
     return
 }
 
@@ -158,12 +152,27 @@ proc ::cm::hotel::cmd_show {config} {
     Setup
     db show-location
 
-    set id [config get @current-hotel]
+    set id      [current]
+    set details [details $id]
 
-    ... get details ...
-
-    puts [color name ...]
+    puts "Details of \"[color name [get $id]]\":"
     [table t {Property Value} {
+	set issues [issues $details]
+	if {$issues ne {}} {
+	    $t add [color bad Issues] $issues
+	    $t add -------- -----
+	}
+
+	dict with details {}
+	$t add Street      $street
+	$t add Zipcode     $zip
+	$t add Book/Phone  $bookphone
+	$t add Book/Fax    $bookfax
+	$t add Book/Url    $booklink
+	$t add Local/Phone $localphone
+	$t add Local/Fax   $localfax
+	$t add Local/Url   $locallink
+	$t add Transport   $transport
     }] show
     return
 }
@@ -173,14 +182,27 @@ proc ::cm::hotel::cmd_contact {config} {
     Setup
     db show-location
 
-    set id [config get @current-hotel]
+    set id [current]
+    puts "Working with hotel \"[color name [get $id]]\" ..."
 
-    ... current values ... ask for new values ...
+    set d [details $id]
+    foreach {key label} {
+	bookphone  {Booking Phone}
+	bookfax    {Booking FAX  }
+	booklink   {Booking Url  }
+	localphone {Local   Phone}
+	localfax   {Local   FAX  }
+	locallink  {Local   Url  }
+    } {
+	set v [dict get $d $key]
+	# Interact
+	set new [ask string $label $v]
+	dict set d $key $new
+    }
 
     puts -nonewline "Saving ... "
-    config assign current-hotel $id
+    write $id $d
     puts [color good OK]
-
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -217,6 +239,36 @@ proc ::cm::hotel::known {p} {
     return $known
 }
 
+proc ::cm::hotel::issues {details} {
+    debug.cm/hotel {}
+    dict with details {}
+
+    set issues {}
+    # TODO: Issue an issue when hotel not staffed (count == 0)
+
+    if {$zip       eq {}} { +issue "Zipcode missing" }
+    if {$street    eq {}} { +issue "Street address missing" }
+    if {$transport eq {}} { +issue "Map & directions missing" }
+    if {($bookfax   eq {}) && ($localfax   eq {})} { +issue "Booking FAX missing"   }
+    if {($booklink  eq {}) && ($locallink  eq {})} { +issue "Booking URL missing"   }
+    if {($bookphone eq {}) && ($localphone eq {})} { +issue "Booking Phone missing" }
+    if {($localfax   eq {})} { +issue "Local FAX missing"   }
+    if {($locallink  eq {})} { +issue "Local URL missing"   }
+    if {($localphone eq {})} { +issue "Local Phone missing" }
+
+    if {[llength $issues]} {
+	set issues [join $issues \n]
+    }
+    return $issues
+}
+
+proc ::cm::hotel::+issue {text} {
+    debug.cm/hotel {}
+    upvar 1 issues issues
+    lappend issues "- [color bad $text]"
+    return
+}
+
 proc ::cm::hotel::get {id} {
     debug.cm/hotel {}
     upvar 1 config config
@@ -234,6 +286,67 @@ proc ::cm::hotel::get {id} {
     }] name city state nation
 
     return [label $name [city label $city $state $nation]]
+}
+
+proc ::cm::hotel::details {id} {
+    debug.cm/hotel {}
+    return [db do eval {
+	SELECT "street",     streetaddress,
+	       "zip",        zipcode,
+	       "bookfax",    book_fax,
+	       "booklink",   book_link,
+	       "bookphone",  book_phone,
+	       "localfax",   local_fax,
+	       "locallink",  local_link,
+	       "localphone", local_phone,
+	       "transport",  transportation
+	    -- TODO: count staff
+	FROM  hotel
+	WHERE id = :id
+    }]
+}
+
+proc ::cm::hotel::write {id details} {
+    debug.cm/hotel {}
+    dict with details {}
+    db do eval {
+	UPDATE hotel
+	SET    streetaddress  = :street,
+	       zipcode        = :zip,
+	       book_fax       = :bookfax,
+	       book_link      = :booklink,
+	       book_phone     = :bookphone,
+	       local_fax      = :localfax,
+	       local_link     = :locallink,
+	       local_phone    = :localphone,
+	       transportation = :transport
+	WHERE id = :id
+    }
+}
+
+proc ::cm::hotel::current {} {
+    debug.cm/hotel {}
+    try {
+	set id [config get @current-hotel]
+    } trap {CM CONFIG GET UNKNOWN} {e o} {
+	puts [color bad "No hotel chosen, please \"select\" a hotel"]
+	::exit 0
+    }
+    if {[has $id]} { return $id }
+
+    puts [color bad "Bad hotel index, please \"select\" a hotel"]
+    ::exit 0
+}
+
+proc ::cm::hotel::has {id} {
+    debug.cm/hotel {}
+    upvar 1 config config
+    Setup
+    return [db do exists {
+	SELECT name
+	FROM   hotel
+	WHERE  id = :id
+    }]
 }
 
 proc ::cm::hotel::select {p} {
