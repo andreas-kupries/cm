@@ -23,10 +23,11 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::table
 package require cm::city
 package require cm::config::core
 package require cm::db
+package require cm::table
+package require cm::util
 #package require cm::validate::hotel
 
 # # ## ### ##### ######## ############# ######################
@@ -38,13 +39,15 @@ namespace eval ::cm {
 namespace eval ::cm::hotel {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	cmd_map select label
+	cmd_map select label get details
     namespace ensemble create
 
-    namespace import ::cmdr::color
     namespace import ::cmdr::ask
-    namespace import ::cm::db
+    namespace import ::cmdr::color
     namespace import ::cm::city
+    namespace import ::cm::db
+    namespace import ::cm::util
+
     namespace import ::cm::config::core
     rename core config
 
@@ -85,9 +88,8 @@ proc ::cm::hotel::cmd_list {config} {
 	    if {$issues ne {}} {
 		append name \n $issues
 	    }
-	    set current [expr {($id == $cid)
-			       ? "*"
-			       : ""}]
+
+	    util highlight-current cid $id current name street zip city
 	    $t add $current $name $street $zip $city
 	}
     }] show
@@ -164,15 +166,19 @@ proc ::cm::hotel::cmd_show {config} {
 	}
 
 	dict with details {}
-	$t add Street      $street
-	$t add Zipcode     $zip
-	$t add Book/Phone  $bookphone
-	$t add Book/Fax    $bookfax
-	$t add Book/Url    $booklink
-	$t add Local/Phone $localphone
-	$t add Local/Fax   $localfax
-	$t add Local/Url   $locallink
-	$t add Transport   $transport
+
+	set xcity [city get $xcity]
+
+	$t add Street      $xstreet
+	$t add Zipcode     $xzipcode
+	$t add City        $xcity
+	$t add Book/Phone  $xbookphone
+	$t add Book/Fax    $xbookfax
+	$t add Book/Url    $xbooklink
+	$t add Local/Phone $xlocalphone
+	$t add Local/Fax   $xlocalfax
+	$t add Local/Url   $xlocallink
+	$t add Transport   $xtransport
     }] show
     return
 }
@@ -208,12 +214,12 @@ proc ::cm::hotel::cmd_contact {config} {
 
     puts "Working with hotel \"[color name [get $id]]\" ..."
     foreach {key label} {
-	bookphone  {Booking Phone}
-	bookfax    {Booking FAX  }
-	booklink   {Booking Url  }
-	localphone {Local   Phone}
-	localfax   {Local   FAX  }
-	locallink  {Local   Url  }
+	xbookphone  {Booking Phone}
+	xbookfax    {Booking FAX  }
+	xbooklink   {Booking Url  }
+	xlocalphone {Local   Phone}
+	xlocalfax   {Local   FAX  }
+	xlocallink  {Local   Url  }
     } {
 	set v [dict get $details $key]
 	set new [ask string $label $v]
@@ -267,15 +273,15 @@ proc ::cm::hotel::issues {details} {
     set issues {}
     # TODO: Issue an issue when hotel not staffed (count == 0)
 
-    if {$zip       eq {}} { +issue "Zipcode missing" }
-    if {$street    eq {}} { +issue "Street address missing" }
-    if {$transport eq {}} { +issue "Map & directions missing" }
-    if {($bookfax   eq {}) && ($localfax   eq {})} { +issue "Booking FAX missing"   }
-    if {($booklink  eq {}) && ($locallink  eq {})} { +issue "Booking URL missing"   }
-    if {($bookphone eq {}) && ($localphone eq {})} { +issue "Booking Phone missing" }
-    if {($localfax   eq {})} { +issue "Local FAX missing"   }
-    if {($locallink  eq {})} { +issue "Local URL missing"   }
-    if {($localphone eq {})} { +issue "Local Phone missing" }
+    if {$xzipcode   eq {}} { +issue "Zipcode missing" }
+    if {$xstreet    eq {}} { +issue "Street address missing" }
+    if {$xtransport eq {}} { +issue "Map & directions missing" }
+    if {($xbookfax   eq {}) && ($xlocalfax   eq {})} { +issue "Booking FAX missing"   }
+    if {($xbooklink  eq {}) && ($xlocallink  eq {})} { +issue "Booking URL missing"   }
+    if {($xbookphone eq {}) && ($xlocalphone eq {})} { +issue "Booking Phone missing" }
+    if {($xlocalfax   eq {})} { +issue "Local FAX missing"   }
+    if {($xlocallink  eq {})} { +issue "Local URL missing"   }
+    if {($xlocalphone eq {})} { +issue "Local Phone missing" }
 
     if {[llength $issues]} {
 	set issues [join $issues \n]
@@ -312,15 +318,16 @@ proc ::cm::hotel::get {id} {
 proc ::cm::hotel::details {id} {
     debug.cm/hotel {}
     return [db do eval {
-	SELECT "street",     streetaddress,
-	       "zip",        zipcode,
-	       "bookfax",    book_fax,
-	       "booklink",   book_link,
-	       "bookphone",  book_phone,
-	       "localfax",   local_fax,
-	       "locallink",  local_link,
-	       "localphone", local_phone,
-	       "transport",  transportation
+	SELECT "xcity",       city,
+	       "xstreet",     streetaddress,
+	       "xzipcode",    zipcode,
+	       "xbookfax",    book_fax,
+	       "xbooklink",   book_link,
+	       "xbookphone",  book_phone,
+	       "xlocalfax",   local_fax,
+	       "xlocallink",  local_link,
+	       "xlocalphone", local_phone,
+	       "xtransport",  transportation
 	    -- TODO: count staff
 	FROM  hotel
 	WHERE id = :id
@@ -332,15 +339,16 @@ proc ::cm::hotel::write {id details} {
     dict with details {}
     db do eval {
 	UPDATE hotel
-	SET    streetaddress  = :street,
-	       zipcode        = :zip,
-	       book_fax       = :bookfax,
-	       book_link      = :booklink,
-	       book_phone     = :bookphone,
-	       local_fax      = :localfax,
-	       local_link     = :locallink,
-	       local_phone    = :localphone,
-	       transportation = :transport
+	SET    city           = :xcity,
+	       streetaddress  = :xstreet,
+	       zipcode        = :xzipcode,
+	       book_fax       = :xbookfax,
+	       book_link      = :xbooklink,
+	       book_phone     = :xbookphone,
+	       local_fax      = :xlocalfax,
+	       local_link     = :xlocallink,
+	       local_phone    = :xlocalphone,
+	       transportation = :xtransport
 	WHERE id = :id
     }
 }
