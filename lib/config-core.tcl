@@ -166,9 +166,6 @@ proc ::cm::config::core::names {pattern} {
 proc ::cm::config::core::Setup {} {
     debug.cm/config/core {}
 
-    upvar 1 config config
-    db do version;# Initialize db access.
-
     if {![dbutil initialize-schema ::cm::db::do error config {
 	{
 	    -- Configuration data of the application itself.
@@ -181,10 +178,10 @@ proc ::cm::config::core::Setup {} {
 	    {value TEXT 1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB CONFIG SETUP} $error
+	db setup-error $error CONFIG
     }
 
-    # Shortcuit further calls
+    # Shortcircuit further calls
     proc ::cm::config::core::Setup {args} {}
     return
 }

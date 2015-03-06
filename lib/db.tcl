@@ -34,7 +34,9 @@ namespace eval ::cm {
 }
 
 namespace eval ::cm::db {
-    namespace export make do default-location show-location location
+    namespace export \
+	do err setup-error \
+	default-location show-location location
     namespace ensemble create
 
     namespace import ::cm::atexit
@@ -49,6 +51,16 @@ debug prefix cm/db {[debug caller] | }
 
 # # ## ### ##### ######## ############# #####################
 
+proc ::cm::db::setup-error {msg args} {
+    err "Setup error: $msg" SETUP {*}$args
+}
+
+proc ::cm::db::err {msg args} {
+    return -code error -errorcode [list CM DB {*}$arg] $msg
+}
+
+# # ## ### ##### ######## ############# #####################
+
 proc ::cm::db::show-location {{suffix {}}} {
     variable location
     puts "[color note $location]$suffix"
@@ -60,8 +72,6 @@ proc ::cm::db::location {} {
     return  $location
 }
 
-# # ## ### ##### ######## ############# #####################
-
 proc ::cm::db::default-location {p} {
     file mkdir ~/.cm
     return     ~/.cm/managed
@@ -69,28 +79,28 @@ proc ::cm::db::default-location {p} {
 
 # # ## ### ##### ######## ############# #####################
 
-proc ::cm::db::make {p} {
-    debug.cm/db {}
-    variable location [$p config @database]
-    return [sqlite3 ::cm::db::do $location]
-}
-
-# # ## ### ##### ######## ############# #####################
-
 proc ::cm::db::do {args} {
     debug.cm/db {1st call, create and short-circuit all following}
-    # Drop the procedure.
+
+    # Get the config of currently running command. Provides us with the
+    # inherited global options as well. Here our particular interest
+    # is the @database location.
+    variable location [[cm::cm get *config*] @database]
+
+    # Drop ourselves to make way for the database command.
     rename ::cm::db::do {}
 
-    # And replace it with the database command.
-    upvar 1 config config ;# Assumes that we are in a command implementation.
-    $config @managed
+    # And replace it with the actual database command.
+    sqlite3 ::cm::db::do $location
 
-    atexit add [list ::cm::db::Close [$config @database]]
+    # Remember to close when ending the application.
+    atexit add [list ::cm::db::Close $location]
 
+    # End early when nothing to do.
     if {![llength $args]} return
 
-    # Run the new database on the arguments.
+    # Run the __new__ command on the arguments.
+    # This is __not__ a recursion into this proc.
     try {
         set r [uplevel 1 [list ::cm::db::do {*}$args]]
     } on return {e o} {

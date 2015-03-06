@@ -133,7 +133,7 @@ proc ::cm::exclude {locked} {
 # # ## ### ##### ######## ############# ######################
 
 cmdr history initial-limit 20
-cmdr history save-to       ~/.cm_history
+cmdr history save-to       ~/.cm/history
 
 cmdr create cm::cm [file tail $::argv0] {
     ##
@@ -169,11 +169,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias D
 	validate rwfile
 	generate [cm::call db default-location]
-    }
-    state managed {
-	The database we are working with.
-    } {
-	generate [cm::call db make]
+	#when-set ... generate db immediately ?
     }
 
     option debug {

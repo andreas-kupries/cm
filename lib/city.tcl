@@ -108,7 +108,6 @@ proc ::cm::city::cmd_create {config} {
 
 proc ::cm::city::get {id} {
     debug.cm/city {}
-    upvar 1 config config
     Setup
 
     lassign [db do eval {
@@ -131,8 +130,6 @@ proc ::cm::city::label {name state nation} {
 
 proc ::cm::city::known {p} {
     debug.cm/city {}
-
-    set config [$p config self]
     Setup
 
     # dict: label -> id
@@ -177,9 +174,6 @@ proc ::cm::city::select {p} {
 proc ::cm::city::Setup {} {
     debug.cm/city {}
 
-    upvar 1 config config
-    db do version;# Initialize db access.
-
     if {![dbutil initialize-schema ::cm::db::do error city {
 	{
 	    -- Base data for hotels, resorts, and other locations:
@@ -197,10 +191,10 @@ proc ::cm::city::Setup {} {
 	    {nation TEXT    1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB CITY SETUP} $error
+	db setup-error $error CITY
     }
 
-    # Shortcuit further calls
+    # Shortcircuit further calls
     proc ::cm::city::Setup {args} {}
     return
 }

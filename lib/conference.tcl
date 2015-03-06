@@ -287,8 +287,6 @@ proc ::cm::conference::cmd_hotel {config} {
 
 proc ::cm::conference::known {p} {
     debug.cm/conference {}
-
-    set config [$p config self]
     Setup
 
     # dict: label -> id
@@ -335,7 +333,6 @@ proc ::cm::conference::+issue {text} {
 
 proc ::cm::conference::get {id} {
     debug.cm/conference {}
-    upvar 1 config config
     Setup
 
     return [db do onecolumn {
@@ -347,6 +344,8 @@ proc ::cm::conference::get {id} {
 
 proc ::cm::conference::details {id} {
     debug.cm/conference {}
+    Setup
+
     return [db do eval {
 	SELECT "xyear",     year,
 	       "xcity",     city,
@@ -365,6 +364,8 @@ proc ::cm::conference::details {id} {
 
 proc ::cm::conference::write {id details} {
     debug.cm/conference {}
+    Setup
+
     dict with details {}
     db do eval {
 	UPDATE conference
@@ -384,6 +385,7 @@ proc ::cm::conference::write {id details} {
 
 proc ::cm::conference::current {} {
     debug.cm/conference {}
+
     try {
 	set id [config get @current-conference]
     } trap {CM CONFIG GET UNKNOWN} {e o} {
@@ -398,8 +400,8 @@ proc ::cm::conference::current {} {
 
 proc ::cm::conference::has {id} {
     debug.cm/conference {}
-    upvar 1 config config
     Setup
+
     return [db do exists {
 	SELECT title
 	FROM   conference
@@ -435,8 +437,6 @@ proc ::cm::conference::select {p} {
 
 proc ::cm::conference::Setup {} {
     debug.cm/conference {}
-    upvar 1 config config
-    db do version ;# Initialize db access.
 
     ::cm::config::core::Setup
 
@@ -492,10 +492,10 @@ proc ::cm::conference::Setup {} {
 	    {sessionlen		INTEGER	1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB CONFERENCE SETUP} $error
+	db setup-error $error CONFERENCE
     }
 
-    # Shortcuit further calls
+    # Shortcircuit further calls
     proc ::cm::conference::Setup {args} {}
     return
 }

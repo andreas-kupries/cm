@@ -242,8 +242,6 @@ proc ::cm::hotel::label {name city} {
 
 proc ::cm::hotel::known {p} {
     debug.cm/hotel {}
-
-    set config [$p config self]
     Setup
 
     # dict: label -> id
@@ -298,7 +296,6 @@ proc ::cm::hotel::+issue {text} {
 
 proc ::cm::hotel::get {id} {
     debug.cm/hotel {}
-    upvar 1 config config
     Setup
 
     lassign [db do eval {
@@ -317,6 +314,8 @@ proc ::cm::hotel::get {id} {
 
 proc ::cm::hotel::details {id} {
     debug.cm/hotel {}
+    Setup
+
     return [db do eval {
 	SELECT "xcity",       city,
 	       "xstreet",     streetaddress,
@@ -336,6 +335,8 @@ proc ::cm::hotel::details {id} {
 
 proc ::cm::hotel::write {id details} {
     debug.cm/hotel {}
+    Setup
+
     dict with details {}
     db do eval {
 	UPDATE hotel
@@ -355,6 +356,7 @@ proc ::cm::hotel::write {id details} {
 
 proc ::cm::hotel::current {} {
     debug.cm/hotel {}
+
     try {
 	set id [config get @current-hotel]
     } trap {CM CONFIG GET UNKNOWN} {e o} {
@@ -369,8 +371,8 @@ proc ::cm::hotel::current {} {
 
 proc ::cm::hotel::has {id} {
     debug.cm/hotel {}
-    upvar 1 config config
     Setup
+
     return [db do exists {
 	SELECT name
 	FROM   hotel
@@ -406,8 +408,6 @@ proc ::cm::hotel::select {p} {
 
 proc ::cm::hotel::Setup {} {
     debug.cm/hotel {}
-    upvar 1 config config
-    db do version ;# Initialize db access.
 
     ::cm::config::core::Setup
 
@@ -441,10 +441,10 @@ proc ::cm::hotel::Setup {} {
 	    {transportation	TEXT	0 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB HOTEL SETUP} $error
+	db setup-error $error HOTEL
     }
 
-    # Shortcuit further calls
+    # Shortcircuit further calls
     proc ::cm::hotel::Setup {args} {}
     return
 }

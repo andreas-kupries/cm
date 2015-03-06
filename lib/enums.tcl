@@ -48,9 +48,6 @@ debug prefix cm/enum {[debug caller] | }
 proc ::cm::enum::Setup {} {
     debug.cm/enum {}
 
-    upvar 1 config config
-    db do version;# Initialize db access.
-
     if {![dbutil initialize-schema ::cm::db::do error dayhalf {
 	{
 	    id	 INTEGER NOT NULL PRIMARY KEY,
@@ -60,7 +57,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB DAYHALF SETUP} $error
+	db setup-error $error DAYHALF
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
@@ -78,7 +75,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB TALK_TYPE SETUP} $error
+	db setup-error $error TALK_TYPE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
@@ -97,7 +94,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB TALK_STATE SETUP} $error
+	db setup-error $error TALK_STATE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
@@ -114,7 +111,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	return -code error -errorcode {CM DB STAFF_ROLE SETUP} $error
+	db setup-error $error STAFF_ROLE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO staff_role VALUES (1,'chair');
@@ -127,7 +124,7 @@ proc ::cm::enum::Setup {} {
 	}
     }
 
-    # Shortcuit further calls
+    # Shortcircuit further calls
     proc ::cm::enum::Setup {args} {}
     return
 }
