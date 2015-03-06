@@ -214,11 +214,11 @@ cmdr create cm::cm [file tail $::argv0] {
     ## Manage configuration
 
     officer config {
-	section Configuration
 	description {
 	    Manage the conference-independent configuration of the application.
 	}
 	private set {
+	    section Configuration
 	    description {Change setting}
 	    input key {
 		The name of the setting to change
@@ -231,6 +231,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call config cmd_set]
 
 	private unset {
+	    section Configuration
 	    description {Drop setting back to its default}
 	    input key {
 		The name of the setting to drop
@@ -240,6 +241,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call config cmd_unset]
 
 	private list {
+	    section Configuration
 	    description {Show the current state of all settings}
 	} [cm::call config cmd_list]
 	default
@@ -249,11 +251,11 @@ cmdr create cm::cm [file tail $::argv0] {
     ## Manage cities
 
     officer city {
-	section {City Management}
 	# -- name, state, nation
 	# -- (1:n) locations
 
 	private create {
+	    section {City Management}
 	    description { Create a new city for locations }
 	    input name   { description {Name of the city}        }
 	    input state  { description {State the city is in}    }
@@ -263,6 +265,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias add
 
 	private list {
+	    section {City Management}
 	    description { Show a table of all known cities }
 	} [cm::call city cmd_list]
 
@@ -275,18 +278,18 @@ cmdr create cm::cm [file tail $::argv0] {
     ## Manage locations, i.e. hotels, resorts, etc.
 
     officer hotel {
-	section {Hotel Management}
 	# -- name, city, streetaddress, zip, book/local (fax, phone, url), transport
 	# -- (n:1) city
 	# -- (1:n) hotel_staff
 	# -- (1:n) conference
 
 	private create {
+	    section {Hotel Management}
 	    description { Create a new hotel }
 
-	    input name          { Name of the hotel }                 { optional ; interact {Name   } }
-	    input streetaddress { Location of the hotel in the city } { optional ; interact {Street } }
-	    input zipcode       { Postal code of the location }       { optional ; interact {Zipcode} }
+	    input name          { Name of the hotel }                 { optional ; interact {Name:    } }
+	    input streetaddress { Location of the hotel in the city } { optional ; interact {Street:  } }
+	    input zipcode       { Postal code of the location }       { optional ; interact {Zipcode: } }
 	    state city          { City the hotel is in }              { generate [cm::call city select] }
 
 	    # Contact details, and staff information to be set after
@@ -297,10 +300,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias add
 
 	private list {
+	    section {Hotel Management}
 	    description { Show a table of all known hotels }
 	} [cm::call hotel cmd_list]
 
 	private select {
+	    section {Hotel Management}
 	    description { Select a specific hotel for further operation }
 	    input hotel {
 		Hotel to operate on in the future - The "current" hotel
@@ -312,14 +317,13 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call hotel cmd_select]
 
 	private show {
+	    section {Hotel Management}
 	    description { Show the details of the current hotel }
 	} [cm::call hotel cmd_show]
 
 	private contact {
+	    section {Hotel Management}
 	    description { Set the contact information of the current hotel }
-
-	    input name          { Name of the hotel }                 { optional ; interact {Name   } }
-
 	} [cm::call hotel cmd_contact]
 
 	# remove - if not used
