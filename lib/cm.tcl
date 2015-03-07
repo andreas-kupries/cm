@@ -441,6 +441,63 @@ cmdr create cm::cm [file tail $::argv0] {
     alias conferences = conference list
 
     # # ## ### ##### ######## ############# ######################
+    ## Campaign management
+
+    officer campaign {
+	description {
+	    Manage the campaign for a conference.
+	    All commands assume a "current conference".
+	}
+
+	private setup {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Initialize the campaign for the current conference.
+	    }
+	} [cm::call campaign cmd_setup]
+
+	private mail {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Generate campaign mails.
+	    }
+	    input template {
+		Name of the template to use for the mail.
+	    } {
+		# TODO: validate text block name.
+	    }
+	} [cm::call campaign cmd_mail]
+
+	private drop {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Remove one or more mail addresses from the campaign.
+		This does not affect future campaigns.
+	    }
+	    input entry {
+	    } { list ; #TODO: mail/entry validation/identification
+	    }
+	} [cm::call campaign cmd_drop]
+
+	private close {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Close the campaign of the current conference.
+	    }
+	} [cm::call campaign cmd_close]
+
+	# status: #addresses, mails made ...
+
+	private status {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Show the status of the campaign.
+	    }
+	} [cm::call campaign cmd_status]
+	default
+    }
+
+    # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.
 
     officer test {

@@ -23,10 +23,11 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::table
-#package require cm::util
+package require cm::conference
+package require cm::contact
 package require cm::db
-#package require cm::validate::campaign
+package require cm::table
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -35,14 +36,15 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::campaign {
-    namespace export cmd_create cmd_list \
-	select label get
+    namespace export cmd_setup cmd_close cmd_status cmd_mail cmd_drop
     namespace ensemble create
 
     namespace import ::cmdr::color
     namespace import ::cmdr::ask
-    #namespace import ::cm::util
+    namespace import ::cm::util
     namespace import ::cm::db
+    namespace import ::cm::conference
+    namespace import ::cm::cotact
 
     namespace import ::cm::table::do
     rename do table
@@ -55,121 +57,199 @@ debug prefix cm/campaign {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::campaign::cmd_list {config} {
+proc ::cm::campaign::cmd_setup {config} {
     debug.cm/campaign {}
     Setup
     db show-location
 
-    [table t {Tag Name Flags Affiliation} {
-	db do eval {
-	} {
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set id [get-for $conference]
+    if {$id ne {}} {
+	if {[isactive $id]} {
+	    util user-error "Conference \"$clabel\" already has an active campaign" \
+		CAMPAIGN ALREADY ACTIVE
+	} else {
+	    util user-error "Conference \"$clabel\" has a closed campaign" \
+		CAMPAIGN ALREADY CLOSED
 	}
-    }] show
+    }
+
+    # No campaign for the conference, set it up now.
+
+    db do transaction {
+	puts -nonewline "Creating campaign \"[color name $clabel]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO campaign
+	    VALUES (NULL, :conference, 1)
+	}
+	set id [db do last_insert_rowid]
+
+	db do eval {
+	    INSERT INTO campaign_item
+	      SELECT NULL, :id, E.id
+	      FROM   email   E,
+	             contact C
+	      WHERE  E.contact = C.id	-- join
+	      AND    C.can_recvmail	-- contact must allow mails
+	      AND    NOT E.inactive	-- and mail address must be active too.
+	}	
+
+	set new [db do changes]
+	if {!$new} {
+	    util user-error "Failed, empty" CAMPAIGN EMPTY
+	}
+
+	puts "[color good OK] ($new entries)"
+    }
     return
 }
 
-proc ::cm::campaign::cmd_create {config} {
+proc ::cm::campaign::cmd_close {config} {
     debug.cm/campaign {}
     Setup
     db show-location
 
-    # try to insert, report failure as user error
+    set conference [conference current]
+    set clabel     [conference get $conference]
 
-    set name   [$config @name]
-    set state  [$config @state]
-    set nation [$config @nation]
-    set label  [label $name $state $nation]
-
-    puts -nonewline "Creating campaign \"[color note $label]\" ... "
-
-    try {
-	db do transaction {
-	    db do eval {
-		INSERT INTO campaign
-		VALUES (NULL, :name, :state, :nation)
-	    }
-	}
-    } on error {e o} {
-	# TODO: trap only proper insert error, if possible.
-	puts [color bad $e]
-	return
+    set id [get-for $conference]
+    if {$id eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
     }
 
-    puts [color good OK]
+    puts -nonewline "Closing campaign \"[color name $clabel]\" ... "
+    flush stdout
+
+    if {[isactive $id]} {
+	db do eval {
+	    UPDATE campaign
+	    SET    active = 0
+	    WHERE  id = :id
+	}
+    }
+
+    puts "[color good OK]"
+    return
+}
+
+proc ::cm::campaign::cmd_status {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set id [get-for $conference]
+    if {$id eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+
+    puts "Campaign \"[color name $clabel]\" status"
+
+    TODO ... Table ...
+
+    return
+}
+
+
+proc ::cm::campaign::cmd_mail {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set id [get-for $conference]
+    if {$id eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $id]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    puts "Campaign \"[color name $clabel]\" mailing ..."
+
+    TODO ... get template ... run mailer ...
+
+    return
+}
+
+
+proc ::cm::campaign::cmd_drop {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set id [get-for $conference]
+    if {$id eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $id]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    puts "Campaign \"[color name $clabel]\" dropping ..."
+
+    TODO: map addresses to entries, remove, save
+
     return
 }
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
-proc ::cm::campaign::get {id} {
+proc ::cm::campaign::has-for {conference} {
     debug.cm/campaign {}
     Setup
 
-    lassign [db do eval {
-	SELECT tag, familyname, firstname
+    return [db do exists {
+	SELECT id
 	FROM campaign
-	WHERE id = :id
-    }] name tag family first
-
-    return  [label $tag $family $first]
+	WHERE con = :conference
+    }]
 }
 
-proc ::cm::campaign::label {tag family first} {
-    debug.cm/campaign {}
-
-    set label {}
-    if {$tag   ne {}} { append label "(\#" $tag ") " }
-    append label $family
-    if {$first ne {}} { append label {, } $first }
-    return $label
-}
-
-proc ::cm::campaign::known {p} {
+proc ::cm::campaign::get-for {conference} {
     debug.cm/campaign {}
     Setup
 
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, tag, familyname, firstname
-	FROM campaign
-    } {
-	dict set known [label $tag $familyname $firstname] $id
-    }
-
-    return $known
+    return [db do onecolumn {
+	SELECT id
+	FROM   campaign
+	WHERE  con = :conference
+    }]
 }
 
-proc ::cm::campaign::select {p} {
+proc ::cm::campaign::isactive {id} {
     debug.cm/campaign {}
+    Setup
 
-    if {![cmdr interactive?]} {
-	$p undefined!
-    }
-
-    # dict: label -> id
-    set campaigns [known $p]
-    set choices   [lsort -dict [dict keys $campaigns]]
-
-    switch -exact [llength $choices] {
-	0 { $p undefined! }
-	1 {
-	    # Single choice, return
-	    # TODO: print note
-	    return [lindex $campaigns 1]
-	}
-    }
-
-    set choice [ask menu "" "Which campaign: " $choices]
-
-    # Map back to id
-    return [dict get $campaigns $choice]
+    return [db do onecolumn {
+	SELECT active
+	FROM   campaign
+	WHERE  id = :id
+    }]
 }
 
 proc ::cm::campaign::Setup {} {
     debug.cm/campaign {}
+    ::cm::conference::Setup
+    ::cm::contact::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error campaign {
 	{
@@ -177,11 +257,11 @@ proc ::cm::campaign::Setup {} {
 
 	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    con	 	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
-	    template	INTEGER NOT NULL 	REFERENCES config,	-- mail text template
+	    active	INTEGER NOT NULL				-- flag
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {con	INTEGER 1 {} 0}
-	    {template	INTEGER 1 {} 0}
+	    {active	INTEGER 1 {} 0}
 	} {}
     }]} {
 	db setup-error $error CAMPAIGN
@@ -189,16 +269,35 @@ proc ::cm::campaign::Setup {} {
 
     if {![dbutil initialize-schema ::cm::db::do error campaign_item {
 	{
+	    -- Destination addresses for the campaign
+
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    campaign	INTEGER	NOT NULL REFERENCES campaign,
 	    email	INTEGER NOT NULL REFERENCES email,	-- contact is indirect
-	    campaign	INTEGER	NOT NULL REFERENCES campaign
+	    UNIQUE (campaign,email)
 	} {
 	    {id		INTEGER 1 {} 1}
-	    {email	INTEGER 1 {} 0}
 	    {campaign	INTEGER 1 {} 0}
+	    {email	INTEGER 1 {} 0}
 	} {}
     }]} {
-	db setup-error $error EMAIL
+	db setup-error $error CAMPAIGN_ITEM
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error campaign_mail {
+	{
+	    -- Mailings executed so far
+
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    campaign	INTEGER	NOT NULL REFERENCES campaign,
+	    template	INTEGER NOT NULL REFERENCES config	-- mail text template
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {campaign	INTEGER 1 {} 0}
+	    {template	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error $error CAMPAIGN_MAIL
     }
 
     # Shortcircuit further calls

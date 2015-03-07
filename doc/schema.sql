@@ -77,14 +77,24 @@ CREATE TABLE link (
 CREATE TABLE campaign (
 	-- Email campaign for a conference.
 
-	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	con	 	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
-	template	INTEGER NOT NULL 	REFERENCES config,	-- mail text template
+	id	INTEGER NOT NULL 	PRIMARY KEY AUTOINCREMENT,
+	con	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
+	active	INTEGER NOT NULL				-- flag
 );
 CREATE TABLE campaign_item (
+	-- Destination addresses for the campaign
+
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	campaign	INTEGER	NOT NULL REFERENCES campaign,
 	email		INTEGER NOT NULL REFERENCES email,	-- contact is indirect
-	campaign	INTEGER	NOT NULL REFERENCES campaign
+	UNIQUE (campaign,email)
+);
+CREATE TABLE campaign_mail (
+	-- Mailings executed so far
+
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	campaign	INTEGER	NOT NULL REFERENCES campaign,
+	template	INTEGER NOT NULL REFERENCES config	-- mail text template
 );
 CREATE TABLE tutorial (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
