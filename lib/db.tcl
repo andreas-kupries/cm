@@ -56,7 +56,7 @@ proc ::cm::db::setup-error {msg args} {
 }
 
 proc ::cm::db::err {msg args} {
-    return -code error -errorcode [list CM DB {*}$arg] $msg
+    return -code error -errorcode [list CM DB {*}$args] $msg
 }
 
 # # ## ### ##### ######## ############# #####################
