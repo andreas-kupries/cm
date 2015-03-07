@@ -41,7 +41,7 @@ namespace eval ::cm {
 namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
-	cmd_hotel select label
+	cmd_hotel select label current get
     namespace ensemble create
 
     namespace import ::cmdr::ask
