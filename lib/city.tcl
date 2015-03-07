@@ -84,7 +84,7 @@ proc ::cm::city::cmd_create {config} {
     set nation [$config @nation]
     set label  [label $name $state $nation]
 
-    puts -nonewline "Creating city \"[color note $label]\" ... "
+    puts -nonewline "Creating city \"[color name $label]\" ... "
 
     try {
 	db do transaction {
@@ -128,7 +128,7 @@ proc ::cm::city::label {name state nation} {
     return $label
 }
 
-proc ::cm::city::known {p} {
+proc ::cm::city::known {} {
     debug.cm/city {}
     Setup
 
@@ -153,7 +153,7 @@ proc ::cm::city::select {p} {
     }
 
     # dict: label -> id
-    set cities  [known $p]
+    set cities  [known]
     set choices [lsort -dict [dict keys $cities]]
 
     switch -exact [llength $choices] {

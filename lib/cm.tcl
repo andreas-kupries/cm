@@ -152,6 +152,10 @@ cmdr create cm::cm [file tail $::argv0] {
     ## I.e. Highest priority is printed first, at the top, beginning.
 
     common *category-order* {
+	{Conference Management} 0
+	{Hotel Management}      -10
+	{City Management}       -20
+
 	Convenience -8900
 	Advanced    -9000
     }
@@ -250,6 +254,49 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call config cmd_list]
 	default
     }
+
+    # # ## ### ##### ######## ############# ######################
+    ## Manage mail templates
+
+    officer template {
+	description {
+	    Manage the text templates used for mail campaigns.
+	}
+
+	private list {
+	    section {Conference Management} {Mail Campaign} {Template Management}
+	    description { Show a table of all known templates }
+	} [cm::call template cmd_list]
+
+	private show {
+	    section {Conference Management} {Mail Campaign} {Template Management}
+	    description { Show the text of the named template }
+	    input name {
+		Name of the template to show
+	    } { validate [cm::vt template] }
+	} [cm::call template cmd_show]
+
+	private create {
+	    section {Conference Management} {Mail Campaign} {Template Management}
+	    description { Create a new template. The text is read from stdin. }
+	    input name {
+		Name of the template to create
+	    } { validate [cm::vt nottemplate] }
+	} [cm::call template cmd_create]
+	alias add
+	alias new
+
+	private remove {
+	    section {Conference Management} {Mail Campaign} {Template Management}
+	    description { Remove the named template }
+	    input name {
+		Name of the template to remove
+	    } { validate [cm::vt template] }
+	} [cm::call template cmd_remove]
+	alias drop
+
+    }
+    alias templates = template list
 
     # # ## ### ##### ######## ############# ######################
     ## Manage cities
@@ -463,9 +510,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input template {
 		Name of the template to use for the mail.
-	    } {
-		# TODO: validate text block name.
-	    }
+	    } { validate [cm::vt template] }
 	} [cm::call campaign cmd_mail]
 
 	private drop {

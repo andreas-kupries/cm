@@ -94,7 +94,14 @@ CREATE TABLE campaign_mail (
 
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	campaign	INTEGER	NOT NULL REFERENCES campaign,
-	template	INTEGER NOT NULL REFERENCES config	-- mail text template
+	template	INTEGER NOT NULL REFERENCES template	-- mail text template
+);
+CREATE TABLE template (
+	-- Text templates for mail campaigns
+
+	id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	name	TEXT    NOT NULL UNIQUE,
+	value	TEXT	NOT NULL
 );
 CREATE TABLE tutorial (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -125,7 +125,7 @@ proc ::cm::contact::label {tag family first} {
     return $label
 }
 
-proc ::cm::contact::known {p} {
+proc ::cm::contact::known {} {
     debug.cm/contact {}
     Setup
 
@@ -150,7 +150,7 @@ proc ::cm::contact::select {p} {
     }
 
     # dict: label -> id
-    set contacts [known $p]
+    set contacts [known]
     set choices  [lsort -dict [dict keys $contacts]]
 
     switch -exact [llength $choices] {

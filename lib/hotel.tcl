@@ -240,7 +240,7 @@ proc ::cm::hotel::label {name city} {
     return "$name ($city)"
 }
 
-proc ::cm::hotel::known {p} {
+proc ::cm::hotel::known {} {
     debug.cm/hotel {}
     Setup
 
@@ -388,7 +388,7 @@ proc ::cm::hotel::select {p} {
     }
 
     # dict: label -> id
-    set hotels  [known $p]
+    set hotels  [known]
     set choices [lsort -dict [dict keys $hotels]]
 
     switch -exact [llength $choices] {

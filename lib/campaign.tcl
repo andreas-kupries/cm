@@ -25,6 +25,7 @@ package require try
 
 package require cm::conference
 package require cm::contact
+package require cm::template
 package require cm::db
 package require cm::table
 package require cm::util
@@ -44,7 +45,8 @@ namespace eval ::cm::campaign {
     namespace import ::cm::util
     namespace import ::cm::db
     namespace import ::cm::conference
-    namespace import ::cm::cotact
+    namespace import ::cm::contact
+    namespace import ::cm::template
 
     namespace import ::cm::table::do
     rename do table
@@ -250,6 +252,7 @@ proc ::cm::campaign::Setup {} {
     debug.cm/campaign {}
     ::cm::conference::Setup
     ::cm::contact::Setup
+    ::cm::template::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error campaign {
 	{
@@ -290,7 +293,7 @@ proc ::cm::campaign::Setup {} {
 
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    campaign	INTEGER	NOT NULL REFERENCES campaign,
-	    template	INTEGER NOT NULL REFERENCES config	-- mail text template
+	    template	INTEGER NOT NULL REFERENCES template	-- mail text template
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {campaign	INTEGER 1 {} 0}

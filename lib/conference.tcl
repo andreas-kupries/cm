@@ -285,7 +285,7 @@ proc ::cm::conference::cmd_hotel {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
-proc ::cm::conference::known {p} {
+proc ::cm::conference::known {} {
     debug.cm/conference {}
     Setup
 
@@ -417,7 +417,7 @@ proc ::cm::conference::select {p} {
     }
 
     # dict: label -> id
-    set conferences [known $p]
+    set conferences [known]
     set choices     [lsort -dict [dict keys $conferences]]
 
     switch -exact [llength $choices] {
