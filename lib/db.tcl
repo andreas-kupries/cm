@@ -51,8 +51,8 @@ debug prefix cm/db {[debug caller] | }
 
 # # ## ### ##### ######## ############# #####################
 
-proc ::cm::db::setup-error {msg args} {
-    err "Setup error: $msg" SETUP {*}$args
+proc ::cm::db::setup-error {table msg args} {
+    err "Table \"$table\" setup error: $msg" SETUP {*}$args
 }
 
 proc ::cm::db::err {msg args} {

@@ -178,7 +178,7 @@ proc ::cm::config::core::Setup {} {
 	    {value TEXT 1 {} 0}
 	} {}
     }]} {
-	db setup-error $error CONFIG
+	db setup-error config $error CONFIG
     }
 
     # Shortcircuit further calls

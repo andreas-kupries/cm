@@ -267,7 +267,7 @@ proc ::cm::campaign::Setup {} {
 	    {active	INTEGER 1 {} 0}
 	} {}
     }]} {
-	db setup-error $error CAMPAIGN
+	db setup-error campaign $error CAMPAIGN
     }
 
     if {![dbutil initialize-schema ::cm::db::do error campaign_item {
@@ -284,7 +284,7 @@ proc ::cm::campaign::Setup {} {
 	    {email	INTEGER 1 {} 0}
 	} {}
     }]} {
-	db setup-error $error CAMPAIGN_ITEM
+	db setup-error campaign_item $error CAMPAIGN_ITEM
     }
 
     if {![dbutil initialize-schema ::cm::db::do error campaign_mail {
@@ -300,7 +300,7 @@ proc ::cm::campaign::Setup {} {
 	    {template	INTEGER 1 {} 0}
 	} {}
     }]} {
-	db setup-error $error CAMPAIGN_MAIL
+	db setup-error campaign_mail $error CAMPAIGN_MAIL
     }
 
     # Shortcircuit further calls

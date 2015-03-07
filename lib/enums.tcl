@@ -57,7 +57,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error $error DAYHALF
+	db setup-error dayhalf $error DAYHALF
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
@@ -75,7 +75,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error $error TALK_TYPE
+	db setup-error talk_type $error TALK_TYPE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
@@ -94,7 +94,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error $error TALK_STATE
+	db setup-error talk_state $error TALK_STATE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
@@ -111,7 +111,7 @@ proc ::cm::enum::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error $error STAFF_ROLE
+	db setup-error staff_role $error STAFF_ROLE
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO staff_role VALUES (1,'chair');

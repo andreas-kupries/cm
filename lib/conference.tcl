@@ -492,7 +492,7 @@ proc ::cm::conference::Setup {} {
 	    {sessionlen		INTEGER	1 {} 0}
 	} {}
     }]} {
-	db setup-error $error CONFERENCE
+	db setup-error conference $error CONFERENCE
     }
 
     # Shortcircuit further calls

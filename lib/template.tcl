@@ -208,7 +208,7 @@ proc ::cm::template::Setup {} {
 	    {value  TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error $error TEMPLATE
+	db setup-error template $error TEMPLATE
     }
 
     # Shortcircuit further calls
