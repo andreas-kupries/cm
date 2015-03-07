@@ -163,8 +163,6 @@ cmdr create cm::cm [file tail $::argv0] {
     # # ## ### ##### ######## ############# ######################
     ## Common pieces across the various commands.
 
-    #common *all* {}
-
     # Global options, and state based on it.
 
     option database {
@@ -541,6 +539,87 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call campaign cmd_status]
 	default
     }
+
+
+    # # ## ### ##### ######## ############# ######################
+    ## Contacts for campaigns, and as speakers, attendees, staff ...
+
+    officer contact {
+	description {
+	    Manage the contacts used in campaigns and other contexts.
+	    I.e. conference staff, presenters, attendees, etc.
+	}
+
+	common .links {
+	    option link {
+		One or more links for the contact
+	    } { alias L ; list }
+	}
+	common .mails {
+	    option email {
+		One or more emails for the contact
+	    } { alias E ; list ; validate [cm::vt mail-address] }
+	}
+
+	private create-person {
+	    section {Contact Management}
+	    description {Create a new contact for a person}
+	    use .links
+	    use .mails
+	    input name   {First name of the person} {}
+	    input family {Family name of the person} {}
+	    input tag    {Short tag suitable as html anchor} { optional }
+	} [cm::call contact cmd_create_person]
+
+	private create-list {
+	    section {Contact Management}
+	    description {Create a new contact for a mailing list}
+	    use .links
+	    input name {List name} {}
+	    input mail {List address} { validate [cm::vt mail-address] }
+	    input tag  {Short tag suitable as html anchor} { optional }
+	} [cm::call contact cmd_create_mlist]
+
+	private create-company {
+	    section {Contact Management}
+	    description {Create a new contact for a company}
+	    use .links
+	    use .mails
+	    input name {Company name} {}
+	    input tag  {Short tag suitable as html anchor} { optional }
+	} [cm::call contact cmd_create_company]
+
+	private add-mail {
+	    section {Contact Management}
+	    description {Add more email address to a contact}
+	    # TODO: only companies and persons ?
+	    # TODO: contact identifier
+	} [cm::call contact cmd_add_mail]
+
+	private add-link {
+	    section {Contact Management}
+	    description {Add more links to a contact}
+	    # TODO: contact identifier
+	} [cm::call contact cmd_add_link]
+
+	private list {
+	    section {Contact Management}
+	    description {Show all known contacts, possibly filtered}
+	    input pattern {
+		Filter list by the glob pattern
+	    } { optional ; default * }
+	} [cm::call contact cmd_list]
+
+	private show {
+	    section {Contact Management}
+	    description {Show the details of the specified contact}
+	} [cm::call contact cmd_show]
+
+	# TODO: disable-mail, disable-contact,
+	# TODO: change flags?, set tag, bio, affiliation
+	# TODO: set link title
+    }
+    alias contacts = contact list
 
     # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.

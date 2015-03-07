@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::validate::template 0
+# Package cm::validate::contact 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::template
+package require cm::contact
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -26,34 +26,34 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::validate {
-    namespace export template
+    namespace export contact
     namespace ensemble create
 }
-namespace eval ::cm::validate::template {
+namespace eval ::cm::validate::contact {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::template
+    namespace import ::cm::contact
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::validate::template::release  {p x} { return }
-proc ::cm::validate::template::validate {p x} {
-    set known [template known]
+proc ::cm::validate::contact::release  {p x} { return }
+proc ::cm::validate::contact::validate {p x} {
+    set known [contact known validation]
     if {[dict exists $known $x]} {
 	return [dict get $known $x]
     }
-    fail $p TEMPLATE "a template name" $x
+    fail $p CONTACT "a contact identifier" $x
 }
 
-proc ::cm::validate::template::default  {p} { return {} }
-proc ::cm::validate::template::complete {p} {
-    complete-enum [dict keys [template known]] 1 $x
+proc ::cm::validate::contact::default  {p} { return {} }
+proc ::cm::validate::contact::complete {p} {
+    complete-enum [dict keys [contact known validation]] 1 $x
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::validate::template 0
+package provide cm::validate::contact 0
 return

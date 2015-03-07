@@ -35,8 +35,10 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::contact {
-    namespace export cmd_create cmd_list \
-	select label get
+    namespace export \
+	cmd_create_person cmd_create_mlist cmd_create_company \
+	cmd_add_mail cmd_add_link cmd_list cmd_show \
+	select label get known
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -125,18 +127,60 @@ proc ::cm::contact::label {tag family first} {
     return $label
 }
 
-proc ::cm::contact::known {} {
+proc ::cm::contact::known {{mode select}} {
     debug.cm/contact {}
     Setup
+
+    # modes for "select"ion
+    #       and "validation".
+    #
+    # select:     each contact once,
+    #             with tag in the label.
+    #
+    # validation: each contact in multiple variants,
+    #             with ambiguous data dropped.
+    # => completion, and accepting multiple forms.
+    # => Should go for unique prefixes as well ?
+
 
     # dict: label -> id
     set known {}
 
-    db do eval {
-	SELECT id, tag, familyname, firstname
-	FROM contact
-    } {
-	dict set known [label $tag $familyname $firstname] $id
+    if {$mode eq "select"} {
+	db do eval {
+	    SELECT id, tag, familyname
+	    FROM contact
+	} {
+	    dict set known [label $tag $familyname {}] $id
+	}
+    } else {
+	db do eval {
+	    SELECT id, tag, familyname, firstname
+	    FROM contact
+	} {
+	    if {$tag ne {}} {
+		# Should be unique, will make sure, after.
+		dict lappend known   $tag $id
+		dict lappend known \#$tag $id
+	    }
+	    if {$firstname eq {}} {
+		# Company or mailing list.
+		dict lappend known $familyname $id
+	    } else {
+		# Person. Variants of the entire name (multiple
+		# orders, initials at front, ...)
+		set initials [string index $firstname 0][string index $amilyname 0]
+
+		dict lappend known "$firstname $familyname" $id
+		dict lappend known "$familyname, $firstname" $id
+		dict lappend known "$initials, $firstname $familyname" $id
+	    }
+	}
+
+	dict for {label idlist} $known {
+	    if {[llength $idlist] == 1} continue
+	    dict unset known $label
+	}
     }
 
     return $known
@@ -178,18 +222,20 @@ proc ::cm::contact::Setup {} {
 	    -- The flags determine what we can do with a contact.
 
 	    id		 INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    tag		 TEXT	 UNIQUE,	-- for html anchors
+	    tag		 TEXT	 UNIQUE,	-- for html anchors, and quick identification
 	    familyname	 TEXT	 NOT NULL,	-- company or list name here   
 	    firstname	 TEXT,		  	-- NULL for lists and companies
 	    biography	 TEXT,
 
-	    affiliation	 INTEGER REFERENCES contact,	-- company, if any
+	    affiliation	 INTEGER REFERENCES contact,	-- company, if any; not for lists nor companies
 
 	    can_recvmail INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
 	    can_talk	 INTEGER NOT NULL,	-- actual person can do presentation
-	    can_submit	 INTEGER NOT NULL	-- actual person, or company can submit talks
+	    can_submit	 INTEGER NOT NULL,	-- actual person, or company can submit talks
+
+	    UNIQUE (firstname,familyname)
 	} {
 	    {id			INTEGER 1 {} 1}
 	    {tag		TEXT    0 {} 0}
@@ -202,7 +248,10 @@ proc ::cm::contact::Setup {} {
 	    {can_book		INTEGER 1 {} 0}
 	    {can_talk		INTEGER 1 {} 0}
 	    {can_submit		INTEGER 1 {} 0}
-	} {}
+	} {
+	    familyname
+	    firstname
+	}
     }]} {
 	db setup-error $error CONTACT
     }
@@ -235,7 +284,9 @@ proc ::cm::contact::Setup {} {
 	    {contact	INTEGER 1 {} 0}
 	    {link	TEXT    1 {} 0}
 	    {title	TEXT    0 {} 0}
-	} {}
+	} {
+	    link
+	}
     }]} {
 	db setup-error $error LINK
     }
