@@ -40,17 +40,35 @@ namespace eval ::cm::validate::contact {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::validate::contact::default  {p}   { return {} }
 proc ::cm::validate::contact::release  {p x} { return }
 proc ::cm::validate::contact::validate {p x} {
-    set known [contact known validation]
-    if {[dict exists $known $x]} {
-	return [dict get $known $x]
+    set known   [contact known validation]
+    set matches [complete-enum [dict keys $known] 1 $x]
+
+    set n [llength $matches]
+    if {!$n} {
+	fail $p CONTACT "a contact identifier" $x
     }
-    fail $p CONTACT "a contact identifier" $x
+
+    # Multiple matches may map to the same id. Conversion required to
+    # distinguish between unique/ambiguous.
+    set idmatches {}
+    foreach m $matches {
+	lappend idmatches [dict get $known $m]
+    }
+    set idmatches [lsort -unique $idmatches]
+    set n [llength $idmatches]
+
+    if {$n > 1} {
+	fail $p CONTACT "an unambigous contact identifier" $x
+    }
+
+    # Uniquely identified
+    return [lindex $idmatches 0]
 }
 
-proc ::cm::validate::contact::default  {p} { return {} }
-proc ::cm::validate::contact::complete {p} {
+proc ::cm::validate::contact::complete {p x} {
     complete-enum [dict keys [contact known validation]] 1 $x
 }
 

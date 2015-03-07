@@ -39,9 +39,8 @@ namespace eval ::cm::validate::nottemplate {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::validate::nottemplate::complete {p} { return {} }
-proc ::cm::validate::nottemplate::default  {p} { return {} }
-
+proc ::cm::validate::nottemplate::default  {p}   { return {} }
+proc ::cm::validate::nottemplate::complete {p x} { return {} }
 proc ::cm::validate::nottemplate::release  {p x} { return }
 proc ::cm::validate::nottemplate::validate {p x} {
     set known [template known]

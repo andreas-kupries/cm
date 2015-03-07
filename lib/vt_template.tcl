@@ -40,6 +40,7 @@ namespace eval ::cm::validate::template {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::validate::template::default  {p}   { return {} }
 proc ::cm::validate::template::release  {p x} { return }
 proc ::cm::validate::template::validate {p x} {
     set known [template known]
@@ -49,8 +50,7 @@ proc ::cm::validate::template::validate {p x} {
     fail $p TEMPLATE "a template name" $x
 }
 
-proc ::cm::validate::template::default  {p} { return {} }
-proc ::cm::validate::template::complete {p} {
+proc ::cm::validate::template::complete {p x} {
     complete-enum [dict keys [template known]] 1 $x
 }
 
