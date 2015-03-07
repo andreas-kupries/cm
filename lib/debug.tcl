@@ -55,7 +55,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::city
     package require cm::conference
     package require cm::contact
-    package require cm::enums
+    package require cm::enum
     package require cm::hotel
     package require cm::mailer
     package require cm::table
