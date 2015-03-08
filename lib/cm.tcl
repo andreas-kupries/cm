@@ -54,6 +54,7 @@ proc ::cm::main {argv} {
       trap {CMDR ACTION BAD} {e o} - \
       trap {CMDR VALIDATE} {e o} - \
       trap {CMDR PARAMETER LOCKED} {e o} - \
+      trap {CMDR PARAMETER UNDEFINED} {e o} - \
       trap {CMDR DO UNKNOWN} {e o} {
 	debug.cm {trap - cmdline user error}
 	puts stderr "$::argv0 cmdr: [cmdr color error $e]"
@@ -97,7 +98,15 @@ proc ::cm::call {p args} {
 proc ::cm::vt {p args} {
     lambda {p args} {
 	package require cm::validate::$p
-	cm::validate::$p {*}$args
+	try {
+	    cm::validate::$p {*}$args
+	} on error {e o} {
+	    # DEBUGGING when 'complete' fails in interaction.
+	    # ==> handle in Cmdr...
+	    #puts "VT: $e"
+	    #puts "VT: $o"
+	    return {*}$o $e
+	}
     } $p {*}$args
 }
 
@@ -553,7 +562,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	common .links {
 	    option link {
 		One or more links for the contact
-	    } { alias L ; list }
+	    } { alias L ; validate str ; list }
 	}
 	common .mails {
 	    option email {
@@ -567,7 +576,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    use .mails
 	    input name   {First name of the person} {}
-	    input family {Family name of the person} {}
 	    input tag    {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_person]
 
@@ -577,7 +585,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    input name {List name} {}
 	    input mail {List address} { validate [cm::vt mail-address] }
-	    input tag  {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_mlist]
 
 	private create-company {
@@ -586,20 +593,55 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    use .mails
 	    input name {Company name} {}
-	    input tag  {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_company]
+
+	private set-company {
+	    section {Contact Management}
+	    description {Set tag of the specified contact}
+	    input name {
+		Name of the contact to tag
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    input company {
+		Name of the company to set as affiliation
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	} [cm::call contact cmd_set_company]
+	alias affiliate
+
+	private set-tag {
+	    section {Contact Management}
+	    description {Set tag of the specified contact}
+	    input name {
+		Name of the contact to tag
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding non-persons
+	    input tag {
+		Tag to set
+	    } { optional ; interact }
+	} [cm::call contact cmd_set_tag]
+
+	private set-bio {
+	    section {Contact Management}
+	    description {Set biography of the specified contact. Read from stdin.}
+	    input name {
+		Name of the contact to modify
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
+	} [cm::call contact cmd_set_bio]
 
 	private add-mail {
 	    section {Contact Management}
 	    description {Add more email address to a contact}
-	    # TODO: only companies and persons ?
-	    # TODO: contact identifier
+	    use .mails
+	    input name {
+		Name of the contact to extend. No mailing lists.
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
 	} [cm::call contact cmd_add_mail]
 
 	private add-link {
 	    section {Contact Management}
 	    description {Add more links to a contact}
-	    # TODO: contact identifier
+	    use .links
+	    input name {
+		Name of the contact to extend.
+	    } { optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_add_link]
 
 	private list {
@@ -613,6 +655,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	private show {
 	    section {Contact Management}
 	    description {Show the details of the specified contact}
+	    input name {
+		Name of the contact to show.
+	    } { optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_show]
 
 	# TODO: disable-mail, disable-contact,

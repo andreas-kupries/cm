@@ -47,9 +47,10 @@ CREATE TABLE contact (
 	-- The flags determine what we can do with a contact.
 
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	tag		TEXT	UNIQUE,		-- for html anchors, and quick identification
-	familyname	TEXT	NOT NULL,	-- company or list name here
-	firstname	TEXT,			-- NULL for lists and companies
+	tag		TEXT		 UNIQUE,	-- for html anchors, and quick identification
+	type		INTEGER NOT NULL REFERENCES contact_type,
+	name		TEXT	NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
+	dname		TEXT	NOT NULL,		-- display name
 	biography	TEXT,
 	affiliation	INTEGER REFERENCES contact,	-- company, if any; not for lists nor companies
 
@@ -60,9 +61,14 @@ CREATE TABLE contact (
 	can_submit	INTEGER NOT NULL,	-- actual person, or company can submit talks
 
 	-- Note: Deactivation of contact in a campaign is handled by the contact/campaign linkage
-
-	UNIQUE (firstname,familyname)
 );
+CREATE TABLE contact_type (
+    	id	INTEGER NOT NULL PRIMARY KEY,
+    	text	TEXT    NOT NULL UNIQUE
+);
+INSERT OR IGNORE INTO contact_type VALUES (1,'Person');
+INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
+INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
 CREATE TABLE email (
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	email		TEXT	NOT NULL UNIQUE,

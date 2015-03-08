@@ -22,11 +22,10 @@ package require debug
 package require debug::caller
 package require dbutil
 package require try
+package require struct::list
 
 package require cm::table
-#package require cm::util
 package require cm::db
-#package require cm::validate::contact
 
 # # ## ### ##### ######## ############# ######################
 
@@ -38,6 +37,7 @@ namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
 	cmd_add_mail cmd_add_link cmd_list cmd_show \
+	cmd_set_tag cmd_set_bio cmd_set_company \
 	select label get known
     namespace ensemble create
 
@@ -57,45 +57,264 @@ debug prefix cm/contact {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::contact::cmd_list {config} {
+proc ::cm::contact::cmd_show {config} {
     debug.cm/contact {}
     Setup
     db show-location
 
-    [table t {Tag Name Flags Affiliation} {
+    set contact [string trim [$config @name]]
+
+    [table t {Property Value} {
 	db do eval {
+	    SELECT C.id           AS id,
+                   C.tag          AS tag,
+	           CT.text        AS type,
+	           C.dname        AS name,
+	    	   C.biography    AS bio,
+	           C.can_recvmail AS crecv,
+	    	   C.can_register AS creg,
+	    	   C.can_book     AS cbook,
+	    	   C.can_talk     AS ctalk,
+	    	   C.can_submit   AS csubm,
+	    	   C.affiliation  AS affiliation
+	    FROM  contact      C,
+	          contact_type CT
+	    WHERE C.id   = :contact
+	    AND   C.type = CT.id
 	} {
+	    # coded left join
+	    if {$affiliation ne {}} {
+		set affiliation [db do onecolumn {
+		    SELECT dname FROM contact WHERE id = :affiliation
+		}]
+	    }
+
+	    $t add Tag         $tag
+	    $t add Name        $name
+	    $t add Type        $type
+	    $t add Affiliation $affiliation
+	    $t add {Can Receive Mail} $crecv
+	    $t add {Can Register}     $creg
+	    $t add {Can Book}         $cbook
+	    $t add {Can Talk}         $ctalk
+	    $t add {Can Submit}       $csubm
+	    $t add Biography   $bio
+
+	    db do eval {
+		SELECT email
+		FROM   email
+		WHERE  contact = :id
+	    } {
+		$t add Email $email
+	    }
+
+	    db do eval {
+		SELECT link
+		FROM   link
+		WHERE  contact = :id
+	    } {
+		$t add Link $link
+	    }
 	}
     }] show
     return
 }
 
-proc ::cm::contact::cmd_create {config} {
+proc ::cm::contact::cmd_list {config} {
     debug.cm/contact {}
     Setup
     db show-location
 
-    # try to insert, report failure as user error
+    set pattern [string trim [$config @pattern]]
 
-    set name   [$config @name]
-    set state  [$config @state]
-    set nation [$config @nation]
-    set label  [label $name $state $nation]
-
-    puts -nonewline "Creating contact \"[color note $label]\" ... "
-
-    try {
-	db do transaction {
-	    db do eval {
-		INSERT INTO contact
-		VALUES (NULL, :name, :state, :nation)
+    [table t {Type Tag Name Flags Affiliation} {
+	db do eval {
+	    SELECT C.tag          AS tag,
+	           C.dname        AS name,
+	           CT.text        AS type,
+	           C.can_recvmail AS crecv,
+	    	   C.can_register AS creg,
+	    	   C.can_book     AS cbook,
+	    	   C.can_talk     AS ctalk,
+	    	   C.can_submit   AS csubm,
+	    	   C.affiliation  AS affiliation
+	    FROM  contact      C,
+	          contact_type CT
+	    WHERE (C.name  GLOB :pattern
+	     OR    C.dname GLOB :pattern)
+	    AND   CT.id = C.type
+	} {
+	    # coded left join
+	    if {$affiliation ne {}} {
+		set affiliation [db do onecolumn {
+		    SELECT dname FROM contact WHERE id = :affiliation
+		}]
 	    }
+
+	    set flags {}
+	    append flags [expr {$crecv ? "M" :"-"}]
+	    append flags [expr {$creg  ? "R" :"-"}]
+	    append flags [expr {$cbook ? "B" :"-"}]
+	    append flags [expr {$ctalk ? "T" :"-"}]
+	    append flags [expr {$csubm ? "S" :"-"}]
+	    
+	    $t add $type $tag $name $flags $affiliation
 	}
-    } on error {e o} {
-	# TODO: trap only proper insert error, if possible.
-	puts [color bad $e]
-	return
+    }] show
+    return
+}
+
+proc ::cm::contact::cmd_create_mlist {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set name [string trim [$config @name]]
+    set mail [string trim [$config @mail]]
+
+    # TODO: FIXME: Existing contact -> replace the mailing address - only one email allowed for lists.
+
+    db do transaction {
+	if {![has-mlist $name]} {
+	    # Unknown contact. Create it, then add mail
+	    puts -nonewline "Create list \"[color name $name]\" with mail \"[color name $mail]\" ... "
+	    flush stdout
+
+	    set id [new-mlist $name]
+	} else {
+	    # Contact exists. Find it, then add mail
+
+	    puts -nonewline "Extend list \"[color name $name]\" with mail \"[color name $mail]\" ... "
+	    flush stdout
+
+	    set id [get-mlist $name]
+	}
+
+	new-mail  $id $mail
+	add-links $id $config
     }
+    # TODO: handle conflict with non list contacts
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_create_company {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set name [string trim [$config @name]]
+
+    db do transaction {
+	if {![has-company $name]} {
+	    # Unknown contact. Create it, then add mails and links
+	    puts -nonewline "Create company \"[color name $name]\" ... "
+	    flush stdout
+
+	    set id [new-company $name]
+	} else {
+	    # Contact exists. Find it, then add mails and links
+
+	    puts -nonewline "Extend company \"[color name $name]\" ... "
+	    flush stdout
+
+	    set id [get-company $name]
+	}
+
+	add-mails $id $config
+	add-links $id $config
+    }
+
+    # TODO: Handle conflict with non company contacts
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_create_person {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set name [string trim [$config @name]]
+
+    db do transaction {
+	if {![has-person $name]} {
+	    # Unknown contact. Create it, then add mail
+	    puts -nonewline "Create person \"[color name $name]\" ... "
+	    flush stdout
+
+	    set id [new-person $name]
+	} else {
+	    # Contact exists. Find it, then add mail
+
+	    puts -nonewline "Extend person \"[color name $name]\" ... "
+	    flush stdout
+
+	    set id [get-person $name]
+	}
+
+	add-mails $id $config
+	add-links $id $config
+
+	if {[$config @tag set?]} {
+	    update-tag $id [string trim [$config @tag]]
+	}
+    }
+
+    # TODO: Handle conflict with non person contacts
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_set_tag {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set tag     [$config @tag]
+
+    puts -nonewline "Set tag of \"[color name [get $contact]]\" to \"$tag\" ... "
+    flush stdout
+
+    update-tag $contact $tag
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_set_bio {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set bio     [read stdin]
+
+    puts -nonewline "Set biography of \"[color name [get $contact]]\" ... "
+    flush stdout
+
+    update-bio $contact $bio
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_set_company {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set company [$config @company]
+
+    puts -nonewline "Affiliate \"[color name [get $contact]]\" with \"[color name [get $company]]\" ... "
+    flush stdout
+
+    update-affiliation $contact $company
 
     puts [color good OK]
     return
@@ -104,27 +323,370 @@ proc ::cm::contact::cmd_create {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::contact::add-mails {id config} {
+    debug.cm/contact {}
+    foreach mail [$config @email] {
+	new-mail $id [string trim $mail]
+    }
+    return
+}
+
+proc ::cm::contact::add-links {id config} {
+    debug.cm/contact {}
+    foreach link [$config @link] {
+	new-link $id [string trim $link]
+    }
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::new-mlist {dname} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $dname]
+    db do eval {
+	INSERT INTO contact
+	VALUES (NULL, NULL,
+		3, :name :dname,	-- mailing list
+		NULL,			-- no initial bio
+		NULL,			-- un-affiliated
+		1,0,0,0,0)
+    }
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::contact::new-company {dname} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $dname]
+    db do eval {
+	INSERT INTO contact
+	VALUES (NULL, NULL,
+		2, :name, :dname,	-- company
+		NULL,			-- no initial bio
+		NULL,			-- un-affiliated
+		1,0,0,0,1)
+	-- TODO/Note: talker for a company submission should have company affiliation.
+	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
+    }
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::contact::new-person {dname} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $dname]
+    db do eval {
+	INSERT INTO contact
+	VALUES (NULL, NULL,
+		1, :name, :dname,	-- person
+		NULL,			-- no initial bio
+		NULL,			-- un-affiliated
+		1,1,1,1,1)
+	-- TODO/Note: talker for a company submission should have company affiliation.
+	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
+    }
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::contact::new-mail {contact mail} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	INSERT INTO email
+	VALUES (NULL, :mail, :contact, 0)
+    }
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::contact::new-link {contact link} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	INSERT INTO link
+	VALUES (NULL, :contact, :link, '')
+    }
+    return [db do last_insert_rowid]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::update-tag {contact tag} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    tag = :tag
+	WHERE  id  = :contact
+    }
+    return
+}
+
+proc ::cm::contact::update-affiliation {contact affiliation} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    affiliation = :affiliation
+	WHERE  id          = :contact
+    }
+    return
+}
+
+proc ::cm::contact::update-bio {contact bio} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    biography = :bio
+	WHERE  id        = :contact
+    }
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::has-mlist {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do exists {
+	SELECT id
+	FROM   contact
+	WHERE  type = 3		-- mailing list
+	AND    name = :name
+    }]
+}
+
+proc ::cm::contact::has-company {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do exists {
+	SELECT id
+	FROM   contact
+	WHERE  type = 2		-- company
+	AND    name = :name
+    }]
+}
+
+proc ::cm::contact::has-person {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do exists {
+	SELECT id
+	FROM   contact
+	WHERE  type = 1		-- person
+	AND    name = :name
+    }]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::get-mlist {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do onecolumn {
+	SELECT id
+	FROM   contact
+	WHERE  type = 3		-- mailing list
+	AND    name = :name
+    }]
+}
+
+proc ::cm::contact::get-company {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do onecolumn {
+	SELECT id
+	FROM   contact
+	WHERE  type = 2		-- company
+	AND    name = :name
+    }]
+}
+
+proc ::cm::contact::get-person {name} {
+    debug.cm/contact {}
+    Setup
+
+    set name [string tolower $name]
+    return [db do onecolumn {
+	SELECT id
+	FROM   contact
+	WHERE  type = 1		-- person
+	AND    name = :name
+    }]
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::contact::get {id} {
     debug.cm/contact {}
     Setup
 
     lassign [db do eval {
-	SELECT tag, familyname, firstname
-	FROM contact
-	WHERE id = :id
-    }] name tag family first
+	SELECT tag, dname
+	FROM   contact
+	WHERE  id = :id
+    }] tag name
 
-    return  [label $tag $family $first]
+    return [label $tag $name]
 }
 
-proc ::cm::contact::label {tag family first} {
+proc ::cm::contact::label {tag name} {
     debug.cm/contact {}
 
-    set label {}
-    if {$tag   ne {}} { append label "(\#" $tag ") " }
-    append label $family
-    if {$first ne {}} { append label {, } $first }
+    if {$tag ne {}} { append label "(\#" $tag ") " }
+    append label $name
     return $label
+}
+
+proc ::cm::contact::KnownSelect {} {
+    debug.cm/contact {}
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, tag, name
+	FROM contact
+    } {
+	dict set known [label $tag $name] $id
+    }
+
+    # Cache result
+    proc ::cm::contact::KnownSelect {} [list return $known]
+    return $known
+}
+
+proc ::cm::contact::Initials {text} {
+    debug.cm/contact {}
+    set r {}
+    foreach w [split $text] {
+	append r [string toupper [string index $w 0]]
+    }
+    return $r
+}
+
+proc ::cm::contact::Invert {dict} {
+    debug.cm/contact {}
+    set r {}
+    # Invert
+    dict for {k vlist} $dict {
+	foreach v $vlist {
+	    dict lappend r $v $k
+	}
+    }
+    # Drop duplicates
+    dict for {k list} $r {
+	dict set r $k [lsort -unique $list]
+    }
+    return $r
+}
+
+proc ::cm::contact::DropAmbiguous {dict} {
+    debug.cm/contact {}
+    dict for {k vlist} $dict {
+	if {[llength $vlist] == 1} {
+	    dict set dict $k [lindex $vlist 0]
+	    continue
+	}
+	dict unset dict $k
+    }
+    return $dict
+}
+
+proc ::cm::contact::KnownValidate {} {
+    debug.cm/contact {}
+    # dict: label -> id
+    set known {}
+
+    # Pull basics into an 'id'-indexed map.
+
+    # id + name/dname + list of links, emails
+    # we know that 'name' is unique
+    # it follows that 'dname' is unique as well
+    # (Because 2 non-unique dnames would map to the same 'name' and thus violate its uniqueness.
+    #
+    # emails are unique, and have unique contacts.
+    # links are possibly not unique.
+
+    set map {}
+
+    # Identification by name, tag
+    db do eval {
+	SELECT id, tag, name, dname
+	FROM   contact
+    } {
+	if {$tag ne {}} {
+	    dict lappend map $id $tag \#$tag
+	}
+	set in [Initials $name]
+	set il [string tolower $in]
+
+	#puts "|$id -- $tag|$name|$dname|$in|"
+
+	dict lappend map $id $name
+	dict lappend map $id $dname
+	dict lappend map $id "$il $name"
+	dict lappend map $id "$in $dname"
+    }
+
+    # Identification by email
+    db do eval {
+	SELECT contact, email
+	FROM   email
+    } {
+	dict lappend map $contact $email
+	dict lappend map $contact [string tolower $email]
+    }
+
+    # Identification by link (TODO: title?)
+    db do eval {
+	SELECT contact, link
+	FROM   link
+    } {
+	dict lappend map $contact $link
+	dict lappend map $contact [string tolower $link]
+    }
+
+    # Rekey by names
+    set map [Invert $map]
+
+    # Extend with key permutations which do not clash
+    dict for {k vlist} $map {
+	foreach p [struct::list permutations [split $k]] {
+	    set p [join $p]
+	    if {[dict exists $map $p]} continue
+	    dict set map $p $vlist
+	}
+    }
+
+    set known [DropAmbiguous $map]
+
+    #array set _ $known
+    #parray _
+
+    # Cache result
+    proc ::cm::contact::KnownValidate {} [list return $known]
+    return $known
 }
 
 proc ::cm::contact::known {{mode select}} {
@@ -142,48 +704,11 @@ proc ::cm::contact::known {{mode select}} {
     # => completion, and accepting multiple forms.
     # => Should go for unique prefixes as well ?
 
-
-    # dict: label -> id
-    set known {}
-
     if {$mode eq "select"} {
-	db do eval {
-	    SELECT id, tag, familyname
-	    FROM contact
-	} {
-	    dict set known [label $tag $familyname {}] $id
-	}
+	return [KnownSelect]
     } else {
-	db do eval {
-	    SELECT id, tag, familyname, firstname
-	    FROM contact
-	} {
-	    if {$tag ne {}} {
-		# Should be unique, will make sure, after.
-		dict lappend known   $tag $id
-		dict lappend known \#$tag $id
-	    }
-	    if {$firstname eq {}} {
-		# Company or mailing list.
-		dict lappend known $familyname $id
-	    } else {
-		# Person. Variants of the entire name (multiple
-		# orders, initials at front, ...)
-		set initials [string index $firstname 0][string index $amilyname 0]
-
-		dict lappend known "$firstname $familyname" $id
-		dict lappend known "$familyname, $firstname" $id
-		dict lappend known "$initials, $firstname $familyname" $id
-	    }
-	}
-
-	dict for {label idlist} $known {
-	    if {[llength $idlist] == 1} continue
-	    dict unset known $label
-	}
+	return [KnownValidate]
     }
-
-    return $known
 }
 
 proc ::cm::contact::select {p} {
@@ -222,9 +747,10 @@ proc ::cm::contact::Setup {} {
 	    -- The flags determine what we can do with a contact.
 
 	    id		 INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    tag		 TEXT	 UNIQUE,	-- for html anchors, and quick identification
-	    familyname	 TEXT	 NOT NULL,	-- company or list name here   
-	    firstname	 TEXT,		  	-- NULL for lists and companies
+	    tag		 TEXT	 	  UNIQUE,	-- for html anchors, and quick identification
+	    type	 INTEGER NOT NULL REFERENCES contact_type,
+	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
+	    dname	 TEXT	 NOT NULL,		-- display name
 	    biography	 TEXT,
 
 	    affiliation	 INTEGER REFERENCES contact,	-- company, if any; not for lists nor companies
@@ -233,14 +759,13 @@ proc ::cm::contact::Setup {} {
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
 	    can_talk	 INTEGER NOT NULL,	-- actual person can do presentation
-	    can_submit	 INTEGER NOT NULL,	-- actual person, or company can submit talks
-
-	    UNIQUE (firstname,familyname)
+	    can_submit	 INTEGER NOT NULL	-- actual person, or company can submit talks
 	} {
 	    {id			INTEGER 1 {} 1}
 	    {tag		TEXT    0 {} 0}
-	    {familyname		TEXT    1 {} 0}
-	    {firstname		TEXT    0 {} 0}
+	    {type		INTEGER 1 {} 0}
+	    {name		TEXT    1 {} 0}
+	    {dname		TEXT    1 {} 0}
 	    {biography		TEXT    0 {} 0}
 	    {affiliation	INTEGER 0 {} 0}
 	    {can_recvmail	INTEGER 1 {} 0}
@@ -249,11 +774,10 @@ proc ::cm::contact::Setup {} {
 	    {can_talk		INTEGER 1 {} 0}
 	    {can_submit		INTEGER 1 {} 0}
 	} {
-	    familyname
-	    firstname
+	    type
 	}
     }]} {
-	db setup-error $error CONTACT
+	db setup-error contact $error CONTACT
     }
 
     if {![dbutil initialize-schema ::cm::db::do error email {
@@ -267,9 +791,9 @@ proc ::cm::contact::Setup {} {
 	    {email	TEXT    1 {} 0}
 	    {contact	INTEGER 1 {} 0}
 	    {inactive	INTEGER 1 {} 0}
-	} {}
+	} {contact}
     }]} {
-	db setup-error $error EMAIL
+	db setup-error email $error EMAIL
     }
 
     if {![dbutil initialize-schema ::cm::db::do error link {
@@ -285,10 +809,28 @@ proc ::cm::contact::Setup {} {
 	    {link	TEXT    1 {} 0}
 	    {title	TEXT    0 {} 0}
 	} {
-	    link
+	    contact
 	}
     }]} {
-	db setup-error $error LINK
+	db setup-error link $error LINK
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error contact_type {
+	{
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    text TEXT    NOT NULL UNIQUE
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {text TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error contact_type $error CONTACT_TYPE
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO contact_type VALUES (1,'Person');
+	    INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
+	    INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
+	}
     }
 
     # Shortcircuit further calls
