@@ -30,7 +30,7 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::mailgen {
-    namespace export testmail cfp
+    namespace export testmail call
     namespace ensemble create
 }
 
@@ -44,7 +44,6 @@ proc ::cm::mailgen::testmail {sender header footer} {
     debug.cm/mailgen {}
     Begin
     Headers \
-	Test Test \
 	"CM mail configuration test mail" \
 	[clock seconds]
     Body $sender $header
@@ -52,23 +51,26 @@ proc ::cm::mailgen::testmail {sender header footer} {
     Done $sender $footer
 }
 
-proc ::cm::mailgen::cfp {args} {
+proc ::cm::mailgen::call {sender name text} {
     debug.cm/mailgen {}
 
-    error NYI ...
-    # Needs:
-    # - template reference
-    # - conference information
-    #   - year
-    #   - title
-    #   - start-date
-    #   - end-end
-    #   - location-references
-    #     - location info (phone, fax, link)
-    #   - sponsors
+    # First line is the subject header.
+    # Remainder is body.
     #
-    # --> insertion into template
-    return $text
+    # Note: Conference specific information has already been inserted
+    # into the text.
+
+    set body [join [lassign [split $text \n] subject] \n]
+
+    lappend map @mg:sender@ $sender
+    lappend map @mg:name@   $name
+
+    debug.cm/mailgen {}
+    Begin
+    Headers $subject [clock seconds]
+    Body    $sender {}
+    +       [string map $map $body]
+    Done    $sender {}
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -159,7 +161,7 @@ proc ::cm::mailgen::Unentify {text} {
     return [string map $emap $text]
 }
 
-proc ::cm::mailgen::Headers {project location subject epoch} {
+proc ::cm::mailgen::Headers {subject epoch} {
     set date  [clock format $epoch -format {%d %b %Y %H:%M:%S %z}]
 
     upvar 1 lines lines
@@ -216,7 +218,7 @@ proc ::cm::mailgen::Reformat {s} {
 namespace eval ::cm::mailgen {
     # Limit for table fields in generated mail, and
     # Limit marker to use when truncating.
-    # TODO: Make them configurable
+    # TODO: Make the limits configurable
     variable flimit   2048
     variable flsuffix "\n...((truncated))"
     variable context  {}
