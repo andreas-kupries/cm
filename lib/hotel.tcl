@@ -441,7 +441,7 @@ proc ::cm::hotel::Setup {} {
 	    {transportation	TEXT	0 {} 0}
 	} {}
     }]} {
-	db setup-error hotel $error HOTEL
+	db setup-error hotel $error
     }
 
     # Shortcircuit further calls

@@ -191,7 +191,7 @@ proc ::cm::city::Setup {} {
 	    {nation TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error city $error CITY
+	db setup-error city $error
     }
 
     # Shortcircuit further calls
