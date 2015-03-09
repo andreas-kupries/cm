@@ -317,7 +317,8 @@ proc ::cm::hotel::details {id} {
     Setup
 
     return [db do eval {
-	SELECT "xcity",       city,
+	SELECT "xname",       name,
+               "xcity",       city,
 	       "xstreet",     streetaddress,
 	       "xzipcode",    zipcode,
 	       "xbookfax",    book_fax,
@@ -395,7 +396,7 @@ proc ::cm::hotel::select {p} {
 	0 { $p undefined! }
 	1 {
 	    # Single choice, return
-	    # TODO: print note
+	    # TODO: print note about single choice
 	    return [lindex $hotels 1]
 	}
     }
