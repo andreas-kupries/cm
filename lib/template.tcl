@@ -35,7 +35,7 @@ namespace eval ::cm {
 namespace eval ::cm::template {
     namespace export \
 	cmd_create cmd_remove cmd_list cmd_show \
-	details known select
+	get details known select
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -139,13 +139,23 @@ proc ::cm::template::cmd_remove {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::template::get {id} {
+    debug.cm/template {}
+    Setup
+    return [db do onecolumn {
+	SELECT name
+	FROM   template
+	WHERE  id = :id
+    }]
+}
+
 proc ::cm::template::details {id} {
     debug.cm/template {}
     Setup
     return [db do onecolumn {
 	SELECT value
-	FROM  template
-	WHERE id = :id
+	FROM   template
+	WHERE  id = :id
     }]
 }
 
