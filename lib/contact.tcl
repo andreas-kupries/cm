@@ -24,6 +24,9 @@ package require dbutil
 package require try
 package require struct::list
 
+package provide cm::contact 0 ; # campaign and contact are circular
+
+package require cm::campaign
 package require cm::table
 package require cm::db
 
@@ -38,12 +41,14 @@ namespace eval ::cm::contact {
 	cmd_create_person cmd_create_mlist cmd_create_company \
 	cmd_add_mail cmd_add_link cmd_list cmd_show \
 	cmd_set_tag cmd_set_bio cmd_set_company \
-	select label get known
+	cmd_disable cmd_enable cmd_disable_mail \
+	select label get known known-email
     namespace ensemble create
 
     namespace import ::cmdr::color
     namespace import ::cmdr::ask
-    #namespace import ::cm::util
+
+    namespace import ::cm::campaign
     namespace import ::cm::db
 
     namespace import ::cm::table::do
@@ -269,6 +274,117 @@ proc ::cm::contact::cmd_create_person {config} {
     return
 }
 
+proc ::cm::contact::cmd_add_mail {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+
+    puts -nonewline "Add mails to \"[color name [get $contact]]\" ... "
+    flush stdout
+
+    add-mails $contact $config
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_add_link {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+
+    puts -nonewline "Add links to \"[color name [get $contact]]\" ... "
+    flush stdout
+
+    add-links $contact $config
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_disable {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts -nonewline "Disabling contact \"[color name [get $contact]]\" ... "
+	flush stdout
+
+	db do transaction {
+	    # unset receiver flag ...
+	    update-recv $contact 0
+	    # ... and drop its mail from all active campaigns.
+	    db do eval {
+		SELECT id AS email
+		FROM   email
+		WHERE  contact = :contact
+	    } {
+		campaign drop-mail $email
+	    }
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::contact::cmd_disable_mail {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach email [$config @email] {
+	puts -nonewline "Disabling email \"[color name [get-email $email]]\" ... "
+	flush stdout
+
+	db do transaction {
+	    # set inactive
+	    db do eval {
+		UPDATE email
+		SET inactive = 1
+		WHERE id = :email
+	    } 
+	    # ... and drop the mail from all active campaigns.
+	    campaign drop-mail $email
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+proc ::cm::contact::cmd_enable {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts -nonewline "Enabling contact \"[color name [get $contact]]\" ... "
+	flush stdout
+
+	db do transaction {
+	    # set receiver flag ...
+	    update-recv $contact 1
+	    # ... and add its active mails to all active campaigns.
+	    db do eval {
+		SELECT id AS email
+		FROM   email
+		WHERE  contact = :contact
+		AND    NOT inactive
+	    } {
+		campaign add-mail $email
+	    }
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
 proc ::cm::contact::cmd_set_tag {config} {
     debug.cm/contact {}
     Setup
@@ -387,8 +503,6 @@ proc ::cm::contact::new-person {dname} {
 		NULL,			-- no initial bio
 		NULL,			-- un-affiliated
 		1,1,1,1,1)
-	-- TODO/Note: talker for a company submission should have company affiliation.
-	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
     }
     return [db do last_insert_rowid]
 }
@@ -401,7 +515,11 @@ proc ::cm::contact::new-mail {contact mail} {
 	INSERT INTO email
 	VALUES (NULL, :mail, :contact, 0)
     }
-    return [db do last_insert_rowid]
+    set id [db do last_insert_rowid]
+
+    campaign add-mail $id
+
+    return $id
 }
 
 proc ::cm::contact::new-link {contact link} {
@@ -416,6 +534,18 @@ proc ::cm::contact::new-link {contact link} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::update-recv {contact enable} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    can_recvmail = :enable
+	WHERE  id           = :contact
+    }
+    return
+}
 
 proc ::cm::contact::update-tag {contact tag} {
     debug.cm/contact {}
@@ -536,6 +666,17 @@ proc ::cm::contact::get-person {name} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::get-email {id} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT email
+	FROM   email
+	WHERE  id = :id
+    }]
+}
 
 proc ::cm::contact::get {id} {
     debug.cm/contact {}
@@ -711,6 +852,20 @@ proc ::cm::contact::known {{mode select}} {
     }
 }
 
+proc ::cm::contact::known-email {} {
+    debug.cm/contact {}
+    Setup
+
+    set r {}
+    db do eval {
+	SELECT id, email
+	FROM   email
+    } {
+	dict set r $email $id
+    }
+    return $r
+}
+
 proc ::cm::contact::select {p} {
     debug.cm/contact {}
 
@@ -726,7 +881,7 @@ proc ::cm::contact::select {p} {
 	0 { $p undefined! }
 	1 {
 	    # Single choice, return
-	    # TODO: print note
+	    # TODO: print note about single choice
 	    return [lindex $contacts 1]
 	}
     }
@@ -777,7 +932,7 @@ proc ::cm::contact::Setup {} {
 	    type
 	}
     }]} {
-	db setup-error contact $error CONTACT
+	db setup-error contact $error
     }
 
     if {![dbutil initialize-schema ::cm::db::do error email {
@@ -793,7 +948,7 @@ proc ::cm::contact::Setup {} {
 	    {inactive	INTEGER 1 {} 0}
 	} {contact}
     }]} {
-	db setup-error email $error EMAIL
+	db setup-error email $error
     }
 
     if {![dbutil initialize-schema ::cm::db::do error link {
@@ -809,10 +964,10 @@ proc ::cm::contact::Setup {} {
 	    {link	TEXT    1 {} 0}
 	    {title	TEXT    0 {} 0}
 	} {
-	    contact
+	    contact link
 	}
     }]} {
-	db setup-error link $error LINK
+	db setup-error link $error
     }
 
     if {![dbutil initialize-schema ::cm::db::do error contact_type {
@@ -824,7 +979,7 @@ proc ::cm::contact::Setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error contact_type $error CONTACT_TYPE
+	db setup-error contact_type $error
     } else {
 	db do eval {
 	    INSERT OR IGNORE INTO contact_type VALUES (1,'Person');

@@ -62,6 +62,7 @@ CREATE TABLE contact (
 
 	-- Note: Deactivation of contact in a campaign is handled by the contact/campaign linkage
 );
+-- INDEX on type
 CREATE TABLE contact_type (
     	id	INTEGER NOT NULL PRIMARY KEY,
     	text	TEXT    NOT NULL UNIQUE
@@ -75,6 +76,7 @@ CREATE TABLE email (
 	contact		INTEGER	NOT NULL REFERENCES contact,
 	inactive	INTEGER	NOT NULL 	-- mark outdated addresses
 );
+-- INDEX on contact
 CREATE TABLE link (
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	contact		INTEGER	NOT NULL REFERENCES contact,
@@ -82,6 +84,9 @@ CREATE TABLE link (
 	title		TEXT,
 	UNIQUE (contact, link)
 );
+-- INDEX on contact
+-- INDEX on link
+
 CREATE TABLE campaign (
 	-- Email campaign for a conference.
 
@@ -89,7 +94,7 @@ CREATE TABLE campaign (
 	con	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
 	active	INTEGER NOT NULL				-- flag
 );
-CREATE TABLE campaign_item (
+CREATE TABLE campaign_destination (
 	-- Destination addresses for the campaign
 
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -97,13 +102,28 @@ CREATE TABLE campaign_item (
 	email		INTEGER NOT NULL REFERENCES email,	-- contact is indirect
 	UNIQUE (campaign,email)
 );
-CREATE TABLE campaign_mail (
+CREATE TABLE campaign_mailrun (
 	-- Mailings executed so far
 
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	campaign	INTEGER	NOT NULL REFERENCES campaign,
-	template	INTEGER NOT NULL REFERENCES template	-- mail text template
+	template	INTEGER NOT NULL REFERENCES template,	-- mail text template
+	date		INTEGER NOT NULL			-- timestamp [epoch]
 );
+-- INDEX on campaign
+-- INDEX on template
+
+CREATE TABLE campaign_received (
+	-- The addresses which received mailings. In case of a repeat mailing
+	-- for a template this information is used to prevent sending mail to
+	-- destinations which already got it.
+
+	id	INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	mailrun	INTEGER	NOT NULL REFERENCES campaign_mailrun/,
+	email	INTEGER	NOT NULL REFERENCES email	-- under contact
+);
+-- INDEX on mailrun
+
 CREATE TABLE template (
 	-- Text templates for mail campaigns
 

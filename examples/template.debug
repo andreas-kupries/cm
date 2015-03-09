@@ -1,0 +1,25 @@
+
+ @h:hotel@
+ @h:city@
+ @h:street@
+ @h:transport@
+
+ @h:bookphone
+ @h:bookfax
+ @h:booklink
+
+ @h:localphone
+ @h:localfax
+ @h:locallink
+
+ @c:name@
+ @c:city@
+ @c:year@
+ @c:start@
+ @c:end@
+ @c:when@
+ @c:talklength@ minutes
+ @c:contact@
+ @c:sponsors@
+ @c:comittee@
+

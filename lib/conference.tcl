@@ -41,7 +41,7 @@ namespace eval ::cm {
 namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
-	cmd_hotel select label current get
+	cmd_hotel select label current get insert
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -285,6 +285,99 @@ proc ::cm::conference::cmd_hotel {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::conference::insert {id text} {
+
+    set details [details $id]
+    dict with details {}
+    set xtitle [get $id]
+
+    set clabel [city get $xcity]
+
+    set hotel  [hotel details $xhotel]
+    dict with hotel {} ;# overwrites conference city
+    set hclabel [city get $xcity]
+
+    #array set _ $details ; parray _ ; unset _
+    #array set _ $hotel ; parray _ ; unset _
+
+    # Needs:
+    # - conference information
+    #   - year
+    #   - title
+    #   - start-date
+    #   - end-end
+    #   - location-references
+    #     - location info (phone, fax, link)
+    #   - sponsors
+    #   - comittee
+    #
+    # --> insertion into template
+
+    lappend map @h:hotel@      $xname
+    lappend map @h:city@       $hclabel
+    lappend map @h:street@     "$xstreet, $xzipcode"
+    lappend map @h:transport@  $xtransport
+
+    lappend map @h:bookphone   [ifempty $xbookphone $xlocalphone]
+    lappend map @h:bookfax     [ifempty $xbookfax   $xlocalfax]
+    lappend map @h:booklink    [ifempty $xbooklink  $xlocallink]
+
+    lappend map @h:localphone  $xlocalphone
+    lappend map @h:localfax    $xlocalfax
+    lappend map @h:locallink   $xlocallink
+
+    lappend map @c:name@       $xtitle
+    lappend map @c:city@       $clabel
+    lappend map @c:year@       $xyear
+    lappend map @c:start@      [hdate $xstart]
+    lappend map @c:end@        [hdate $xend]
+    lappend map @c:when@       [when $xstart $xend]
+    lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
+    lappend map @c:sponsors@   TODO
+    lappend map @c:comittee@   TODO
+    lappend map @c:talklength@ $xtalklen
+
+    set text [string map $map $text]
+    return $text
+}
+
+proc ::cm::conference::ifempty {x y} {
+    if {$x ne {}} { return $x }
+    return $y
+}
+
+proc ::cm::conference::hdate {x} {
+    clock format $x -format {%B %d, %Y}
+}
+
+proc ::cm::conference::hmday {x} {
+    clock format $x -format {%B %d}
+}
+
+proc ::cm::conference::hmon {x} {
+    clock format $x -format %B
+}
+
+proc ::cm::conference::when {s e} {
+    lassign [clock format $s -format {%Y %m %d}] sy sm sd
+    lassign [clock format $e -format {%Y %m %d}] ey em ed
+
+    if {$sy != $ey} {
+	# Across years, show full dates
+	return "[hdate $s] - [hdate $e]"
+    }
+
+    # Same year.
+    if {$sm != $em} {
+	# Across months
+	return "[hmday $s] - [hmday $e], $sy"
+
+    }
+
+    # Same year, same month.
+    return "[hmon $s] $sd - $ed, $sy"
+}
+
 proc ::cm::conference::known {} {
     debug.cm/conference {}
     Setup
@@ -424,7 +517,7 @@ proc ::cm::conference::select {p} {
 	0 { $p undefined! }
 	1 {
 	    # Single choice, return
-	    # TODO: print note
+	    # TODO: print note about single choice
 	    return [lindex $conferences 1]
 	}
     }

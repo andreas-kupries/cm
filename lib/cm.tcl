@@ -523,12 +523,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	private drop {
 	    section {Conference Management} {Mail Campaign}
 	    description {
-		Remove one or more mail addresses from the campaign.
+		Remove one or more mail addresses from the campaign
+		for the crrent conference.
 		This does not affect future campaigns.
 	    }
 	    input entry {
-	    } { list ; #TODO: mail/entry validation/identification
-	    }
+	    } { list ; optional ; interact ; validate [cm::vt email] }
 	} [cm::call campaign cmd_drop]
 
 	private close {
@@ -538,7 +538,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call campaign cmd_close]
 
-	# status: #addresses, mails made ...
+	# TODO: campaign reset/clear ?
 
 	private status {
 	    section {Conference Management} {Mail Campaign}
@@ -548,7 +548,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call campaign cmd_status]
 	default
     }
-
 
     # # ## ### ##### ######## ############# ######################
     ## Contacts for campaigns, and as speakers, attendees, staff ...
@@ -568,6 +567,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option email {
 		One or more emails for the contact
 	    } { alias E ; list ; validate [cm::vt mail-address] }
+	}
+
+	common .imails {
+	    input email {
+		One or more known emails
+	    } { list ; optional ; interact ; validate [cm::vt email] }
 	}
 
 	private create-person {
@@ -644,6 +649,28 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_add_link]
 
+	private disable-mail {
+	    section {Contact Management}
+	    description {Disable one or more email addresses}
+	    use .imails
+	} [cm::call contact cmd_disable_mail]
+
+	private disable {
+	    section {Contact Management}
+	    description {Disable the specified contacts}
+	    input name {
+		List of the contact to disable
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact cmd_disable]
+
+	private enable {
+	    section {Contact Management}
+	    description {Enable the specified contacts}
+	    input name {
+		List of the contact to disable
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact cmd_disable]
+
 	private list {
 	    section {Contact Management}
 	    description {Show all known contacts, possibly filtered}
@@ -660,8 +687,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_show]
 
-	# TODO: disable-mail, disable-contact,
-	# TODO: change flags?, set tag, bio, affiliation
+	# TODO: change flags?
 	# TODO: set link title
     }
     alias contacts = contact list
