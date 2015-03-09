@@ -123,8 +123,8 @@ proc ::cm::city::label {name state nation} {
     debug.cm/city {}
 
     set label $name
-    if {$state ne {}} {append label "/$state"}
-    append label "-$nation"
+    if {$state ne {}} {append label ", $state"}
+    append label ", $nation"
     return $label
 }
 
@@ -160,7 +160,7 @@ proc ::cm::city::select {p} {
 	0 { $p undefined! }
 	1 {
 	    # Single choice, return
-	    # TODO: print note
+	    # TODO: print note about single choice
 	    return [lindex $cities 1]
 	}
     }
