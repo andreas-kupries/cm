@@ -61,8 +61,13 @@ proc ::cm::debug::thelevels {} {
     package require cm::table
     package require cm::util
     package require cm::validate::colormode
+    package require cm::validate::config
+    package require cm::validate::contact
     package require cm::validate::debug
+    package require cm::validate::email
     package require cm::validate::mail-address
+    package require cm::validate::nottemplate
+    package require cm::validate::template
 
     package require cmdr::ask
     package require cmdr::color
