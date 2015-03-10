@@ -1,5 +1,13 @@
 -- Database schema for conference mgmt
+-- ---------------------------------------------------------------
+CREATE TABLE config (
+	-- Configuration data of the application itself.
+	-- No relations to the conference tables.
 
+	key   TEXT NOT NULL PRIMARY KEY,
+	value TEXT NOT NULL
+);
+-- ---------------------------------------------------------------
 CREATE TABLE city (	-- we have been outside US in past
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	name		TEXT,
@@ -7,6 +15,7 @@ CREATE TABLE city (	-- we have been outside US in past
 	nation		TEXT,
 	UNIQUE (name, state, nation)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE location (
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	name		TEXT    NOT NULL,
@@ -22,6 +31,7 @@ CREATE TABLE location (
 	transportation	TEXT,		-- html block (maps, descriptions, etc)
 	UNIQUE (city, streetaddress)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE location_staff (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	location	INTEGER REFERENCES location,
@@ -32,6 +42,7 @@ CREATE TABLE location_staff (
 	phone		TEXT,
 	UNIQUE (location, position, familyname, firstname) -- Same person may have multiple positions
 );
+-- ---------------------------------------------------------------
 CREATE TABLE rate (				-- rates change from year to year
 	conference	INTEGER	REFERENCES conference,
 	location	INTEGER	REFERENCES location,
@@ -41,6 +52,7 @@ CREATE TABLE rate (				-- rates change from year to year
 	enddate		INTEGER,		-- date [epoch]
 	UNIQUE (con, location)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE contact (
 	-- General data for any type of contact:
 	-- actual person, mailing list, company
@@ -63,6 +75,7 @@ CREATE TABLE contact (
 	-- Note: Deactivation of contact in a campaign is handled by the contact/campaign linkage
 );
 -- INDEX on type
+-- ---------------------------------------------------------------
 CREATE TABLE contact_type (
     	id	INTEGER NOT NULL PRIMARY KEY,
     	text	TEXT    NOT NULL UNIQUE
@@ -70,6 +83,7 @@ CREATE TABLE contact_type (
 INSERT OR IGNORE INTO contact_type VALUES (1,'Person');
 INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
 INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
+-- ---------------------------------------------------------------
 CREATE TABLE email (
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	email		TEXT	NOT NULL UNIQUE,
@@ -77,6 +91,7 @@ CREATE TABLE email (
 	inactive	INTEGER	NOT NULL 	-- mark outdated addresses
 );
 -- INDEX on contact
+-- ---------------------------------------------------------------
 CREATE TABLE link (
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	contact		INTEGER	NOT NULL REFERENCES contact,
@@ -86,7 +101,7 @@ CREATE TABLE link (
 );
 -- INDEX on contact
 -- INDEX on link
-
+-- ---------------------------------------------------------------
 CREATE TABLE campaign (
 	-- Email campaign for a conference.
 
@@ -94,6 +109,7 @@ CREATE TABLE campaign (
 	con	INTEGER NOT NULL UNIQUE	REFERENCES conference,	-- one campaign per conference only
 	active	INTEGER NOT NULL				-- flag
 );
+-- ---------------------------------------------------------------
 CREATE TABLE campaign_destination (
 	-- Destination addresses for the campaign
 
@@ -102,6 +118,7 @@ CREATE TABLE campaign_destination (
 	email		INTEGER NOT NULL REFERENCES email,	-- contact is indirect
 	UNIQUE (campaign,email)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE campaign_mailrun (
 	-- Mailings executed so far
 
@@ -112,7 +129,7 @@ CREATE TABLE campaign_mailrun (
 );
 -- INDEX on campaign
 -- INDEX on template
-
+-- ---------------------------------------------------------------
 CREATE TABLE campaign_received (
 	-- The addresses which received mailings. In case of a repeat mailing
 	-- for a template this information is used to prevent sending mail to
@@ -123,7 +140,7 @@ CREATE TABLE campaign_received (
 	email	INTEGER	NOT NULL REFERENCES email	-- under contact
 );
 -- INDEX on mailrun
-
+-- ---------------------------------------------------------------
 CREATE TABLE template (
 	-- Text templates for mail campaigns
 
@@ -131,6 +148,7 @@ CREATE TABLE template (
 	name	TEXT    NOT NULL UNIQUE,
 	value	TEXT	NOT NULL
 );
+-- ---------------------------------------------------------------
 CREATE TABLE tutorial (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	speaker		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
@@ -141,6 +159,7 @@ CREATE TABLE tutorial (
 	UNIQUE (speaker, tag),
 	UNIQUE (speaker, title)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE conference (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	title		TEXT	UNIQUE,
@@ -164,6 +183,7 @@ CREATE TABLE conference (
 	--
 	-->	Google Calendar of the Conference, Mgmt + Public
 );
+-- ---------------------------------------------------------------
 CREATE TABLE conference_staff (
 	con		INTEGER	REFERENCES conference,
 	contact		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
@@ -172,11 +192,56 @@ CREATE TABLE conference_staff (
 	-- Multiple people can have the same role (ex: program commitee)
 	-- One person can have multiple roles (ex: prg.chair, prg. committee)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE staff_role (	-- semi-fixed content
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	text		TEXT	UNIQUE	-- chair, facilities chair, program chair, program committee,
 					-- web admin, proceedings editor, hotel liason, ...
 );
+INSERT OR IGNORE INTO staff_role VALUES (1,'chair');
+INSERT OR IGNORE INTO staff_role VALUES (2,'facilities chair');
+INSERT OR IGNORE INTO staff_role VALUES (3,'program chair');
+INSERT OR IGNORE INTO staff_role VALUES (4,'program committee');
+INSERT OR IGNORE INTO staff_role VALUES (5,'hotel liaison');
+INSERT OR IGNORE INTO staff_role VALUES (6,'web admin');
+INSERT OR IGNORE INTO staff_role VALUES (7,'proceedings editor');
+-- ---------------------------------------------------------------
+CREATE TABLE timeline (
+	-- conference timeline/calendar of action items, deadlines, etc.
+
+	id	INTEGER NOT NULL PRIMARY KEY,
+	con	INTEGER NOT NULL REFERENCES conference,
+	date	INTEGER NOT NULL,		-- when this happens [epoch]
+	type	INTEGER NOT NULL REFERENCES timeline_type
+);
+-- INDEX on con
+-- ---------------------------------------------------------------
+CREATE TABLE timeline_type (
+	-- The possible types of action items in the conference timeline
+	-- public items are for use within mailings, the website, etc.
+	-- internal items are for the mgmt only.
+	-- the offset [in days] is used to compute the initial proposal
+	-- of a timeline for the conference. 
+
+	id		INTEGER NOT NULL PRIMARY KEY,
+	ispublic	INTEGER NOT NULL,
+	offset		INTEGER NOT NULL,	-- >0 => days after conference start
+						-- <0 => days before start
+	key		TEXT    NOT NULL UNIQUE,	-- internal key for the type
+	text		TEXT    NOT NULL UNIQUE		-- human-readable
+);
+INSERT OR IGNORE INTO timeline_type VALUES ( 1,0,-168,'cfp1',      '1st Call for papers');         --  -24w
+INSERT OR IGNORE INTO timeline_type VALUES ( 2,0,-126,'cfp2',      '2nd Call for papers');         --  -18w
+INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w
+INSERT OR IGNORE INTO timeline_type VALUES ( 4,1, -84,'wipopen',   'WIP & BOF Reservations open'); --  -12w
+INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w
+INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -49,'authornote','Notifications to Authors');    --   -7w
+INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -21,'writedead', 'Author Materials due');        --   -3w
+INSERT OR IGNORE INTO timeline_type VALUES ( 8,0, -14,'procedit',  'Edit proceedings');            --   -2w
+INSERT OR IGNORE INTO timeline_type VALUES ( 9,0,  -7,'procship',  'Ship proceedings');            --   -1w
+INSERT OR IGNORE INTO timeline_type VALUES (10,1,   0,'begin-t',   'Tutorial Start');              --  <=>
+INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Start');               --  +2d
+-- ---------------------------------------------------------------
 CREATE TABLE tutorial_schedule (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	con		INTEGER	REFERENCES conference,
@@ -187,10 +252,15 @@ CREATE TABLE tutorial_schedule (
 	UNIQUE (con, tutorial),
 	UNIQUE (con, day, half, track)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE dayhalf (	-- fixed content
 	id		INTEGER	PRIMARY KEY,	-- 1,2,3
 	text		TEXT	UNIQUE		-- morning,afternoon,evening
 );
+INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
+INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
+INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
+-- ---------------------------------------------------------------
 CREATE TABLE submission (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	con		INTEGER	REFERENCES conference,
@@ -198,12 +268,14 @@ CREATE TABLE submission (
 	summary		TEXT,
 	invited		INTEGER				-- keynotes are a special submission made by mgmt
 );
+-- ---------------------------------------------------------------
 CREATE TABLE submitter (
 	submission	INTEGER	REFERENCES submission,	-- can_register||can_book||can_talk||can_submit
 	contact		INTEGER	REFERENCES contact,
 	note		TEXT,				-- distinguish author, co-author, if wanted
 	UNIQUE (submission, contact)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE talk (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	con		INTEGER	REFERENCES conference,
@@ -214,6 +286,7 @@ CREATE TABLE talk (
 	UNIQUE (con, submission)
 	-- constraint: con == submission->con
 );
+-- ---------------------------------------------------------------
 CREATE TABLE talker (
 	talk		INTEGER	REFERENCES talk,
 	contact		INTEGER	REFERENCES contact,	-- can_talk
@@ -221,14 +294,23 @@ CREATE TABLE talker (
 	-- We allow multiple speakers => panels, co-presentation
 	-- Note: Presenter is not necessarily any of the submitters of the submission behind the talk
 );
+-- ---------------------------------------------------------------
 CREATE TABLE talk_type (	-- fixed contents
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,	-- invited, submitted, keynote, panel
 	text		TEXT	UNIQUE
 );
+INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
+INSERT OR IGNORE INTO talk_type VALUES (2,'submitted');
+INSERT OR IGNORE INTO talk_type VALUES (3,'keynote');
+INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
+-- ---------------------------------------------------------------
 CREATE TABLE talk_state (	-- fixed contents
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,	-- material pending, received
 	text		TEXT	UNIQUE
 );
+INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
+INSERT OR IGNORE INTO talk_state VALUES (2,'received');
+-- ---------------------------------------------------------------
 CREATE TABLE schedule (
 	con		INTEGER	REFERENCES conference,
 	day		INTEGER,			-- 2,3,4,... (offset from start of conference, 0-based)
@@ -238,6 +320,7 @@ CREATE TABLE schedule (
 	UNIQUE (con, day, session, slot)
 	-- constraint: con == talk->con (== talk->submission->con)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE register ( -- conference registrations <=> attendee register
 	con		INTEGER	REFERENCES conference,
 	contact		INTEGER	REFERENCES contact,		-- can_register
@@ -250,12 +333,14 @@ CREATE TABLE register ( -- conference registrations <=> attendee register
 	UNIQUE (con, contact)
 	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
 );
+-- ---------------------------------------------------------------
 CREATE TABLE booked (	-- hotel bookings
 	con		INTEGER	REFERENCES conference,
 	contact		INTEGER	REFERENCES contact,	-- can_book
 	hotel		INTEGER	REFERENCES location,	-- may not be the conference hotel!
 	UNIQUE (con, pcontact)
 );
+-- ---------------------------------------------------------------
 CREATE TABLE notes (
 	con		INTEGER	REFERENCES conference,
 	contact		INTEGER REFERENCES contact,
@@ -264,6 +349,7 @@ CREATE TABLE notes (
 	-- ex: we know that P will not use the con hotel
 );
 
+-- ---------------------------------------------------------------
 -- speaker state is derivable from the contents of
 --	talk, registered, booked, plus notes
 --
