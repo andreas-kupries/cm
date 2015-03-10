@@ -63,6 +63,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::validate::colormode
     package require cm::validate::config
     package require cm::validate::contact
+    package require cm::validate::contact-type
     package require cm::validate::debug
     package require cm::validate::email
     package require cm::validate::mail-address
