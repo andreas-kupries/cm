@@ -42,7 +42,8 @@ namespace eval ::cm::contact {
 	cmd_add_mail cmd_add_link cmd_list cmd_show \
 	cmd_set_tag cmd_set_bio cmd_set_company \
 	cmd_disable cmd_enable cmd_disable_mail \
-	cmd_retype cmd_merge \
+	cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
+	cmd_merge \
 	select label get known known-email known-type
     namespace ensemble create
 
@@ -140,7 +141,6 @@ proc ::cm::contact::cmd_list {config} {
 	set titles {Type Tag Name Flags Affiliation}
     }
 
-
     [table t $titles {
 	db do eval {
 	    SELECT C.id           AS contact,
@@ -175,13 +175,16 @@ proc ::cm::contact::cmd_list {config} {
 	    append flags [expr {$csubm ? "S" :"-"}]
 
 	    if {$withmail} {
-		set mails [join [db do eval {
-		    SELECT email
+		set mails {}
+		db do eval {
+		    SELECT email, inactive
 		    FROM   email
 		    WHERE contact = :contact
 		    ORDER BY email
-		}] \n]
-
+		} {
+		    lappend mails "[expr {$inactive ? "-":" "}] $email"
+		}
+		set mails [join $mails \n]
 		$t add $type $tag $name $mails $flags $affiliation
 	    } else {
 		$t add $type $tag $name $flags $affiliation
@@ -355,6 +358,34 @@ proc ::cm::contact::cmd_disable {config} {
     return
 }
 
+proc ::cm::contact::cmd_enable {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts -nonewline "Enabling contact \"[color name [get $contact]]\" ... "
+	flush stdout
+
+	db do transaction {
+	    # set receiver flag ...
+	    update-recv $contact 1
+	    # ... and add its active mails to all active campaigns.
+	    db do eval {
+		SELECT id AS email
+		FROM   email
+		WHERE  contact = :contact
+		AND    NOT inactive
+	    } {
+		campaign add-mail $email
+	    }
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
 proc ::cm::contact::cmd_disable_mail {config} {
     debug.cm/contact {}
     Setup
@@ -380,27 +411,31 @@ proc ::cm::contact::cmd_disable_mail {config} {
     return
 }
 
-proc ::cm::contact::cmd_enable {config} {
+proc ::cm::contact::cmd_squash_mail {config} {
     debug.cm/contact {}
     Setup
     db show-location
 
-    foreach contact [$config @name] {
-	puts -nonewline "Enabling contact \"[color name [get $contact]]\" ... "
+    foreach email [$config @email] {
+	puts -nonewline "Deleting email \"[color name [get-email $email]]\" ... "
 	flush stdout
 
 	db do transaction {
-	    # set receiver flag ...
-	    update-recv $contact 1
-	    # ... and add its active mails to all active campaigns.
+	    # Drop all references, i.e. campaigns.
 	    db do eval {
-		SELECT id AS email
-		FROM   email
-		WHERE  contact = :contact
-		AND    NOT inactive
-	    } {
-		campaign add-mail $email
-	    }
+		DELETE
+		FROM campaign_destination
+		WHERE email = :email
+		;
+		DELETE
+		FROM campaign_received
+		WHERE email = :email
+		;
+		DELETE
+		FROM  email
+		WHERE id = :email
+		;
+	    } 
 	}
 
 	puts [color good OK]
@@ -431,8 +466,7 @@ proc ::cm::contact::cmd_retype {config} {
 		1 { # Person
 		    db do eval {
 			UPDATE contact
-			SET    can_recvmail = 1,
-			       can_register = 1,
+			SET    can_register = 1,
 			       can_book     = 1,
 			       can_talk     = 1,
 			       can_submit   = 1
@@ -442,8 +476,7 @@ proc ::cm::contact::cmd_retype {config} {
 		2 { # Company
 		    db do eval {
 			UPDATE contact
-			SET    can_recvmail = 1,
-			       can_register = 0,
+			SET    can_register = 0,
 			       can_book     = 0,
 			       can_talk     = 0,
 			       can_submit   = 1
@@ -453,8 +486,7 @@ proc ::cm::contact::cmd_retype {config} {
 		3 { # Mailing list
 		    db do eval {
 			UPDATE contact
-			SET    can_recvmail = 1,
-			       can_register = 0,
+			SET    can_register = 0,
 			       can_book     = 0,
 			       can_talk     = 0,
 			       can_submit   = 0
@@ -466,6 +498,78 @@ proc ::cm::contact::cmd_retype {config} {
 
 	puts [color good OK]
     }
+    return
+}
+
+proc ::cm::contact::cmd_rename {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set dnew    [$config @newname]
+    set new     [string tolower $new]
+
+    puts -nonewline "Renaming contact \"[color name [get $contact]]\" to \"[color name $new]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE contact
+	SET    name  = :new,
+	       dname = :dnew
+	WHERE  id    = :contact
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_merge {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set primary [$config @primary]
+
+    foreach secondary [$config @secondary] {
+	puts -nonewline "Merging contact \"[color name [get $primary]]\" with \"[color name [get $secondary]]\" ... "
+	flush stdout
+
+	# Redirect all references to the secondary contact to the
+	# primary, namely:
+	#
+	# contact.affiliation
+	# email.contact
+	# link.contact
+	#
+	# Note: There is no need to update campaigns as emails are
+	# neither added/enabled nor removed/disabled.
+	#
+	# Note 2: All status flags, and other data from the secondary
+	# are voided, and not transfered to the primary.
+
+	db do transaction {
+	    db do eval {
+		UPDATE contact
+		SET    affiliation = :primary
+		WHERE  affiliation = :secondary
+		;
+		UPDATE email
+		SET    contact = :primary
+		WHERE  contact = :secondary
+		;
+		UPDATE link
+		SET    contact = :primary
+		WHERE  contact = :secondary
+		;
+		DELETE
+		FROM   contact
+		WHERE  id = :secondary
+	    }
+	}
+	puts [color good OK]
+    }
+
     return
 }
 
@@ -515,6 +619,30 @@ proc ::cm::contact::cmd_set_company {config} {
     flush stdout
 
     update-affiliation $contact $company
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_mail_fix {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    puts -nonewline "Fixing mails, forcing lowercase ... "
+    flush stdout
+
+    db do eval {
+	SELECT id, email
+	FROM email
+    } {
+	set down [string tolower $email]
+	db do eval {
+	    UPDATE email
+	    SET    email = :down
+	    WHERE  id = :id
+	}
+    }
 
     puts [color good OK]
     return
@@ -594,6 +722,10 @@ proc ::cm::contact::new-person {dname} {
 proc ::cm::contact::new-mail {contact mail} {
     debug.cm/contact {}
     Setup
+
+    # Mail addresses are handled -nocase by the mail system. Store
+    # them in a canonical form to have a sensible uniqueness.
+    set mail [string tolower $mail]
 
     db do eval {
 	INSERT INTO email

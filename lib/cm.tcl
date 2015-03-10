@@ -655,6 +655,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .imails
 	} [cm::call contact cmd_disable_mail]
 
+	private squash-mail {
+	    section {Contact Management}
+	    description {Fully remove one or more email addresses}
+	    use .imails
+	} [cm::call contact cmd_squash_mail]
+
 	private disable {
 	    section {Contact Management}
 	    description {Disable the specified contacts}
@@ -699,8 +705,30 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { list ; optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_retype]
 
+	private rename {
+	    section {Contact Management}
+	    description {Rename the specified contact.}
+	    input name {
+		Name of the contact to modify.
+	    } { optional ; interact ; validate [cm::vt contact] }
+	    input newname {
+		New name of the contact
+	    } { optional ; interact }
+	} [cm::call contact cmd_rename]
+
+	private merge {
+	    section {Contact Management}
+	    description {Merge the secondary contacts into a primary}
+	    input primary {
+		Name of the primary contact taking the merged data.
+	    } { optional ; interact ; validate [cm::vt contact] }
+	    input secondary {
+		Name of the secondary contacts to merge into the primary
+	    } { optional ; list ; interact ; validate [cm::vt contact] }
+	} [cm::call contact cmd_merge]
+
 	# TODO: change flags?
-	# TODO: set link title, merge, rename
+	# TODO: set link title
     }
     alias contacts = contact list
 
@@ -756,6 +784,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		of the application-internal actions.
 	    }
 	} [cm::call debug cmd_levels]
+
+	private fix-mails {
+	    description {
+		Force all mail addresses into lower-case.
+	    }
+	} [cm::call contact cmd_mail_fix]
     }
 }
 
