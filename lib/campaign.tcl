@@ -43,7 +43,8 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::campaign {
-    namespace export cmd_setup cmd_close cmd_status cmd_mail cmd_drop \
+    namespace export cmd_setup cmd_close cmd_status cmd_mail \
+	cmd_reset cmd_drop \
 	add-mail drop-mail
     namespace ensemble create
 
@@ -147,6 +148,52 @@ proc ::cm::campaign::cmd_close {config} {
     }
 
     puts "[color good OK]"
+    return
+}
+
+
+proc ::cm::campaign::cmd_reset {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+
+    if {![ask yn "Campaign \"[color name $clabel]\" [color bad RESET]" no]} {
+	puts [color note Aborted]
+	return
+    }
+
+    db do transaction {
+	db do eval {
+	    DELETE 
+	    FROM   campaign_received
+	    WHERE  mailrun IN (SELECT mailrun
+			       FROM   campaign_mailrun
+			       WHERE  campaign = :campaign)
+	    ;
+	    DELETE 
+	    FROM   campaign_mailrun
+	    WHERE  campaign = :campaign
+	    ;
+	    DELETE 
+	    FROM   campaign_destination
+	    WHERE  campaign = :campaign
+	    ;
+	    DELETE
+	    FROM   campaign
+	    WHERE  id = :campaign
+	}
+    }
+
+    puts [color good OK]
     return
 }
 
