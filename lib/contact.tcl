@@ -42,7 +42,8 @@ namespace eval ::cm::contact {
 	cmd_add_mail cmd_add_link cmd_list cmd_show \
 	cmd_set_tag cmd_set_bio cmd_set_company \
 	cmd_disable cmd_enable cmd_disable_mail \
-	select label get known known-email
+	cmd_retype cmd_merge \
+	select label get known known-email known-type
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -130,11 +131,20 @@ proc ::cm::contact::cmd_list {config} {
     Setup
     db show-location
 
-    set pattern [string trim [$config @pattern]]
+    set pattern  [string trim [$config @pattern]]
+    set withmail [$config @with-mails]
 
-    [table t {Type Tag Name Flags Affiliation} {
+    if {$withmail} {
+	set titles {Type Tag Name Mails Flags Affiliation}
+    } else {
+	set titles {Type Tag Name Flags Affiliation}
+    }
+
+
+    [table t $titles {
 	db do eval {
-	    SELECT C.tag          AS tag,
+	    SELECT C.id           AS contact,
+	           C.tag          AS tag,
 	           C.dname        AS name,
 	           CT.text        AS type,
 	           C.can_recvmail AS crecv,
@@ -148,6 +158,7 @@ proc ::cm::contact::cmd_list {config} {
 	    WHERE (C.name  GLOB :pattern
 	     OR    C.dname GLOB :pattern)
 	    AND   CT.id = C.type
+	    ORDER BY name
 	} {
 	    # coded left join
 	    if {$affiliation ne {}} {
@@ -162,8 +173,19 @@ proc ::cm::contact::cmd_list {config} {
 	    append flags [expr {$cbook ? "B" :"-"}]
 	    append flags [expr {$ctalk ? "T" :"-"}]
 	    append flags [expr {$csubm ? "S" :"-"}]
-	    
-	    $t add $type $tag $name $flags $affiliation
+
+	    if {$withmail} {
+		set mails [join [db do eval {
+		    SELECT email
+		    FROM   email
+		    WHERE contact = :contact
+		    ORDER BY email
+		}] \n]
+
+		$t add $type $tag $name $mails $flags $affiliation
+	    } else {
+		$t add $type $tag $name $flags $affiliation
+	    }
 	}
     }] show
     return
@@ -357,6 +379,7 @@ proc ::cm::contact::cmd_disable_mail {config} {
     }
     return
 }
+
 proc ::cm::contact::cmd_enable {config} {
     debug.cm/contact {}
     Setup
@@ -377,6 +400,67 @@ proc ::cm::contact::cmd_enable {config} {
 		AND    NOT inactive
 	    } {
 		campaign add-mail $email
+	    }
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::contact::cmd_retype {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set type   [$config @type]
+    set tlabel [get-type $type]
+
+    foreach contact [$config @name] {
+	puts -nonewline "Changing contact \"[color name [get $contact]]\" to \"$tlabel\" ... "
+	flush stdout
+
+	db do transaction {
+	    db do eval {
+		UPDATE contact
+		SET    type = :type
+		WHERE  id   = :contact
+	    }
+	    # wish for more dynamic behaviour here
+	    switch -exact -- $type {
+		1 { # Person
+		    db do eval {
+			UPDATE contact
+			SET    can_recvmail = 1,
+			       can_register = 1,
+			       can_book     = 1,
+			       can_talk     = 1,
+			       can_submit   = 1
+			WHERE id = :contact
+		    }
+		}
+		2 { # Company
+		    db do eval {
+			UPDATE contact
+			SET    can_recvmail = 1,
+			       can_register = 0,
+			       can_book     = 0,
+			       can_talk     = 0,
+			       can_submit   = 1
+			WHERE id = :contact
+		    }
+		}
+		3 { # Mailing list
+		    db do eval {
+			UPDATE contact
+			SET    can_recvmail = 1,
+			       can_register = 0,
+			       can_book     = 0,
+			       can_talk     = 0,
+			       can_submit   = 0
+			WHERE id = :contact
+		    }
+		}
 	    }
 	}
 
@@ -465,7 +549,7 @@ proc ::cm::contact::new-mlist {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,
-		3, :name :dname,	-- mailing list
+		3, :name, :dname,	-- mailing list
 		NULL,			-- no initial bio
 		NULL,			-- un-affiliated
 		1,0,0,0,0)
@@ -678,6 +762,17 @@ proc ::cm::contact::get-email {id} {
     }]
 }
 
+proc ::cm::contact::get-type {id} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   contact_type
+	WHERE  id = :id
+    }]
+}
+
 proc ::cm::contact::get {id} {
     debug.cm/contact {}
     Setup
@@ -862,6 +957,21 @@ proc ::cm::contact::known-email {} {
 	FROM   email
     } {
 	dict set r $email $id
+    }
+    return $r
+}
+
+proc ::cm::contact::known-type {} {
+    debug.cm/contact {}
+    Setup
+
+    set r {}
+    db do eval {
+	SELECT id, text
+	FROM   contact_type
+    } {
+	dict set r $text                  $id
+	dict set r [string tolower $text] $id
     }
     return $r
 }

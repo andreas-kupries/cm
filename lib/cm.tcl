@@ -677,6 +677,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input pattern {
 		Filter list by the glob pattern
 	    } { optional ; default * }
+	    option with-mails {Show mail addresses} { presence }
 	} [cm::call contact cmd_list]
 
 	private show {
@@ -687,8 +688,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::vt contact] }
 	} [cm::call contact cmd_show]
 
+	private retype {
+	    section {Contact Management}
+	    description {Fix the type of the specified contacts. Resets flags to defaults.}
+	    input type {
+		The new type of the contact
+	    } { validate [cm::vt contact-type] }
+	    input name {
+		Name of the contacts to modify.
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact cmd_retype]
+
 	# TODO: change flags?
-	# TODO: set link title
+	# TODO: set link title, merge, rename
     }
     alias contacts = contact list
 
