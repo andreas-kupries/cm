@@ -12,12 +12,12 @@ http://www.tcl.tk/community/tcl@c:year@/
 
 Important Dates:
 
-Abstracts and proposals due   August    26, @c:year@
-Notification to authors       September 12, @c:year@
-WIP and BOF reservations open August     1, @c:year@
-Author materials due          October    9, @c:year@
-Tutorials Start               October   24, @c:year@
-Conference starts             October   26, @c:year@
+Abstracts and proposals due   @c:t:submitdead@
+Notification to authors       @c:t:authornote@
+WIP and BOF reservations open @c:t:wipopen@
+Author materials due          @c:t:writedead@
+Tutorials Start               @c:t:begin-t@
+Conference starts             @c:t:begin-s@
 
 Email Contact:                @c:contact@
 
@@ -45,8 +45,8 @@ including:
 
 Submissions should consist of an abstract of about 100 words and a
 summary of not more than two pages, and should be sent as plain text
-to @c:contact@ no later than August 30, @c:year@. Authors of accepted
-abstracts will have until October 14, @c:year@ to submit their final
+to @c:contact@ no later than @c:t:submitdead@. Authors of accepted
+abstracts will have until @c:t:writedead@ to submit their final
 paper for the inclusion in the conference proceedings. The proceedings
 will be made available on digital media, so extra materials such as
 presentation slides, code examples, code for extensions etc. are
@@ -94,9 +94,9 @@ of related research papers.
 
 Slots for Works-in-Progress (WIP) presentations and Birds-of-a-Feather
 sessions (BOFs) are available on a first-come, first-served basis
-starting in August 1, @c:year@. Specific instructions for reserving WIP
+starting in @c:t:wipopen@. Specific instructions for reserving WIP
 and BOF time slots will be provided in the registration information
-available in June @c:year@. Some WIP and BOF time slots will be held open
+available in @c:t:wipopen@. Some WIP and BOF time slots will be held open
 for on-site reservation. All attendees with an interesting work in
 progress should consider reserving a WIP slot.
 

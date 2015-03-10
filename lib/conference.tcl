@@ -41,7 +41,8 @@ namespace eval ::cm {
 namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
-	cmd_hotel select label current get insert
+	cmd_hotel cmd_timeline_init cmd_timeline_clear \
+	select label current get insert
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -150,7 +151,10 @@ proc ::cm::conference::cmd_create {config} {
 	return
     }
 
+    timeline-init $id
+
     puts [color good OK]
+
     puts -nonewline "Setting as current conference ... "
     config assign @current-conference $id
     puts [color good OK]
@@ -190,8 +194,8 @@ proc ::cm::conference::cmd_show {config} {
 
 	dict with details {}
 
-	set xstart [date 2external $xstart]
-	set xend   [date 2external $xend]
+	set xstart [hdate $xstart]
+	set xend   [hdate $xend]
 
 	if {$xalign > 0} {
 	    set xalign [weekday 2external $xalign]
@@ -213,6 +217,19 @@ proc ::cm::conference::cmd_show {config} {
 	$t add @Center       $xsessions
 	$t add Minutes/Talk  $xtalklen
 	$t add Talks/Session $xsesslen
+
+	# Show the timeline...
+	db do eval {
+	    SELECT T.date AS date,
+	           E.text AS text
+	    FROM   timeline      T,
+	           timeline_type E
+	    WHERE T.con  = :id
+	    AND   T.type = E.id
+	    ORDER BY T.date
+	} {
+	    $t add "- $text" [hdate $date]
+	}
     }] show
     return
 }
@@ -282,10 +299,88 @@ proc ::cm::conference::cmd_hotel {config} {
     return
 }
 
+proc ::cm::conference::cmd_timeline_init {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set id [current]
+
+    puts "Conference \"[color name [get $id]]\", initialize timeline ... "
+    flush stdout
+
+    timeline-init $id
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_timeline_clear {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set id [current]
+
+    puts "Conference \"[color name [get $id]]\", clear timeline ... "
+    flush stdout
+
+    timeline-clear $id
+
+    puts [color good OK]
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::conference::timeline-clear {conference} {
+    debug.cm/conference {}
+    Setup
+    # clear the timeline ...
+
+    db do eval {
+	DELETE
+	FROM  timeline
+	WHERE con = :conference
+    }
+    return
+}
+
+proc ::cm::conference::timeline-init {conference} {
+    debug.cm/conference {}
+    Setup
+    # Compute an initial timeline based on the conference start date.
+
+    set details [details $conference]
+    dict with details {}
+
+    puts "Proposed timeline ..."
+    [table t {Item Date} {
+	db do eval {
+	    SELECT id, offset, text, ispublic
+	    FROM timeline_type
+	    ORDER BY offset
+	} {
+	    set new [clock add $xstart $offset days]
+
+	    if {$ispublic} {
+		$t add [color note $text] [color note [hdate $new]]
+	    } else {
+		$t add $text [hdate $new]
+	    }
+	    db do eval {
+		INSERT INTO timeline
+		VALUES (NULL, :conference, :new, :id)
+	    }
+	}
+    }] show
+    return
+}
+
 proc ::cm::conference::insert {id text} {
+    debug.cm/conference {}
+    Setup
 
     set details [details $id]
     dict with details {}
@@ -306,6 +401,7 @@ proc ::cm::conference::insert {id text} {
     #   - title
     #   - start-date
     #   - end-end
+    #   - timeline
     #   - location-references
     #     - location info (phone, fax, link)
     #   - sponsors
@@ -336,6 +432,18 @@ proc ::cm::conference::insert {id text} {
     lappend map @c:sponsors@   TODO
     lappend map @c:comittee@   TODO
     lappend map @c:talklength@ $xtalklen
+
+    db do eval {
+	SELECT E.key  AS key,
+	       T.date AS date
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE  T.type = E.id
+	AND    E.ispublic
+	AND    T.con = :id
+    } {
+	lappend map @c:t:${key}@ [hdate $date]
+    }
 
     set text [string map $map $text]
     return $text
@@ -413,6 +521,14 @@ proc ::cm::conference::issues {details} {
 	+issue $message
     }
 
+    if {![db do exists {
+	SELECT id
+	FROM   timeline
+	WHERE con = :xconference
+    }]} {
+	+issue "Timeline missing"
+    }
+
     if {![llength $issues]} return
     return [join $issues \n]
 }
@@ -440,16 +556,17 @@ proc ::cm::conference::details {id} {
     Setup
 
     return [db do eval {
-	SELECT "xyear",     year,
-	       "xcity",     city,
-	       "xhotel",    hotel,
-	       "xsessions", sessions,
-	       "xstart",    startdate,
-	       "xend",      enddate,
-	       "xalign",    alignment,
-	       "xlength",   length,
-	       "xtalklen",  talklength,
-	       "xsesslen",  sessionlen
+	SELECT "xconference", id,
+	       "xyear",       year,
+	       "xcity",       city,
+	       "xhotel",      hotel,
+	       "xsessions",   sessions,
+	       "xstart",      startdate,
+	       "xend",        enddate,
+	       "xalign",      alignment,
+	       "xlength",     length,
+	       "xtalklen",    talklength,
+	       "xsesslen",    sessionlen
 	FROM  conference
 	WHERE id = :id
     }]
@@ -586,6 +703,63 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error conference $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error timeline {
+	{
+	    -- conference timeline/calendar of action items, deadlines, etc.
+
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    con	 INTEGER NOT NULL REFERENCES conference,
+	    date INTEGER NOT NULL,		-- when this happens [epoch]
+	    type INTEGER NOT NULL REFERENCES timeline_type
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {con  INTEGER 1 {} 0}
+	    {date INTEGER 1 {} 0}
+	    {type INTEGER 1 {} 0}
+	} {con}
+    }]} {
+	db setup-error timeline $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error timeline_type {
+	{
+	    -- The possible types of action items in the conference timeline
+	    -- public items are for use within mailings, the website, etc.
+	    -- internal items are for the mgmt only.
+	    -- the offset [in days] is used to compute the initial proposal
+	    -- of a timeline for the conference. 
+
+	    id		INTEGER NOT NULL PRIMARY KEY,
+	    ispublic	INTEGER NOT NULL,
+	    offset	INTEGER NOT NULL,	-- >0 => days after conference start
+	    					-- <0 => days before start
+	    key		TEXT    NOT NULL UNIQUE,	-- internal key for the type
+	    text	TEXT    NOT NULL UNIQUE		-- human-readable
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {ispublic	INTEGER 1 {} 0}
+	    {offset	INTEGER 1 {} 0}
+	    {key	TEXT    1 {} 0}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error timeline_type $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 1,0,-168,'cfp1',      '1st Call for papers');         --  -24w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 2,0,-126,'cfp2',      '2nd Call for papers');         --  -18w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 4,1, -84,'wipopen',   'WIP & BOF Reservations open'); --  -12w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -49,'authornote','Notifications to Authors');    --   -7w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -21,'writedead', 'Author Materials due');        --   -3w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,0, -14,'procedit',  'Edit proceedings');            --   -2w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0,  -7,'procship',  'Ship proceedings');            --   -1w
+	    INSERT OR IGNORE INTO timeline_type VALUES (10,1,   0,'begin-t',   'Tutorial Start');              --  <=>
+	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Start');               --  +2d
+	}
     }
 
     # Shortcircuit further calls

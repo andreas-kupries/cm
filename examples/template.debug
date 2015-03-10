@@ -23,3 +23,11 @@
  @c:sponsors@
  @c:comittee@
 
+WIP/BOF opens  @c:t:wipopen@
+Submit till    @c:t:submitdead@
+Notifications  @c:t:authornote@
+Materials due  @c:t:writedead@
+Tutorials      @c:t:begin-t@
+Sessions       @c:t:begin-s@
+
+To: @mg:name@ | @mg:sender@

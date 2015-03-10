@@ -471,6 +471,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the details of the current conference }
 	} [cm::call conference cmd_show]
 
+	private timeline-init {
+	    section {Conference Management}
+	    description { Generate a basic timeline for the conference }
+	} [cm::call conference cmd_timeline_init]
+
+	private timeline-clear {
+	    section {Conference Management}
+	    description { Clear the timeline for the conference }
+	} [cm::call conference cmd_timeline_clear]
+
 	private center {
 	    section {Conference Management}
 	    description { Select the location for presentations }
@@ -519,6 +529,16 @@ cmdr create cm::cm [file tail $::argv0] {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }
 	} [cm::call campaign cmd_mail]
+
+	private test {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Check generation of campaign mails.
+	    }
+	    input template {
+		Name of the template to check.
+	    } { validate [cm::vt template] }
+	} [cm::call campaign cmd_test]
 
 	private drop {
 	    section {Conference Management} {Mail Campaign}

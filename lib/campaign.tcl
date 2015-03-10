@@ -44,7 +44,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::campaign {
     namespace export cmd_setup cmd_close cmd_status cmd_mail \
-	cmd_reset cmd_drop \
+	cmd_test cmd_reset cmd_drop \
 	add-mail drop-mail
     namespace ensemble create
 
@@ -337,6 +337,15 @@ proc ::cm::campaign::cmd_mail {config} {
     set text [template details $template]
     set now  [clock seconds]
 
+    set issues [check-template $text]
+    if {$issues ne {}} {
+	puts $issues
+	if {![ask yn "Continue with mail run ?" no]} {
+	    puts [color note Aborted]
+	    return
+	}
+    }
+
     # TODO: Check template for necessary/important placeholders.
     # TODO: Warn about any missing.
     set text [conference insert $conference $text]
@@ -376,6 +385,44 @@ proc ::cm::campaign::cmd_mail {config} {
     return
 }
 
+proc ::cm::campaign::cmd_test {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    set template [$config @template]
+    set tname    [template get $template]
+
+
+    puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" ..."
+
+    set text   [template details $template]
+    set issues [check-template $text]
+
+    set text [conference insert $conference $text]
+    set text [mailgen call "test@example.com" Tester $text]
+
+    puts $text
+
+    if {$issues ne {}} {
+	puts =======================
+	puts $issues
+    }
+    return
+}
 
 proc ::cm::campaign::cmd_drop {config} {
     debug.cm/campaign {}
@@ -415,6 +462,43 @@ proc ::cm::campaign::cmd_drop {config} {
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::campaign::check-template {text} {
+    debug.cm/campaign {}
+    set issues {}
+    foreach {rq placeholder} {
+	0 mg:sender
+	0 mg:name
+	1 h:hotel
+	1 h:city
+	1 h:street
+	1 c:name
+	1 c:city
+	1 c:year
+	1 c:start
+	1 c:end
+	1 c:when
+	1 c:talklength
+	1 c:contact
+	0 c:sponsors
+	0 c:comittee
+	1 c:t:wipopen
+	1 c:t:submitdead
+	1 c:t:authornote
+	1 c:t:writedead
+	1 c:t:begin-t
+	1 c:t:begin-s
+    } {
+	if {[string match *@${placeholder}@* $text]} continue
+	if {$rq} {
+	    set msg "  [color bad Required]  placeholder \"$placeholder\" [color bad missing]"
+	} else {
+	    set msg "  Suggested placeholder \"$placeholder\" missing"
+	}
+	lappend issues $msg
+    }
+    return [join $issues \n]
+}
 
 proc ::cm::campaign::drop-mail {email} {
     debug.cm/campaign {}
