@@ -649,6 +649,8 @@ proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
     ::cm::config::core::Setup
+    ::cm::city::Setup
+    ::cm::hotel::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{

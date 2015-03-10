@@ -411,6 +411,7 @@ proc ::cm::hotel::Setup {} {
     debug.cm/hotel {}
 
     ::cm::config::core::Setup
+    ::cm::city::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error hotel {
 	{
