@@ -46,8 +46,10 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
 	cmd_hotel cmd_timeline_init cmd_timeline_clear \
 	cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_staff_link cmd_staff_unlink \
 	select label current get insert known-sponsor \
-	select-sponsor
+	select-sponsor select-staff-role select-staff known-staff \
+	get-role
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -263,6 +265,31 @@ proc ::cm::conference::cmd_show {config} {
 	    $t add {} $name
 	}
 
+	# Do not forget the staff
+	set first 1
+	db do eval {
+	    SELECT C.dname AS name,
+	           R.text  AS role
+	    FROM conference_staff S,
+	         contact          C,
+	         staff_role       R
+	    WHERE S.conference = :id
+	    AND   S.contact    = C.id
+	    AND   S.role       = R.id
+	    ORDER BY role, name
+	} {
+	    if {$first} {
+		set lastrole $role
+		$t add {} {}
+		$t add [color note Staff] {}
+	    }
+	    set first 0
+
+	    if {$lastrole ne $role} { $t add {} {} }
+	    $t add "- $role" $name
+	    set lastrole $role
+	}
+
     }] show
     return
 }
@@ -417,6 +444,58 @@ proc ::cm::conference::cmd_sponsor_unlink {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_staff_link {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set role       [$config @role]
+
+    puts "Adding [get-role $role] to conference \"[color name [get $conference]]\" ... "
+
+    foreach contact [$config @name] {
+	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO conference_staff
+	    VALUES (NULL, :conference, :contact, :role)
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_staff_unlink {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Removing staff from conference \"[color name [get $conference]]\" ... "
+
+    lassign [$config @name] role contact
+
+    puts -nonewline "  [get-role $role] \"[color name [cm contact get $contact]]\" ... "
+    flush stdout
+
+    db do eval {
+	DELETE
+	FROM conference_staff
+	WHERE conference = :conference
+	AND   contact    = :contact
+	AND   role       = :role
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
 proc ::cm::conference::timeline-clear {conference} {
@@ -480,8 +559,28 @@ proc ::cm::conference::insert {id text} {
     #array set _ $details ; parray _ ; unset _
     #array set _ $hotel ; parray _ ; unset _
 
-    set sponsors [dict keys [known-sponsor-select $id]]
-    set sponsors "   * [join [lsort -dict $sponsors] "\n   * "]"
+    set sponsors [join [lsort -dict [dict keys [known-sponsor-select $id]]] \n]
+    set sponsors [util indent $sponsors "   * "]
+
+    # Staff names, roles and affiliations, limit to the committee
+    set cdata  [committee $id]
+    set cnames [lsort -dict [dict keys $cdata]]
+    set committee {}
+    foreach c $cnames clabel [util padr $cnames] {
+	set contact [dict get $cdata $c]
+	set contact [contact details $contact]
+
+	#debug.cm/conference {c.member = ($contact)}
+	#debug.cm/conference {[util indent [debug pdict $contact] "  "]}
+
+	set a [dict get $contact xaffiliation]
+	if {$a ne {}} {
+	    set a [contact get-name $a]
+	    append clabel " " $a
+	}
+	lappend committee [string trim $clabel]
+    }
+    set committee [util indent [join $committee \n] "   * "]
 
     # Needs:
     # - conference information
@@ -518,7 +617,7 @@ proc ::cm::conference::insert {id text} {
     lappend map @c:when@       [when $xstart $xend]
     lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
     lappend map @c:sponsors@   $sponsors
-    lappend map @c:comittee@   TODO
+    lappend map @c:comittee@   $committee
     lappend map @c:talklength@ $xtalklen
 
     db do eval {
@@ -608,6 +707,68 @@ proc ::cm::conference::known-sponsor-select {conference} {
     }]]
 }
 
+proc ::cm::conference::known-staff {} {
+    debug.cm/conference {}
+    Setup
+
+    set conference [the-current]
+    if {$conference < 0} {
+	return {}
+    }
+    return [cm::contact::KnownLimited [db do eval {
+	SELECT contact
+	FROM   conference_staff
+	WHERE  conference = :conference
+    }]]
+}
+
+proc ::cm::conference::known-staff-select {conference} {
+    debug.cm/conference {}
+    Setup
+
+    if {($conference eq {}) ||
+	($conference < 0)} {
+	return {}
+    }
+
+    # Not going through contact here. We need role information as
+    # well.
+
+    set known {}
+    db do eval {
+	SELECT R.text  AS role,
+	       C.dname AS name,
+	       R.id    AS rid,
+	       C.id    AS cid
+	FROM   conference_staff S,
+	       staff_role       R,
+	       contact          C
+	WHERE  S.conference = :conference
+	AND    S.role       = R.id
+	AND    S.contact    = C.id
+	ORDER BY role, name
+    } {
+	dict set known "$role/$name" [list $rid $cid]
+    }
+    return $known
+}
+
+proc ::cm::conference::committee {conference} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do eval {
+	SELECT C.dname, C.id
+	FROM   conference_staff S,
+	       staff_role       R,
+	       contact          C
+	WHERE  S.conference = :conference
+	AND    S.role       = R.id
+	AND    R.text       = 'Program committee'
+	AND    S.contact    = C.id
+    }]
+}
+
 proc ::cm::conference::known {} {
     debug.cm/conference {}
     Setup
@@ -617,9 +778,27 @@ proc ::cm::conference::known {} {
 
     db do eval {
 	SELECT id, title
-	FROM  conference
+	FROM   conference
     } {
 	dict set known $title $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::known-staff-role {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   staff_role
+    } {
+	dict set known $text $id
     }
 
     debug.cm/conference {==> ($known)}
@@ -657,6 +836,35 @@ proc ::cm::conference::issues {details} {
 	WHERE  conference = :xconference
     }]} {
 	+issue "No sponsors"
+    }
+
+    # Staff check. Separate by role, as we need one per, at least.
+    if 0 {db do eval {
+	SELECT R.text            AS role,
+	       count (S.contact) AS nstaff
+	FROM      staff_role       R
+	LEFT JOIN conference_staff S ON (R.id = S.role)
+	WHERE S.conference = :xconference
+	GROUP BY R.id
+    } {
+	if {$nstaff} continue
+	+issue "Staff trouble: No one is \"$role\""
+    }} ;# Trouble getting the sql right.
+
+    # The explicit coding below does work.
+    db do eval {
+	SELECT id AS role, text
+	FROM   staff_role
+    } {
+	set nstaff [db do eval {
+	    SELECT count(contact)
+	    FROM   conference_staff
+	    WHERE  conference = :xconference
+	    AND    role       = :role
+	}]
+
+	if {$nstaff} continue
+	+issue "Staff trouble: No one is \"$text\""
     }
 
     if {![llength $issues]} return
@@ -813,6 +1021,69 @@ proc ::cm::conference::select-sponsor {p} {
     return [dict get $sponsors $choice]
 }
 
+proc ::cm::conference::select-staff {p} {
+    debug.cm/conference {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set staff   [known-staff-select [the-current]]
+    set choices [lsort -dict [dict keys $staff]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $staff 1]
+	}
+    }
+
+    set choice [ask menu "" "Which staff: " $choices]
+
+    # Map back to id
+    return [dict get $staff $choice]
+}
+
+proc ::cm::conference::select-staff-role {p} {
+    debug.cm/conference {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set staff   [known-staff-role]
+    set choices [lsort -dict [dict keys $staff]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $staff 1]
+	}
+    }
+
+    set choice [ask menu "" "Which staff role: " $choices]
+
+    # Map back to id
+    return [dict get $staff $choice]
+}
+
+proc ::cm::conference::get-role {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   staff_role
+	WHERE  id = :id
+    }]
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
@@ -951,6 +1222,48 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error sponsors $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error conference_staff {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER NOT NULL REFERENCES conference,
+	    contact	INTEGER NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk
+	    role	INTEGER NOT NULL REFERENCES staff_role,
+	    UNIQUE (conference, contact, role)
+	    -- Multiple people can have the same role (ex: program commitee)
+	    -- One person can have multiple roles (ex: prg.chair, prg. committee)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {conference	INTEGER 1 {} 0}
+	    {contact	INTEGER 1 {} 0}
+	    {role	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error conference_staff $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error staff_role {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    text	TEXT	NOT NULL UNIQUE	-- chair, facilities chair, program chair, program committee,
+						-- web admin, proceedings editor, hotel liason, ...
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error staff_role $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO staff_role VALUES (1,'Chair');
+	    INSERT OR IGNORE INTO staff_role VALUES (2,'Facilities chair');
+	    INSERT OR IGNORE INTO staff_role VALUES (3,'Program chair');
+	    INSERT OR IGNORE INTO staff_role VALUES (4,'Program committee');
+	    INSERT OR IGNORE INTO staff_role VALUES (5,'Hotel liaison');
+	    INSERT OR IGNORE INTO staff_role VALUES (6,'Web admin');
+	    INSERT OR IGNORE INTO staff_role VALUES (7,'Proceedings editor');
+	}
     }
 
     # Shortcircuit further calls

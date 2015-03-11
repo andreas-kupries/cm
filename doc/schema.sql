@@ -185,26 +185,27 @@ CREATE TABLE conference (
 );
 -- ---------------------------------------------------------------
 CREATE TABLE conference_staff (
-	con		INTEGER	REFERENCES conference,
-	contact		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
-	role		INTEGER	REFERENCES staff_role,
-	UNIQUE (con, contact, role)
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	conference	INTEGER NOT NULL REFERENCES conference,
+	contact		INTEGER NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk
+	role		INTEGER NOT NULL REFERENCES staff_role,
+	UNIQUE (conference, contact, role)
 	-- Multiple people can have the same role (ex: program commitee)
 	-- One person can have multiple roles (ex: prg.chair, prg. committee)
 );
 -- ---------------------------------------------------------------
 CREATE TABLE staff_role (	-- semi-fixed content
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	text		TEXT	UNIQUE	-- chair, facilities chair, program chair, program committee,
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	text		TEXT	NOT NULL UNIQUE	-- chair, facilities chair, program chair, program committee,
 					-- web admin, proceedings editor, hotel liason, ...
 );
-INSERT OR IGNORE INTO staff_role VALUES (1,'chair');
-INSERT OR IGNORE INTO staff_role VALUES (2,'facilities chair');
-INSERT OR IGNORE INTO staff_role VALUES (3,'program chair');
-INSERT OR IGNORE INTO staff_role VALUES (4,'program committee');
-INSERT OR IGNORE INTO staff_role VALUES (5,'hotel liaison');
-INSERT OR IGNORE INTO staff_role VALUES (6,'web admin');
-INSERT OR IGNORE INTO staff_role VALUES (7,'proceedings editor');
+INSERT OR IGNORE INTO staff_role VALUES (1,'Chair');
+INSERT OR IGNORE INTO staff_role VALUES (2,'Facilities chair');
+INSERT OR IGNORE INTO staff_role VALUES (3,'Program chair');
+INSERT OR IGNORE INTO staff_role VALUES (4,'Program committee');
+INSERT OR IGNORE INTO staff_role VALUES (5,'Hotel liaison');
+INSERT OR IGNORE INTO staff_role VALUES (6,'Web admin');
+INSERT OR IGNORE INTO staff_role VALUES (7,'Proceedings editor');
 -- ---------------------------------------------------------------
 CREATE TABLE timeline (
 	-- conference timeline/calendar of action items, deadlines, etc.

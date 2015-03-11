@@ -44,7 +44,8 @@ namespace eval ::cm::contact {
 	cmd_disable cmd_enable cmd_disable_mail \
 	cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
 	cmd_merge \
-	select label get known known-email known-type
+	select label get known known-email known-type details \
+	get-name
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -918,6 +919,39 @@ proc ::cm::contact::get {id} {
     return [label $tag $name]
 }
 
+proc ::cm::contact::get-name {id} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT dname
+	FROM   contact
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::contact::details {id} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do eval {
+	SELECT "xid",           id,
+               "xtag",          tag,
+               "xtype",         type,
+	       "xname",         name,
+	       "xdname",        dname,
+	       "xbiography",    biography,
+	       "xaffiliation",  affiliation,
+	       "xcan_recvmail", can_recvmail,
+	       "xcan_register", can_register,
+	       "xcan_book",     can_book,
+	       "xcan_talk",     can_talk,
+	       "xcan_submit",   can_submit
+	FROM  contact
+	WHERE id = :id
+    }]
+}
+
 proc ::cm::contact::label {tag name} {
     debug.cm/contact {}
 
@@ -954,7 +988,7 @@ proc ::cm::contact::KnownSelectLimited {limit} {
     }
 
     db do eval $sql {
-	dict set known [label $tag $dname] $id
+	dict set known $dname $id
     }
 
     return $known

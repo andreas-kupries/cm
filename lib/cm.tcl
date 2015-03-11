@@ -522,6 +522,32 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call conference cmd_sponsor_unlink]
 
+	private add-staff {
+	    section {Conference Management}
+	    description { Add one or more staff }
+	    input role {
+		The role to staff
+	    } {
+		optional
+		generate [cm::call conference select-staff-role]
+	    }
+	    input name {
+		Names of the contacts which are staff
+	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator people only
+	} [cm::call conference cmd_staff_link]
+
+	private drop-staff {
+	    section {Conference Management}
+	    description { Remove one or more staff }
+	    input name {
+		Name of the staff to remove
+	    } { 
+		optional
+		generate [cm::call conference select-staff]
+		validate [cm::vt conference-staff]
+	    }
+	} [cm::call conference cmd_staff_unlink]
+
     }
     alias conferences = conference list
 
