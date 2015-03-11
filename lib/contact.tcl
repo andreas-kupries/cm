@@ -983,6 +983,15 @@ proc ::cm::contact::DropAmbiguous {dict} {
 
 proc ::cm::contact::KnownValidate {} {
     debug.cm/contact {}
+    set known [KnownLimited {}]
+
+    # Cache result
+    proc ::cm::contact::KnownValidate {} [list return $known]
+    return $known
+}
+
+proc ::cm::contact::KnownLimited {limit} {
+    debug.cm/contact {}
     # dict: label -> id
     set known {}
 
@@ -999,10 +1008,12 @@ proc ::cm::contact::KnownValidate {} {
     set map {}
 
     # Identification by name, tag
-    db do eval {
-	SELECT id, tag, name, dname
-	FROM   contact
-    } {
+    set sql {SELECT id, tag, name, dname FROM contact}
+    if {[llength $limit]} {
+	set slimit [join $limit ,]
+	append sql " WHERE id IN ($slimit)"
+    }
+    db do eval $sql {
 	if {$tag ne {}} {
 	    dict lappend map $id $tag \#$tag
 	}
@@ -1018,19 +1029,21 @@ proc ::cm::contact::KnownValidate {} {
     }
 
     # Identification by email
-    db do eval {
-	SELECT contact, email
-	FROM   email
-    } {
+    set sql {SELECT contact, email FROM email}
+    if {[llength $limit]} {
+	append sql " WHERE contact IN ($slimit)"
+    }
+    db do eval $sql {
 	dict lappend map $contact $email
 	dict lappend map $contact [string tolower $email]
     }
 
     # Identification by link (TODO: title?)
-    db do eval {
-	SELECT contact, link
-	FROM   link
-    } {
+    set sql {SELECT contact, link FROM link}
+    if {[llength $limit]} {
+	append sql " WHERE contact IN ($slimit)"
+    }
+    db do eval $sql {
 	dict lappend map $contact $link
 	dict lappend map $contact [string tolower $link]
     }
@@ -1051,9 +1064,6 @@ proc ::cm::contact::KnownValidate {} {
 
     #array set _ $known
     #parray _
-
-    # Cache result
-    proc ::cm::contact::KnownValidate {} [list return $known]
     return $known
 }
 

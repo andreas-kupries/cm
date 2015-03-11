@@ -68,6 +68,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::validate::email
     package require cm::validate::mail-address
     package require cm::validate::nottemplate
+    package require cm::validate::sponsor
     package require cm::validate::template
 
     package require cmdr::ask

@@ -16,21 +16,24 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cmdr::color
 package require cmdr::ask
-package require debug
-package require debug::caller
-package require dbutil
-package require try
-
-package require cm::table
-package require cm::city
-package require cm::config::core
-package require cm::db
-package require cm::util
-package require cm::hotel
+package require cmdr::color
 package require cmdr::validate::date
 package require cmdr::validate::weekday
+package require dbutil
+package require debug
+package require debug::caller
+package require try
+
+package provide cm::conference 0 ;# circular via contact, campaign
+
+package require cm::city
+package require cm::config::core
+package require cm::contact
+package require cm::db
+package require cm::hotel
+package require cm::table
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -42,7 +45,8 @@ namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
 	cmd_hotel cmd_timeline_init cmd_timeline_clear \
-	select label current get insert
+	cmd_sponsor_link cmd_sponsor_unlink \
+	select label current get insert known-sponsor
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -50,6 +54,7 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::validate::date
     namespace import ::cmdr::validate::weekday
     namespace import ::cm::city
+    namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::hotel
     namespace import ::cm::util
@@ -212,13 +217,16 @@ proc ::cm::conference::cmd_show {config} {
 	$t add End           $xend
 	$t add Aligned       $xalign
 	$t add Days          $xlength
+	$t add {} {}
 	$t add In            $xcity
 	$t add @Hotel        $xhotel
 	$t add @Center       $xsessions
+	$t add {} {}
 	$t add Minutes/Talk  $xtalklen
 	$t add Talks/Session $xsesslen
 
-	# Show the timeline...
+	# Show the timeline, if any
+	set first 1
 	db do eval {
 	    SELECT T.date AS date,
 	           E.text AS text
@@ -228,8 +236,32 @@ proc ::cm::conference::cmd_show {config} {
 	    AND   T.type = E.id
 	    ORDER BY T.date
 	} {
+	    if {$first} {
+		$t add {} {}
+		$t add [color note Timeline] {}
+	    }
+	    set first 0
 	    $t add "- $text" [hdate $date]
 	}
+
+	# And the sponsors, if any.
+	set first 1
+	db do eval {
+	    SELECT C.dname AS name
+	    FROM sponsors S,
+	         contact  C
+	    WHERE S.conference = :id
+	    AND   S.contact    = C.id
+	    ORDER BY C.dname
+	} {
+	    if {$first} {
+		$t add {} {}
+		$t add [color note Sponsors] {}
+	    }
+	    set first 0
+	    $t add {} $name
+	}
+
     }] show
     return
 }
@@ -299,6 +331,8 @@ proc ::cm::conference::cmd_hotel {config} {
     return
 }
 
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_timeline_init {config} {
     debug.cm/conference {}
     Setup
@@ -328,6 +362,56 @@ proc ::cm::conference::cmd_timeline_clear {config} {
     timeline-clear $id
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_sponsor_link {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Adding sponsors to conference \"[color name [get $conference]]\" ... "
+
+    foreach contact [$config @name] {
+	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO sponsors
+	    VALUES (NULL, :conference, :contact)
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_sponsor_unlink {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Removing sponsors from conference \"[color name [get $conference]]\" ... "
+
+    foreach contact [$config @name] {
+	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM sponsors
+	    WHERE conference = :conference
+	    AND   contact    = :contact
+	}
+
+	puts [color good OK]
+    }
     return
 }
 
@@ -486,6 +570,21 @@ proc ::cm::conference::when {s e} {
     return "[hmon $s] $sd - $ed, $sy"
 }
 
+proc ::cm::conference::known-sponsor {} {
+    debug.cm/conference {}
+    Setup
+
+    set conference [the-current]
+    if {$conference < 0} {
+	return {}
+    }
+    return [cm::contact::KnownLimited [db do eval {
+	SELECT contact
+	FROM   sponsors
+	WHERE  conference = :conference
+    }]]
+}
+
 proc ::cm::conference::known {} {
     debug.cm/conference {}
     Setup
@@ -593,6 +692,18 @@ proc ::cm::conference::write {id details} {
     }
 }
 
+proc ::cm::conference::the-current {} {
+    debug.cm/conference {}
+
+    try {
+	set id [config get @current-conference]
+    } trap {CM CONFIG GET UNKNOWN} {e o} {
+	return -1
+    }
+    if {[has $id]} { return $id }
+    return -1
+}
+
 proc ::cm::conference::current {} {
     debug.cm/conference {}
 
@@ -651,6 +762,7 @@ proc ::cm::conference::Setup {} {
     ::cm::config::core::Setup
     ::cm::city::Setup
     ::cm::hotel::Setup
+    ::cm::contact::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -762,6 +874,24 @@ proc ::cm::conference::Setup {} {
 	    INSERT OR IGNORE INTO timeline_type VALUES (10,1,   0,'begin-t',   'Tutorial Start');              --  <=>
 	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Start');               --  +2d
 	}
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error sponsors {
+	{
+	    -- sponsors (contacts) for the conference
+	    -- mailing lists are not allowed, only people and companies.
+
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    contact	INTEGER	NOT NULL REFERENCES contact,
+	    UNIQUE (conference,contact)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {conference	INTEGER 1 {} 0}
+	    {contact	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error sponsors $error
     }
 
     # Shortcircuit further calls

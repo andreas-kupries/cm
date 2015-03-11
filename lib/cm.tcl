@@ -501,6 +501,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# remove - if not used
 	# modify - change title, start, length, alignment
+
+	private add-sponsor {
+	    section {Conference Management}
+	    description { Add one or more sponsoring contacts }
+	    input name {
+		Names of the contacts to add
+	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator not m-lists
+	} [cm::call conference cmd_sponsor_link]
+
+	private drop-sponsor {
+	    section {Conference Management}
+	    description { Remove one or more sponsoring contacts }
+	    input name {
+		Names of the contacts to remove
+	    } { list ; optional ; interact ; validate [cm::vt sponsor] }
+	} [cm::call conference cmd_sponsor_unlink]
+
     }
     alias conferences = conference list
 
