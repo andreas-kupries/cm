@@ -46,7 +46,8 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_center \
 	cmd_hotel cmd_timeline_init cmd_timeline_clear \
 	cmd_sponsor_link cmd_sponsor_unlink \
-	select label current get insert known-sponsor
+	select label current get insert known-sponsor \
+	select-sponsor
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -94,8 +95,8 @@ proc ::cm::conference::cmd_list {config} {
 	    ON        CC.id = C.city
 	    ORDER BY C.title
 	} {
-	    set start [date 2external $start]
-	    set end   [date 2external $end]
+	    set start "[date 2external $start] [hwday $start]"
+	    set end   "[date 2external $end] [hwday $end]"
 
 	    set city    [city label $city $state $nation]
 	    set issues  [issues [details $id]]
@@ -194,7 +195,7 @@ proc ::cm::conference::cmd_show {config} {
 	set issues [issues $details]
 	if {$issues ne {}} {
 	    $t add [color bad Issues] $issues
-	    $t add -------- -----
+	    $t add {} {}
 	}
 
 	dict with details {}
@@ -479,6 +480,9 @@ proc ::cm::conference::insert {id text} {
     #array set _ $details ; parray _ ; unset _
     #array set _ $hotel ; parray _ ; unset _
 
+    set sponsors [dict keys [known-sponsor-select $id]]
+    set sponsors "   * [join [lsort -dict $sponsors] "\n   * "]"
+
     # Needs:
     # - conference information
     #   - year
@@ -513,7 +517,7 @@ proc ::cm::conference::insert {id text} {
     lappend map @c:end@        [hdate $xend]
     lappend map @c:when@       [when $xstart $xend]
     lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
-    lappend map @c:sponsors@   TODO
+    lappend map @c:sponsors@   $sponsors
     lappend map @c:comittee@   TODO
     lappend map @c:talklength@ $xtalklen
 
@@ -544,6 +548,10 @@ proc ::cm::conference::hdate {x} {
 
 proc ::cm::conference::hmday {x} {
     clock format $x -format {%B %d}
+}
+
+proc ::cm::conference::hwday {x} {
+    clock format $x -format {%A}
 }
 
 proc ::cm::conference::hmon {x} {
@@ -585,6 +593,21 @@ proc ::cm::conference::known-sponsor {} {
     }]]
 }
 
+proc ::cm::conference::known-sponsor-select {conference} {
+    debug.cm/conference {}
+    Setup
+
+    if {($conference eq {}) ||
+	($conference < 0)} {
+	return {}
+    }
+    return [cm::contact::KnownSelectLimited [db do eval {
+	SELECT contact
+	FROM   sponsors
+	WHERE  conference = :conference
+    }]]
+}
+
 proc ::cm::conference::known {} {
     debug.cm/conference {}
     Setup
@@ -612,7 +635,7 @@ proc ::cm::conference::issues {details} {
     foreach {var message} {
 	xcity     "Location is not known"
 	xhotel    "Hotel is not known"
-	xsessions "C.Center is not known"
+	xsessions "Conference center is not known"
 	xstart    "Start date is not known"
 	xend      "End date is not known"
     } {
@@ -625,7 +648,15 @@ proc ::cm::conference::issues {details} {
 	FROM   timeline
 	WHERE con = :xconference
     }]} {
-	+issue "Timeline missing"
+	+issue "Undefined timeline"
+    }
+
+    if {![db do exists {
+	SELECT id
+	FROM   sponsors
+	WHERE  conference = :xconference
+    }]} {
+	+issue "No sponsors"
     }
 
     if {![llength $issues]} return
@@ -755,6 +786,34 @@ proc ::cm::conference::select {p} {
     # Map back to id
     return [dict get $conferences $choice]
 }
+
+proc ::cm::conference::select-sponsor {p} {
+    debug.cm/conference {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set sponsors [known-sponsor-select [the-current]]
+    set choices  [lsort -dict [dict keys $sponsors]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $sponsors 1]
+	}
+    }
+
+    set choice [ask menu "" "Which sponsor: " $choices]
+
+    # Map back to id
+    return [dict get $sponsors $choice]
+}
+
+# # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
     debug.cm/conference {}

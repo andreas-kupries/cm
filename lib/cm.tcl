@@ -514,8 +514,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Remove one or more sponsoring contacts }
 	    input name {
-		Names of the contacts to remove
-	    } { list ; optional ; interact ; validate [cm::vt sponsor] }
+		Name of the contact to remove
+	    } { 
+		optional
+		generate [cm::call conference select-sponsor]
+		validate [cm::vt sponsor]
+	    }
 	} [cm::call conference cmd_sponsor_unlink]
 
     }

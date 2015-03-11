@@ -930,22 +930,39 @@ proc ::cm::contact::KnownSelect {} {
     debug.cm/contact {}
 
     # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, tag, name
-	FROM contact
-    } {
-	dict set known [label $tag $name] $id
-    }
+    set known [KnownSelectLimited {}]
 
     # Cache result
     proc ::cm::contact::KnownSelect {} [list return $known]
     return $known
 }
 
+proc ::cm::contact::KnownSelectLimited {limit} {
+    debug.cm/contact {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    set sql {
+	SELECT id, tag, dname
+	FROM   contact
+    }
+    if {[llength $limit]} {
+	set slimit [join $limit ,]
+	append sql " WHERE id IN ($slimit)"
+    }
+
+    db do eval $sql {
+	dict set known [label $tag $dname] $id
+    }
+
+    return $known
+}
+
 proc ::cm::contact::Initials {text} {
     debug.cm/contact {}
+
     set r {}
     foreach w [split $text] {
 	append r [string toupper [string index $w 0]]
@@ -955,6 +972,7 @@ proc ::cm::contact::Initials {text} {
 
 proc ::cm::contact::Invert {dict} {
     debug.cm/contact {}
+
     set r {}
     # Invert
     dict for {k vlist} $dict {
@@ -971,6 +989,7 @@ proc ::cm::contact::Invert {dict} {
 
 proc ::cm::contact::DropAmbiguous {dict} {
     debug.cm/contact {}
+
     dict for {k vlist} $dict {
 	if {[llength $vlist] == 1} {
 	    dict set dict $k [lindex $vlist 0]
@@ -983,6 +1002,7 @@ proc ::cm::contact::DropAmbiguous {dict} {
 
 proc ::cm::contact::KnownValidate {} {
     debug.cm/contact {}
+
     set known [KnownLimited {}]
 
     # Cache result
@@ -992,6 +1012,8 @@ proc ::cm::contact::KnownValidate {} {
 
 proc ::cm::contact::KnownLimited {limit} {
     debug.cm/contact {}
+    Setup
+
     # dict: label -> id
     set known {}
 
