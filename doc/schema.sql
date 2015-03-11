@@ -164,16 +164,30 @@ CREATE TABLE conference (
 	id		INTEGER PRIMARY KEY AUTOINCREMENT,
 	title		TEXT	UNIQUE,
 	year		INTEGER,
+
 	city		INTEGER	REFERENCES city,
+	hotel		INTEGER REFERENCES location	-- We will not immediately know where we will be
+	facility	INTEGER REFERENCES location	-- While sessions are usually at the hotel, they may not be.
+
 	startdate	INTEGER,		-- [*], date [epoch]
 	enddate		INTEGER,		--	date [epoch]
-	talklength	INTEGER,			-- minutes	  here we configure
-	sessionlen	INTEGER,			-- in #talks max  basic scheduling parameters.
-					 		-- 		  shorter talks => longer sessions.
-					 		-- 		  standard: 30 min x3
-	hotel		INTEGER REFERENCES location	-- We will not immediately know where we will be
-	sessions	INTEGER REFERENCES location	-- While sessions are usually at the hotel, they may not be.
-	--	constraint: city == hotel->city, if hotel NOT NULL
+	alignment	INTEGER NOT NULL,	-- iso8601 weekday (1:mon...7:sun), or -1 (no alignment)
+	length		INTEGER NOT NULL,	-- length in days
+
+	talklength	INTEGER,		-- minutes	  here we configure
+	sessionlen	INTEGER,		-- in #talks max  basic scheduling parameters.
+				 		-- 		  shorter talks => longer sessions.
+				 		-- 		  standard: 30 min x3
+
+	-- Constraints:
+	-- * (city == facility->city) WHERE facility IS NOT NULL
+	-- * (city == hotel->city)    WHERE facility IS NULL AND hotel IS NOT NULL
+	--   Note: This covers the possibility of hotel->city != session->city
+	--   In that case we expect the conference to be in the city where the sessions are.
+	--
+	-- * year      == year-of    (start-date)
+	-- * alignment == weekday-of (start-date) WHERE alignment > 0.
+	-- * enddate   == startdate + length days
 
 	-- [Ad *] from this we can compute a basic timeline
 	--	for deadlines and actions (cfp's, submission

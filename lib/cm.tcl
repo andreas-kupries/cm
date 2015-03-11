@@ -481,14 +481,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Clear the timeline for the conference }
 	} [cm::call conference cmd_timeline_clear]
 
-	private center {
+	private facility {
 	    section {Conference Management}
 	    description { Select the location for presentations }
-	    input hotel { Conference hotel } {
+	    input hotel { Conference facility } {
 		# TODO: validator <=> hotel identification (name + city)
 		optional ; generate [cm::call hotel select]
 	    }
-	} [cm::call conference cmd_center]
+	} [cm::call conference cmd_facility]
 
 	private hotel {
 	    section {Conference Management}

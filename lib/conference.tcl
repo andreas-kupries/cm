@@ -43,7 +43,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::conference {
     namespace export \
-	cmd_create cmd_list cmd_select cmd_show cmd_center \
+	cmd_create cmd_list cmd_select cmd_show cmd_facility \
 	cmd_hotel cmd_timeline_init cmd_timeline_clear \
 	cmd_sponsor_link cmd_sponsor_unlink \
 	cmd_staff_link cmd_staff_unlink \
@@ -213,7 +213,7 @@ proc ::cm::conference::cmd_show {config} {
 
 	if {$xcity     ne {}} { set xcity     [city  get $xcity] }
 	if {$xhotel    ne {}} { set xhotel    [hotel get $xhotel] }
-	if {$xsessions ne {}} { set xsessions [hotel get $xsessions] }
+	if {$xfacility ne {}} { set xfacility [hotel get $xfacility] }
 
 	$t add Year          $xyear
 	$t add Start         $xstart
@@ -223,7 +223,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add {} {}
 	$t add In            $xcity
 	$t add @Hotel        $xhotel
-	$t add @Center       $xsessions
+	$t add @Facility     $xfacility
 	$t add {} {}
 	$t add Minutes/Talk  $xtalklen
 	$t add Talks/Session $xsesslen
@@ -294,7 +294,7 @@ proc ::cm::conference::cmd_show {config} {
     return
 }
 
-proc ::cm::conference::cmd_center {config} {
+proc ::cm::conference::cmd_facility {config} {
     debug.cm/conference {}
     Setup
     db show-location
@@ -309,11 +309,11 @@ proc ::cm::conference::cmd_center {config} {
     set clabel  [city get $city]
 
     puts "Conference \"[color name [get $id]]\":"
-    puts "- Set C.Center as \"[color name $hlabel]\""
+    puts "- Set facility as \"[color name $hlabel]\""
     puts "- Set city     as \"[color name $clabel]\""
 
-    dict set details xsessions $hotel
-    dict set details xcity $city
+    dict set details xfacility $hotel
+    dict set details xcity     $city
 
     if {$xhotel eq {}} {
 	puts "- Set hotel    as the same"
@@ -345,12 +345,12 @@ proc ::cm::conference::cmd_hotel {config} {
 
     dict set details xhotel $hotel
 
-    if {$xsessions eq {}} {
-	puts "- Set C.Center as the same"
+    if {$xfacility eq {}} {
+	puts "- Set facility as the same"
 	puts "- Set city     as \"[color name $clabel]\""
 
-	dict set details xsessions $hotel
-	dict set details xcity $city
+	dict set details xfacility $hotel
+	dict set details xcity     $city
     }
 
     puts -nonewline "Saving ... "
@@ -814,7 +814,7 @@ proc ::cm::conference::issues {details} {
     foreach {var message} {
 	xcity     "Location is not known"
 	xhotel    "Hotel is not known"
-	xsessions "Conference center is not known"
+	xfacility "Facility is not known"
 	xstart    "Start date is not known"
 	xend      "End date is not known"
     } {
@@ -898,7 +898,7 @@ proc ::cm::conference::details {id} {
 	       "xyear",       year,
 	       "xcity",       city,
 	       "xhotel",      hotel,
-	       "xsessions",   sessions,
+	       "xfacility",   facility,
 	       "xstart",      startdate,
 	       "xend",        enddate,
 	       "xalign",      alignment,
@@ -920,7 +920,7 @@ proc ::cm::conference::write {id details} {
 	SET    year       = :xyear,
 	       city       = :xcity,
 	       hotel      = :xhotel,
-	       sessions   = :xsessions,
+	       facility   = :xfacility,
 	       startdate  = :xstart,
 	       enddate    = :xend,
 	       alignment  = :xalign,
@@ -1102,7 +1102,7 @@ proc ::cm::conference::Setup {} {
 
 	    city	INTEGER REFERENCES city,
 	    hotel	INTEGER REFERENCES hotel, -- We do not immediately know where we will be
-	    sessions	INTEGER REFERENCES hotel, -- While sessions are usually at the hotel, they may not be.
+	    facility	INTEGER REFERENCES hotel, -- While sessions are usually at the hotel, they may not be.
 
 	    startdate	INTEGER,		-- [*], date [epoch]
 	    enddate	INTEGER,		--	date [epoch]
@@ -1115,8 +1115,8 @@ proc ::cm::conference::Setup {} {
 						-- 		  standard: 30 min x3
 
 	    -- Constraints:
-	    -- * (city == session->city) WHERE session IS NOT NULL
-	    -- * (city == hotel->city)   WHERE session IS NULL AND hotel IS NOT NULL
+	    -- * (city == facility->city) WHERE facility IS NOT NULL
+	    -- * (city == hotel->city)    WHERE facility IS NULL AND hotel IS NOT NULL
 	    --   Note: This covers the possibility of hotel->city != session->city
 	    --   In that case we expect the conference to be in the city where the sessions are.
 	    --
@@ -1137,7 +1137,7 @@ proc ::cm::conference::Setup {} {
 	    {year		INTEGER 1 {} 0}
 	    {city		INTEGER 0 {} 0}
 	    {hotel		INTEGER 0 {} 0}
-	    {sessions		INTEGER 0 {} 0}
+	    {facility		INTEGER 0 {} 0}
 	    {startdate		INTEGER	0 {} 0}
 	    {enddate		INTEGER	0 {} 0}
 	    {alignment		INTEGER	1 {} 0}
