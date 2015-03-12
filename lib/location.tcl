@@ -28,7 +28,6 @@ package require cm::config::core
 package require cm::db
 package require cm::table
 package require cm::util
-#package require cm::validate::location
 
 # # ## ### ##### ######## ############# ######################
 
@@ -39,7 +38,8 @@ namespace eval ::cm {
 namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	cmd_map select label get details
+	 cmd_map cmd_staff_show cmd_staff_link cmd_staff_unlink \
+	select label get details known-staff select-staff
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -169,6 +169,20 @@ proc ::cm::location::cmd_show {config} {
 
 	set xcity [city get $xcity]
 
+	if {!$xstaffcount} {
+	    set xstaffcount [color bad None]
+	    append xstaffcount "\n(=> location add-staff)"
+	} else {
+	    append xstaffcount "\n(=> location staff)"
+	}
+
+	if {$xtransport eq {}} {
+	    set xtransport [color bad None]
+	} elseif {[string length $xtransport] > 30} {
+	    set xtransport [string range $xtransport 0 26]...
+	}
+
+	$t add Staff       $xstaffcount
 	$t add Street      $xstreet
 	$t add Zipcode     $xzipcode
 	$t add City        $xcity
@@ -233,6 +247,90 @@ proc ::cm::location::cmd_contact {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::location::cmd_staff_show {config} {
+    debug.cm/location {}
+    Setup
+    db show-location
+
+    set location [current]
+
+    puts "Staff of \"[color name [get $location]]\":"
+    [table t {Role Staff} {
+	set first 1
+	db do eval {
+	    SELECT position, name
+	    FROM   location_staff
+	    WHERE  location = :location
+	    ORDER BY position, name
+	} {
+	    if {$first} {
+		set lastposition $position
+		set first 0
+	    } elseif {$lastposition ne $position} {
+		$t add {} {}
+		set lastposition $position
+	    } else {
+		set position {}
+	    }
+	    $t add $position $name
+	}
+    }] show
+    return
+}
+
+proc ::cm::location::cmd_staff_link {config} {
+    debug.cm/location {}
+    Setup
+    db show-location
+
+    set location [current]
+    set position [$config @position]
+    set name     [$config @name]
+    set phone    [$config @phone]
+    set email    [$config @email]
+
+    if {($phone eq {}) && ($email eq {})} {
+	util user-error "We need either phone or email, you cannot leave both undefined." \
+	    LOCATION STAFF CONTACT
+    }
+
+    puts "Adding \"$position\" to location \"[color name [get $location]]\" ... "
+    puts -nonewline "  \"[color name $name]\" (P: $phone) (E: $email) ... "
+    flush stdout
+
+    db do eval {
+	INSERT INTO location_staff
+	VALUES (NULL, :location, :position, :name, :email, :phone)
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::location::cmd_staff_unlink {config} {
+    debug.cm/location {}
+    Setup
+    db show-location
+
+    set location [current]
+    lassign [$config @name] id position name
+
+    puts "Removing staff from location \"[color name [get $location]]\" ... "
+    puts -nonewline "  $position \"[color name $name]\" ... "
+    flush stdout
+
+    db do eval {
+	DELETE
+	FROM location_staff
+	WHERE id = :id
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
 proc ::cm::location::label {name city} {
@@ -269,8 +367,8 @@ proc ::cm::location::issues {details} {
     dict with details {}
 
     set issues {}
-    # TODO: Issue an issue when location is not staffed (count == 0)
 
+    if {!$xstaffcount}     { +issue "Staff missing" }
     if {$xzipcode   eq {}} { +issue "Zipcode missing" }
     if {$xstreet    eq {}} { +issue "Street address missing" }
     if {$xtransport eq {}} { +issue "Map & directions missing" }
@@ -316,7 +414,7 @@ proc ::cm::location::details {id} {
     debug.cm/location {}
     Setup
 
-    return [db do eval {
+    set details [db do eval {
 	SELECT "xname",       name,
                "xcity",       city,
 	       "xstreet",     streetaddress,
@@ -332,6 +430,16 @@ proc ::cm::location::details {id} {
 	FROM  location
 	WHERE id = :id
     }]
+
+    # Was quicker to write than an outer join aggregate to count.
+    # Using an aggregate query would be nicer, likely.
+    dict set details xstaffcount [db do eval {
+	SELECT count (id)
+	FROM   location_staff
+	WHERE  location = :id
+    }]
+
+    return $details
 }
 
 proc ::cm::location::write {id details} {
@@ -339,6 +447,8 @@ proc ::cm::location::write {id details} {
     Setup
 
     dict with details {}
+    # xstaffcount is ignored, derived data.
+
     db do eval {
 	UPDATE location
 	SET    city           = :xcity,
@@ -353,6 +463,18 @@ proc ::cm::location::write {id details} {
 	       transportation = :xtransport
 	WHERE id = :id
     }
+}
+
+proc ::cm::location::the-current {} {
+    debug.cm/location {}
+
+    try {
+	set id [config get @current-location]
+    } trap {CM CONFIG GET UNKNOWN} {e o} {
+	return -1
+    }
+    if {[has $id]} { return $id }
+    return -1
 }
 
 proc ::cm::location::current {} {
@@ -407,6 +529,81 @@ proc ::cm::location::select {p} {
     return [dict get $locations $choice]
 }
 
+proc ::cm::location::select-staff {p} {
+    debug.cm/location {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> (id,position,name)
+    set staff   [known-staff-select [the-current]]
+    set choices [lsort -dict [dict keys $staff]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $staff 1]
+	}
+    }
+
+    set choice [ask menu "" "Which staff: " $choices]
+
+    # Map back to (id,position,name)
+    return [dict get $staff $choice]
+}
+
+proc ::cm::location::known-staff {} {
+    debug.cm/location {}
+    Setup
+
+    set location [the-current]
+    if {$location < 0} {
+	return {}
+    }
+
+    set known {}
+    db do eval {
+	SELECT id, position, name
+	FROM   location_staff
+	WHERE  location = :location
+    } {
+	set key [list $id $position $name]
+	dict set known "${position}: $name" $key
+	dict set known "$name/$position"    $key
+    }
+
+    return $known
+}
+
+proc ::cm::location::known-staff-select {location} {
+    debug.cm/location {}
+    Setup
+
+    if {($location eq {}) ||
+	($location < 0)} {
+	return {}
+    }
+
+    # Not going through contact here. We need role information as
+    # well.
+
+    set known {}
+    db do eval {
+	SELECT id, position, name
+	FROM   location_staff
+	WHERE  location = :location
+	ORDER BY position, name
+    } {
+	dict set known "$position/$name" [list $id $position $name]
+    }
+    return $known
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::location::Setup {} {
     debug.cm/location {}
 
@@ -444,6 +641,27 @@ proc ::cm::location::Setup {} {
 	} {}
     }]} {
 	db setup-error location $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error location_staff {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    location	INTEGER NOT NULL REFERENCES location,
+	    position	TEXT	NOT NULL,
+	    name	TEXT	NOT NULL,
+	    email	TEXT,	-- either email or phone must be set, i.e. not null
+	    phone	TEXT,	-- no idea how to specify such constraint in sql
+	    UNIQUE (location, position, name) -- Same person may have multiple positions
+	} {
+	    {id			INTEGER 1 {} 1}
+	    {location		INTEGER 1 {} 0}
+	    {position		TEXT    1 {} 0}
+	    {name		TEXT    1 {} 0}
+	    {email		TEXT	0 {} 0}
+	    {phone		TEXT	0 {} 0}
+	} {}
+    }]} {
+	db setup-error location_staff $error
     }
 
     # Shortcircuit further calls

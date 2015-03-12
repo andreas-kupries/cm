@@ -511,8 +511,6 @@ proc ::cm::conference::cmd_staff_show {config} {
 		set role {}
 	    }
 	    $t add $role $name
-
-
 	}
     }] show
     return

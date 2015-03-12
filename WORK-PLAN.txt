@@ -1,13 +1,17 @@
 NOW
 ===
 
-* implement location_staff --> clif rolodex
-* implement rate           --> piece for website
+* implement rate  --> piece for website
 
 * -- con mgmt -- ping clif for conf date info
+  /ANSWERS pending/
+
 * -- con mgmt -- ping clif for hotel rate data -
      range/deadline/code/amount
+  /ANSWERS pending/
+
 * -- ping clif for hotel rolodex info --
+  /ANSWERS pending/
 
 * implement contact(person) for contact(company)
   [reverse of affiliation, company email, separate from the main
@@ -17,8 +21,8 @@ NOW
 * implement mail ping sponsors, template based - fixed name 
 
 * -- con mgmt -- enter company contact info --
-* -- con mgmt -- ping past sponsors for renewal, and company link
-     info.
+* -- con mgmt -- ping past sponsors for renewal, and company link info.
+  /ANSWERS pending/
 
 * ---- con mgmt --- ready for initial cfp 1 ---
 

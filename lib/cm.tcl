@@ -409,6 +409,41 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias transport
 	alias note
 
+	private add-staff {
+	    section {Location Management}
+	    description { Add one or more staff to the location }
+	    input position {
+		The role/position to staff
+	    } { optional ; interact }
+	    input name {
+		Staff name
+	    } { optional ; interact }
+	    input phone {
+		Staff phone
+	    } { optional ; interact } ;# can we validate a phone number ?
+	    input email {
+		Staff email
+	    } { optional ; interact ; validate [cm::vt mail-address] }
+
+	} [cm::call location cmd_staff_link]
+
+	private drop-staff {
+	    section {Location Management}
+	    description { Remove one or more staff }
+	    input name {
+		Position and name of the staff to remove
+	    } { 
+		optional
+		generate [cm::call location select-staff]
+		validate [cm::vt location-staff]
+	    }
+	} [cm::call location cmd_staff_unlink]
+
+	private staff {
+	    section {Location Management}
+	    description { Show staff for current location }
+	} [cm::call location cmd_staff_show]
+
 	# remove - if not used
 	# modify - change name, street, zip, city (rename, relocate/move)
     }

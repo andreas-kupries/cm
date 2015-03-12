@@ -33,24 +33,31 @@ CREATE TABLE location (
 );
 -- ---------------------------------------------------------------
 CREATE TABLE location_staff (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	location	INTEGER REFERENCES location,
-	position	TEXT,
-	familyname	TEXT,
-	firstname	TEXT,
-	email		TEXT,
-	phone		TEXT,
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	location	INTEGER NOT NULL REFERENCES location,
+	position	TEXT	NOT NULL,
+	name		TEXT	NOT NULL,
+	email		TEXT,	-- either email or phone must be set, i.e. not null
+	phone		TEXT,	-- no idea how to specify such constraint in sql
 	UNIQUE (location, position, familyname, firstname) -- Same person may have multiple positions
 );
 -- ---------------------------------------------------------------
 CREATE TABLE rate (				-- rates change from year to year
-	conference	INTEGER	REFERENCES conference,
-	location	INTEGER	REFERENCES location,
-	rate		INTEGER,		-- per night, pennies, i.e. stored x100.
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	conference	INTEGER	NOT NULL REFERENCES conference,
+	location	INTEGER	NOT NULL REFERENCES location,
+	rate		INTEGER	NOT NULL,	-- per night
+	ratefactor	INTEGER	NOT NULL,	-- factor the rate is stored by, i.e. as xFactor (like x100)
+	currency	TEXT	NOT NULL,	-- name of the currency the rate is in
 	groupcode	TEXT,
-	begindate	INTEGER,		-- date [epoch]
-	enddate		INTEGER,		-- date [epoch]
-	UNIQUE (con, location)
+	begindate	INTEGER,		-- date [epoch] the discount begins
+	enddate		INTEGER,		-- date [epoch] the discount ends
+	deadline	INTEGER,		-- date [epoch] registration deadline
+	pdeadline	INTEGER			-- date [epoch] same, but publicly known
+						-- show a worse deadline public for grace period
+	-- Constraints: begin- and end-dates should cover the entire conference, at least.
+	-- deadline should not be in the past on date of entry.
+	UNIQUE (conference, location)
 );
 -- ---------------------------------------------------------------
 CREATE TABLE contact (
