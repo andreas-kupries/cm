@@ -1,17 +1,7 @@
 NOW
 ===
 
-* implement rate  --> piece for website
-
-* -- con mgmt -- ping clif for conf date info
-  /ANSWERS pending/
-
-* -- con mgmt -- ping clif for hotel rate data -
-     range/deadline/code/amount
-  /ANSWERS pending/
-
-* -- ping clif for hotel rolodex info --
-  /ANSWERS pending/
+* implement commands to fix conference dates, and timeline dates
 
 * implement contact(person) for contact(company)
   [reverse of affiliation, company email, separate from the main
@@ -61,3 +51,5 @@ FUTURE
 
 * implement copying of conference data/setup -- easier entry of new
   conference, but also of previous ones
+
+* implement commands to modiy the timeline defaults (deltas)

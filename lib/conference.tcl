@@ -139,7 +139,8 @@ proc ::cm::conference::cmd_create {config} {
 	util user-error "Start date does not match conference year" YEAR MISMATCH
     }
 
-    # calculate end-date
+    # calculate end-date (= start + (length - 1))
+    incr length -1
     set end [clock add $start $length days]
 
     # defaults for talk-length and session-length - see sql below
