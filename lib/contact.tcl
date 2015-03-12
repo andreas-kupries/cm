@@ -23,12 +23,14 @@ package require debug::caller
 package require dbutil
 package require try
 package require struct::list
+package require textutil::adjust
 
 package provide cm::contact 0 ; # campaign and contact are circular
 
 package require cm::campaign
 package require cm::table
 package require cm::db
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -53,6 +55,7 @@ namespace eval ::cm::contact {
 
     namespace import ::cm::campaign
     namespace import ::cm::db
+    namespace import ::cm::util
 
     namespace import ::cm::table::do
     rename do table
@@ -71,6 +74,8 @@ proc ::cm::contact::cmd_show {config} {
     db show-location
 
     set contact [string trim [$config @name]]
+
+    set w [util tspace [expr {[string length {Can Receive Mail}]+7}]]
 
     [table t {Property Value} {
 	db do eval {
@@ -97,16 +102,18 @@ proc ::cm::contact::cmd_show {config} {
 		}]
 	    }
 
-	    $t add Tag         $tag
-	    $t add Name        $name
-	    $t add Type        $type
-	    $t add Affiliation $affiliation
+	    set bio [textutil::adjust::adjust $bio -length $w]
+
+	    $t add Tag                $tag
+	    $t add Name               $name
+	    $t add Type               $type
+	    $t add Affiliation        $affiliation
 	    $t add {Can Receive Mail} $crecv
 	    $t add {Can Register}     $creg
 	    $t add {Can Book}         $cbook
 	    $t add {Can Talk}         $ctalk
 	    $t add {Can Submit}       $csubm
-	    $t add Biography   $bio
+	    $t add Biography          $bio
 
 	    db do eval {
 		SELECT email
@@ -509,7 +516,7 @@ proc ::cm::contact::cmd_rename {config} {
 
     set contact [$config @name]
     set dnew    [$config @newname]
-    set new     [string tolower $new]
+    set new     [string tolower $dnew]
 
     puts -nonewline "Renaming contact \"[color name [get $contact]]\" to \"[color name $new]\" ... "
     flush stdout

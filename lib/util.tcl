@@ -26,6 +26,7 @@ package require Tcl 8.5
 package require debug
 package require debug::caller
 package require cmdr::color
+package require linenoise
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -37,7 +38,8 @@ namespace eval ::cm {
 
 namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
-	max-length strip-prefix open user-error highlight-current
+	max-length strip-prefix open user-error highlight-current \
+	tspace
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -48,6 +50,15 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::tspace {sub} {
+    set max [linenoise columns]
+    incr max -$sub
+    if {$max < 0} { set max 10 }
+    return $max
+}
 
 # # ## ### ##### ######## ############# #####################
 
