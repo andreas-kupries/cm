@@ -302,6 +302,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call template cmd_remove]
 	alias drop
 
+	private set {
+	    section {Conference Management} {Mail Campaign} {Template Management}
+	    description { Update the named template. The text is read from stdin. }
+	    input name {
+		Name of the template to update
+	    } { validate [cm::vt template] }
+	} [cm::call template cmd_set]
+	alias update
     }
     alias templates = template list
 

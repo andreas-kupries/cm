@@ -34,7 +34,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::template {
     namespace export \
-	cmd_create cmd_remove cmd_list cmd_show \
+	cmd_create cmd_remove cmd_set cmd_list cmd_show \
 	get details known select
     namespace ensemble create
 
@@ -130,6 +130,27 @@ proc ::cm::template::cmd_remove {config} {
     db do eval {
 	DELETE FROM template
 	WHERE id = :id
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::template::cmd_set {config} {
+    debug.cm/template {}
+    Setup
+    db show-location
+
+    set template [$config @name]
+    set text     [read stdin]
+
+    puts -nonewline "Update [color name [$config @name string]] ... "
+    flush stdout
+
+    db do eval {
+	UPDATE template
+	SET    value = :text
+	WHERE  id = :template
     }
 
     puts [color good OK]
