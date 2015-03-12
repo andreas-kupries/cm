@@ -143,12 +143,9 @@ proc ::cm::contact::cmd_list {config} {
     set pattern  [string trim [$config @pattern]]
     set withmail [$config @with-mails]
 
-    if {$withmail} {
-	set titles {Type Tag Name Mails Flags Affiliation}
-    } else {
-	set titles {Type Tag Name Flags Affiliation}
-    }
+    set titles {\# Type Tag Name Mails Flags Affiliation}
 
+    set counter 0
     [table t $titles {
 	db do eval {
 	    SELECT C.id           AS contact,
@@ -168,6 +165,8 @@ proc ::cm::contact::cmd_list {config} {
 	    AND   CT.id = C.type
 	    ORDER BY name
 	} {
+	    incr counter
+
 	    # coded left join
 	    if {$affiliation ne {}} {
 		set affiliation [db do onecolumn {
@@ -187,15 +186,21 @@ proc ::cm::contact::cmd_list {config} {
 		db do eval {
 		    SELECT email, inactive
 		    FROM   email
-		    WHERE contact = :contact
+		    WHERE  contact = :contact
 		    ORDER BY email
 		} {
 		    lappend mails "[expr {$inactive ? "-":" "}] $email"
 		}
 		set mails [join $mails \n]
-		$t add $type $tag $name $mails $flags $affiliation
+		$t add $counter $type $tag $name $mails $flags $affiliation
 	    } else {
-		$t add $type $tag $name $flags $affiliation
+		set mails [db do eval {
+		    SELECT count(email)
+		    FROM   email
+		    WHERE  contact = :contact
+		}]
+		if {!$mails} { set mails [color bad None] }
+		$t add $counter $type $tag $name $mails $flags $affiliation
 	    }
 	}
     }] show
