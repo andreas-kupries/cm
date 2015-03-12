@@ -489,6 +489,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Clear the timeline for the conference }
 	} [cm::call conference cmd_timeline_clear]
 
+	private timeline {
+	    section {Conference Management}
+	    description { Show the timeline for the conference }
+	} [cm::call conference cmd_timeline_show]
+
 	private facility {
 	    section {Conference Management}
 	    description { Select the location for presentations }
@@ -530,6 +535,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call conference cmd_sponsor_unlink]
 
+	private sponsors {
+	    section {Conference Management}
+	    description { Show the sponsors of the conference }
+	} [cm::call conference cmd_sponsor_show]
+
 	private add-staff {
 	    section {Conference Management}
 	    description { Add one or more staff }
@@ -556,6 +566,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call conference cmd_staff_unlink]
 
+	private staff {
+	    section {Conference Management}
+	    description { Show the staff of the conference }
+	} [cm::call conference cmd_staff_show]
     }
     alias conferences = conference list
 

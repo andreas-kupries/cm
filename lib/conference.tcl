@@ -43,10 +43,10 @@ namespace eval ::cm {
 }
 namespace eval ::cm::conference {
     namespace export \
-	cmd_create cmd_list cmd_select cmd_show cmd_facility \
-	cmd_hotel cmd_timeline_init cmd_timeline_clear \
-	cmd_sponsor_link cmd_sponsor_unlink \
-	cmd_staff_link cmd_staff_unlink \
+	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
+	cmd_timeline_init cmd_timeline_clear cmd_timeline_show \
+	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	select label current get insert known-sponsor \
 	select-sponsor select-staff-role select-staff known-staff \
 	get-role
@@ -228,67 +228,54 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Minutes/Talk  $xtalklen
 	$t add Talks/Session $xsesslen
 
-	# Show the timeline, if any
-	set first 1
-	db do eval {
-	    SELECT T.date AS date,
-	           E.text AS text
-	    FROM   timeline      T,
-	           timeline_type E
-	    WHERE T.con  = :id
-	    AND   T.type = E.id
-	    ORDER BY T.date
-	} {
-	    if {$first} {
-		$t add {} {}
-		$t add [color note Timeline] {}
-	    }
-	    set first 0
-	    $t add "- $text" [hdate $date]
+	$t add {} {}
+
+	set tcount [db do eval {
+	    SELECT count (id)
+	    FROM   timeline
+	    WHERE  con = :id
+	}]
+	if {!$tcount} {
+	    set tcount Undefined
+	    set color  bad
+	    set suffix "\n(=> conference timeline-init)"
+	} else {
+	    set color  note
+	    set suffix "\n(=> conference timeline)"
 	}
+	$t add [color $color Timeline] [color $color $tcount]$suffix
 
 	# And the sponsors, if any.
-	set first 1
-	db do eval {
-	    SELECT C.dname AS name
-	    FROM sponsors S,
-	         contact  C
-	    WHERE S.conference = :id
-	    AND   S.contact    = C.id
-	    ORDER BY C.dname
-	} {
-	    if {$first} {
-		$t add {} {}
-		$t add [color note Sponsors] {}
-	    }
-	    set first 0
-	    $t add {} $name
+	set scount [db do eval {
+	    SELECT count (id)
+	    FROM   sponsors
+	    WHERE  conference = :id
+	}]
+	if {!$scount} {
+	    set tcount None
+	    set color  bad
+	    set suffix "\n(=> conference add-sponsor)"
+	} else {
+	    set color  note
+	    set suffix "\n(=> conference sponsors)"
 	}
+	$t add [color $color Sponsors] [color $color $scount]$suffix
 
 	# Do not forget the staff
-	set first 1
-	db do eval {
-	    SELECT C.dname AS name,
-	           R.text  AS role
-	    FROM conference_staff S,
-	         contact          C,
-	         staff_role       R
-	    WHERE S.conference = :id
-	    AND   S.contact    = C.id
-	    AND   S.role       = R.id
-	    ORDER BY role, name
-	} {
-	    if {$first} {
-		set lastrole $role
-		$t add {} {}
-		$t add [color note Staff] {}
-	    }
-	    set first 0
-
-	    if {$lastrole ne $role} { $t add {} {} }
-	    $t add "- $role" $name
-	    set lastrole $role
+	set scount [db do eval {
+	    SELECT count (id)
+	    FROM   conference_staff
+	    WHERE  conference = :id
+	}]
+	if {!$scount} {
+	    set tcount None
+	    set color  bad
+	    set suffix "\n(=> conference add-staff)"
+	} else {
+	    set color  note
+	    set suffix "\n(=> conference staff)"
 	}
+	$t add [color $color Staff] [color $color $scount]$suffix
 
     }] show
     return
@@ -361,6 +348,30 @@ proc ::cm::conference::cmd_hotel {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_timeline_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Timeline of \"[color name [get $conference]]\":"
+    [table t {Event When} {
+	db do eval {
+	    SELECT T.date AS date,
+	           E.text AS text
+	    FROM   timeline      T,
+	           timeline_type E
+	    WHERE T.con  = :conference
+	    AND   T.type = E.id
+	    ORDER BY T.date
+	} {
+	    $t add "$text" [hdate $date]
+	}
+    }] show
+    return
+}
+
 proc ::cm::conference::cmd_timeline_init {config} {
     debug.cm/conference {}
     Setup
@@ -394,6 +405,30 @@ proc ::cm::conference::cmd_timeline_clear {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_sponsor_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Sponsors of \"[color name [get $conference]]\":"
+    [table t {Sponsor} {
+	# TODO: sponsors - mail/link/notes ?
+	db do eval {
+	    SELECT C.dname AS name
+	    FROM   sponsors S,
+	           contact  C
+	    WHERE  S.conference = :conference
+	    AND    S.contact    = C.id
+	    ORDER BY C.dname
+	} {
+	    $t add $name
+	}
+    }] show
+    return
+}
 
 proc ::cm::conference::cmd_sponsor_link {config} {
     debug.cm/conference {}
@@ -444,6 +479,44 @@ proc ::cm::conference::cmd_sponsor_unlink {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_staff_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Staff of \"[color name [get $conference]]\":"
+    [table t {Role Staff} {
+	set first 1
+	db do eval {
+	    SELECT C.dname AS name,
+	           R.text  AS role
+	    FROM conference_staff S,
+	         contact          C,
+	         staff_role       R
+	    WHERE S.conference = :conference
+	    AND   S.contact    = C.id
+	    AND   S.role       = R.id
+	    ORDER BY role, name
+	} {
+	    if {$first} {
+		set lastrole $role
+		set first 0
+	    } elseif {$lastrole ne $role} {
+		$t add {} {}
+		set lastrole $role
+	    } else {
+		set role {}
+	    }
+	    $t add $role $name
+
+
+	}
+    }] show
+    return
+}
 
 proc ::cm::conference::cmd_staff_link {config} {
     debug.cm/conference {}
