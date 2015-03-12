@@ -336,64 +336,64 @@ cmdr create cm::cm [file tail $::argv0] {
     alias cities = city list
 
     # # ## ### ##### ######## ############# ######################
-    ## Manage locations, i.e. hotels, resorts, etc.
+    ## Manage locations, i.e. hotels, resorts, conference centers, etc.
 
-    officer hotel {
+    officer location {
 	description {
-	    Manage hotels and other locations (when hotel != session)
+	    Manage hotels and facilities
 	}
 	# -- name, city, streetaddress, zip, book/local (fax, phone, url), transport
 	# -- (n:1) city
-	# -- (1:n) hotel_staff
+	# -- (1:n) location_staff
 	# -- (1:n) conference
 
 	private create {
-	    section {Hotel Management}
-	    description { Create a new hotel }
+	    section {Location Management}
+	    description { Create a new location }
 
-	    input name          { Name of the hotel }                 { optional ; interact {Name:    } }
-	    input streetaddress { Location of the hotel in the city } { optional ; interact {Street:  } }
+	    input name          { Name of the location }              { optional ; interact {Name:    } }
+	    input streetaddress { Where the location is in the city } { optional ; interact {Street:  } }
 	    input zipcode       { Postal code of the location }       { optional ; interact {Zipcode: } }
-	    state city          { City the hotel is in }              { generate [cm::call city select] }
+	    state city          { City the location is in }           { generate [cm::call city select] }
 
 	    # Contact details, and staff information to be set after
 	    # the fact (of creation).
 
-	} [cm::call hotel cmd_create]
+	} [cm::call location cmd_create]
 	alias new
 	alias add
 
 	private list {
-	    section {Hotel Management}
-	    description { Show a table of all known hotels }
-	} [cm::call hotel cmd_list]
+	    section {Location Management}
+	    description { Show a table of all known locations }
+	} [cm::call location cmd_list]
 
 	private select {
-	    section {Hotel Management}
-	    description { Select a specific hotel for further operation }
-	    input hotel {
-		Hotel to operate on in the future - The "current" hotel
+	    section {Location Management}
+	    description { Select a specific location for further operation }
+	    input location {
+		Location to operate on in the future - The "current" location
 	    } {
 		optional
-		# TODO: validator <=> hotel identification (name + city)
-		generate [cm::call hotel select]
+		# TODO: validator <=> location identification (name + city)
+		generate [cm::call location select]
 	    }
-	} [cm::call hotel cmd_select]
+	} [cm::call location cmd_select]
 
 	private show {
-	    section {Hotel Management}
-	    description { Show the details of the current hotel }
-	} [cm::call hotel cmd_show]
+	    section {Location Management}
+	    description { Show the details of the current location }
+	} [cm::call location cmd_show]
 
 	private contact {
-	    section {Hotel Management}
-	    description { Set the contact information of the current hotel }
-	} [cm::call hotel cmd_contact]
+	    section {Location Management}
+	    description { Set the contact information of the current location }
+	} [cm::call location cmd_contact]
 
 	private map {
-	    section {Hotel Management}
+	    section {Location Management}
 	    description {
-		Set the map, directions, transport information of the current hotel.
+		Set the map, directions, transport information of the current location.
 		Note: The data is read from stdin.
 	    }
 	} [cm::call hotel cmd_map]
@@ -404,8 +404,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	# remove - if not used
 	# modify - change name, street, zip, city (rename, relocate/move)
     }
-    alias hotels    = hotel list
-    alias locations = hotel list
+    alias hotels     = location list
+    alias locations  = location list
+    alias facilities = location list
 
     # # ## ### ##### ######## ############# ######################
     ## Manage conferences
@@ -414,8 +415,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	description {
 	    Manage conferences
 	}
-	# -- (n:1) city, hotel, session
-	# -- (n:1) hotel, session
+	# -- (n:1) city, location (hotel, facility)
 	# title, year, start, end, talk-length, session-length
 	# alignment (specific weekday, or none), length in days
 
@@ -443,7 +443,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Length in days
 	    } { optional ; interact ; validate [cm::cvt posint] }
 
-	    # Set later: hotel, session, city
+	    # Set later: hotel, facility, city
 
 	} [cm::call conference cmd_create]
 	alias new
@@ -484,18 +484,18 @@ cmdr create cm::cm [file tail $::argv0] {
 	private facility {
 	    section {Conference Management}
 	    description { Select the location for presentations }
-	    input hotel { Conference facility } {
-		# TODO: validator <=> hotel identification (name + city)
-		optional ; generate [cm::call hotel select]
+	    input location { Conference facility } {
+		# TODO: validator <=> location identification (name + city)
+		optional ; generate [cm::call location select]
 	    }
 	} [cm::call conference cmd_facility]
 
 	private hotel {
 	    section {Conference Management}
 	    description { Select the conference hotel }
-	    input hotel { Conference hotel } {
-		# TODO: validator <=> hotel identification (name + city)
-		optional ; generate [cm::call hotel select]
+	    input locatation { Conference hotel } {
+		# TODO: validator <=> location identification (name + city)
+		optional ; generate [cm::call location select]
 	    }
 	} [cm::call conference cmd_hotel]
 

@@ -31,7 +31,7 @@ package require cm::city
 package require cm::config::core
 package require cm::contact
 package require cm::db
-package require cm::hotel
+package require cm::location
 package require cm::table
 package require cm::util
 
@@ -59,7 +59,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::city
     namespace import ::cm::contact
     namespace import ::cm::db
-    namespace import ::cm::hotel
+    namespace import ::cm::location
     namespace import ::cm::util
 
     namespace import ::cm::config::core
@@ -212,8 +212,8 @@ proc ::cm::conference::cmd_show {config} {
 	}
 
 	if {$xcity     ne {}} { set xcity     [city  get $xcity] }
-	if {$xhotel    ne {}} { set xhotel    [hotel get $xhotel] }
-	if {$xfacility ne {}} { set xfacility [hotel get $xfacility] }
+	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
+	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
 
 	$t add Year          $xyear
 	$t add Start         $xstart
@@ -303,21 +303,21 @@ proc ::cm::conference::cmd_facility {config} {
     set details [details $id]
     dict with details {}
 
-    set hotel   [$config @hotel]
-    set hlabel  [hotel get $hotel]
-    set city    [dict get [hotel details $hotel] xcity]
-    set clabel  [city get $city]
+    set facility [$config @location]
+    set flabel   [location get $facility]
+    set city     [dict get [location details $facility] xcity]
+    set clabel   [city get $city]
 
     puts "Conference \"[color name [get $id]]\":"
-    puts "- Set facility as \"[color name $hlabel]\""
+    puts "- Set facility as \"[color name $flabel]\""
     puts "- Set city     as \"[color name $clabel]\""
 
-    dict set details xfacility $hotel
+    dict set details xfacility $facility
     dict set details xcity     $city
 
     if {$xhotel eq {}} {
 	puts "- Set hotel    as the same"
-	dict set details xhotel $hotel
+	dict set details xhotel $facility
     }
 
     puts -nonewline "Saving ... "
@@ -335,9 +335,9 @@ proc ::cm::conference::cmd_hotel {config} {
     set details [details $id]
     dict with details {}
 
-    set hotel   [$config @hotel]
-    set hlabel  [hotel get $hotel]
-    set city    [dict get [hotel details $hotel] xcity]
+    set hotel   [$config @location]
+    set hlabel  [location get $hotel]
+    set city    [dict get [location details $hotel] xcity]
     set clabel  [city get $city]
 
     puts "Conference \"[color name [get $id]]\":"
@@ -552,9 +552,11 @@ proc ::cm::conference::insert {id text} {
 
     set clabel [city get $xcity]
 
-    set hotel  [hotel details $xhotel]
+    set hotel  [location details $xhotel]
     dict with hotel {} ;# overwrites conference city
     set hclabel [city get $xcity]
+
+    # con-insert TODO - hotel != facilities
 
     #array set _ $details ; parray _ ; unset _
     #array set _ $hotel ; parray _ ; unset _
@@ -1091,7 +1093,7 @@ proc ::cm::conference::Setup {} {
 
     ::cm::config::core::Setup
     ::cm::city::Setup
-    ::cm::hotel::Setup
+    ::cm::location::Setup
     ::cm::contact::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
@@ -1101,8 +1103,8 @@ proc ::cm::conference::Setup {} {
 	    year	INTEGER NOT NULL,
 
 	    city	INTEGER REFERENCES city,
-	    hotel	INTEGER REFERENCES hotel, -- We do not immediately know where we will be
-	    facility	INTEGER REFERENCES hotel, -- While sessions are usually at the hotel, they may not be.
+	    hotel	INTEGER REFERENCES location, -- We do not immediately know where we will be
+	    facility	INTEGER REFERENCES location, -- While sessions are usually at the hotel, they may not be.
 
 	    startdate	INTEGER,		-- [*], date [epoch]
 	    enddate	INTEGER,		--	date [epoch]

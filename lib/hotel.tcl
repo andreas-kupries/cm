@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::hotel 0
+# Package cm::location 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -28,15 +28,15 @@ package require cm::config::core
 package require cm::db
 package require cm::table
 package require cm::util
-#package require cm::validate::hotel
+#package require cm::validate::location
 
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm {
-    namespace export hotel
+    namespace export location
     namespace ensemble create
 }
-namespace eval ::cm::hotel {
+namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
 	cmd_map select label get details
@@ -57,31 +57,31 @@ namespace eval ::cm::hotel {
 
 # # ## ### ##### ######## ############# ######################
 
-debug level  cm/hotel
-debug prefix cm/hotel {[debug caller] | }
+debug level  cm/location
+debug prefix cm/location {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::hotel::cmd_list {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_list {config} {
+    debug.cm/location {}
     Setup
     db show-location
 
-    set cid [config get* @current-hotel {}]
+    set cid [config get* @current-location {}]
 
     [table t {{} Name Street Zip City} {
 	db do eval {
-	    SELECT H.id                   AS id,
-                   H.name                 AS name,
-	           H.streetaddress        AS street,
-	           H.zipcode              AS zip,
+	    SELECT L.id                   AS id,
+                   L.name                 AS name,
+	           L.streetaddress        AS street,
+	           L.zipcode              AS zip,
 	           C.name                 AS city,
 	           C.state                AS state,
 	           C.nation               AS nation
-	    FROM  hotel H,
-	          city  C
-	    WHERE C.id = H.city
-	    ORDER BY H.name, city
+	    FROM  location L,
+	          city     C
+	    WHERE C.id = L.city
+	    ORDER BY L.name, city
 	} {
 	    set city    [city label $city $state $nation]
 	    set issues  [issues [details $id]]
@@ -96,8 +96,8 @@ proc ::cm::hotel::cmd_list {config} {
     return
 }
 
-proc ::cm::hotel::cmd_create {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_create {config} {
+    debug.cm/location {}
     Setup
     db show-location
     # try to insert, report failure as user error
@@ -107,12 +107,12 @@ proc ::cm::hotel::cmd_create {config} {
     set street [$config @streetaddress]
     set zip    [$config @zipcode]
 
-    puts -nonewline "Creating hotel \"[color name $name]\" ... "
+    puts -nonewline "Creating location \"[color name $name]\" ... "
 
     try {
 	db do transaction {
 	    db do eval {
-		INSERT INTO hotel
+		INSERT INTO location
 		VALUES (NULL, :name, :cityid, :street, :zip,
 			NULL, NULL, NULL, -- booking contact
 			NULL, NULL, NULL, -- local contact
@@ -129,28 +129,28 @@ proc ::cm::hotel::cmd_create {config} {
     puts [color good OK]
     puts [color warning {Please remember to set the contact details and staff information}]
 
-    puts -nonewline "Setting as current hotel ... "
-    config assign @current-hotel $id
+    puts -nonewline "Setting as current location ... "
+    config assign @current-location $id
     puts [color good OK]
 
     return
 }
 
-proc ::cm::hotel::cmd_select {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_select {config} {
+    debug.cm/location {}
     Setup
     db show-location
 
-    set id [$config @hotel]
+    set id [$config @location]
 
-    puts -nonewline "Setting current hotel to \"[color name [get $id]]\" ... "
-    config assign @current-hotel $id
+    puts -nonewline "Setting current location to \"[color name [get $id]]\" ... "
+    config assign @current-location $id
     puts [color good OK]
     return
 }
 
-proc ::cm::hotel::cmd_show {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_show {config} {
+    debug.cm/location {}
     Setup
     db show-location
 
@@ -184,15 +184,15 @@ proc ::cm::hotel::cmd_show {config} {
 }
 
 
-proc ::cm::hotel::cmd_map {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_map {config} {
+    debug.cm/location {}
     Setup
     db show-location
 
     set id      [current]
     set details [details $id]
 
-    puts "Working with hotel \"[color name [get $id]]\" ..."
+    puts "Working with location \"[color name [get $id]]\" ..."
 
     set map [read stdin]
 
@@ -204,15 +204,15 @@ proc ::cm::hotel::cmd_map {config} {
     return
 }
 
-proc ::cm::hotel::cmd_contact {config} {
-    debug.cm/hotel {}
+proc ::cm::location::cmd_contact {config} {
+    debug.cm/location {}
     Setup
     db show-location
 
     set id      [current]
     set details [details $id]
 
-    puts "Working with hotel \"[color name [get $id]]\" ..."
+    puts "Working with location \"[color name [get $id]]\" ..."
     foreach {key label} {
 	xbookphone  {Booking Phone}
 	xbookfax    {Booking FAX  }
@@ -235,41 +235,41 @@ proc ::cm::hotel::cmd_contact {config} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
-proc ::cm::hotel::label {name city} {
-    debug.cm/hotel {}
+proc ::cm::location::label {name city} {
+    debug.cm/location {}
     return "$name ($city)"
 }
 
-proc ::cm::hotel::known {} {
-    debug.cm/hotel {}
+proc ::cm::location::known {} {
+    debug.cm/location {}
     Setup
 
     # dict: label -> id
     set known {}
 
     db do eval {
-	SELECT H.id     AS id,
-	       H.name   AS name,
+	SELECT L.id     AS id,
+	       L.name   AS name,
 	       C.name   AS city,
 	       C.state  AS state,
 	       C.nation AS nation
-	FROM  hotel H,
-	      city  C
-	WHERE C.id = H.city
+	FROM  location L,
+	      city     C
+	WHERE C.id = L.city
     } {
 	dict set known [label $name [city label $city $state $nation]] $id
     }
 
-    debug.cm/hotel {==> ($known)}
+    debug.cm/location {==> ($known)}
     return $known
 }
 
-proc ::cm::hotel::issues {details} {
-    debug.cm/hotel {}
+proc ::cm::location::issues {details} {
+    debug.cm/location {}
     dict with details {}
 
     set issues {}
-    # TODO: Issue an issue when hotel not staffed (count == 0)
+    # TODO: Issue an issue when location is not staffed (count == 0)
 
     if {$xzipcode   eq {}} { +issue "Zipcode missing" }
     if {$xstreet    eq {}} { +issue "Street address missing" }
@@ -287,33 +287,33 @@ proc ::cm::hotel::issues {details} {
     return $issues
 }
 
-proc ::cm::hotel::+issue {text} {
-    debug.cm/hotel {}
+proc ::cm::location::+issue {text} {
+    debug.cm/location {}
     upvar 1 issues issues
     lappend issues "- [color bad $text]"
     return
 }
 
-proc ::cm::hotel::get {id} {
-    debug.cm/hotel {}
+proc ::cm::location::get {id} {
+    debug.cm/location {}
     Setup
 
     lassign [db do eval {
-	SELECT H.name   AS name,
+	SELECT L.name   AS name,
 	       C.name   AS city,
 	       C.state  AS state,
 	       C.nation AS nation
-	FROM  hotel H,
-	      city  C
-	WHERE C.id = H.city
-	AND   H.id = :id
+	FROM  location L,
+	      city     C
+	WHERE C.id = L.city
+	AND   L.id = :id
     }] name city state nation
 
     return [label $name [city label $city $state $nation]]
 }
 
-proc ::cm::hotel::details {id} {
-    debug.cm/hotel {}
+proc ::cm::location::details {id} {
+    debug.cm/location {}
     Setup
 
     return [db do eval {
@@ -329,18 +329,18 @@ proc ::cm::hotel::details {id} {
 	       "xlocalphone", local_phone,
 	       "xtransport",  transportation
 	    -- TODO: count staff
-	FROM  hotel
+	FROM  location
 	WHERE id = :id
     }]
 }
 
-proc ::cm::hotel::write {id details} {
-    debug.cm/hotel {}
+proc ::cm::location::write {id details} {
+    debug.cm/location {}
     Setup
 
     dict with details {}
     db do eval {
-	UPDATE hotel
+	UPDATE location
 	SET    city           = :xcity,
 	       streetaddress  = :xstreet,
 	       zipcode        = :xzipcode,
@@ -355,69 +355,69 @@ proc ::cm::hotel::write {id details} {
     }
 }
 
-proc ::cm::hotel::current {} {
-    debug.cm/hotel {}
+proc ::cm::location::current {} {
+    debug.cm/location {}
 
     try {
-	set id [config get @current-hotel]
+	set id [config get @current-location]
     } trap {CM CONFIG GET UNKNOWN} {e o} {
-	puts [color bad "No hotel chosen, please \"select\" a hotel"]
+	puts [color bad "No location chosen, please \"select\" one"]
 	::exit 0
     }
     if {[has $id]} { return $id }
 
-    puts [color bad "Bad hotel index, please \"select\" a hotel"]
+    puts [color bad "Bad location index, please \"select\" one"]
     ::exit 0
 }
 
-proc ::cm::hotel::has {id} {
-    debug.cm/hotel {}
+proc ::cm::location::has {id} {
+    debug.cm/location {}
     Setup
 
     return [db do exists {
 	SELECT name
-	FROM   hotel
+	FROM   location
 	WHERE  id = :id
     }]
 }
 
-proc ::cm::hotel::select {p} {
-    debug.cm/hotel {}
+proc ::cm::location::select {p} {
+    debug.cm/location {}
 
     if {![cmdr interactive?]} {
 	$p undefined!
     }
 
     # dict: label -> id
-    set hotels  [known]
-    set choices [lsort -dict [dict keys $hotels]]
+    set locations [known]
+    set choices   [lsort -dict [dict keys $locations]]
 
     switch -exact [llength $choices] {
 	0 { $p undefined! }
 	1 {
 	    # Single choice, return
 	    # TODO: print note about single choice
-	    return [lindex $hotels 1]
+	    return [lindex $locations 1]
 	}
     }
 
-    set choice [ask menu "" "Which hotel: " $choices]
+    set choice [ask menu "" "Which location: " $choices]
 
     # Map back to id
-    return [dict get $hotels $choice]
+    return [dict get $locations $choice]
 }
 
-proc ::cm::hotel::Setup {} {
-    debug.cm/hotel {}
+proc ::cm::location::Setup {} {
+    debug.cm/location {}
 
     ::cm::config::core::Setup
     ::cm::city::Setup
 
-    if {![dbutil initialize-schema ::cm::db::do error hotel {
+    if {![dbutil initialize-schema ::cm::db::do error location {
 	{
 	    id			INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    name		TEXT    NOT NULL,
-	    city		INTEGER NOT NULL REFERENCES city(id),
+	    city		INTEGER NOT NULL REFERENCES city,
 	    streetaddress	TEXT    NOT NULL,
 	    zipcode		TEXT    NOT NULL,
 	    book_fax		TEXT,	-- defaults to the local-*
@@ -443,14 +443,14 @@ proc ::cm::hotel::Setup {} {
 	    {transportation	TEXT	0 {} 0}
 	} {}
     }]} {
-	db setup-error hotel $error
+	db setup-error location $error
     }
 
     # Shortcircuit further calls
-    proc ::cm::hotel::Setup {args} {}
+    proc ::cm::location::Setup {args} {}
     return
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::hotel 0
+package provide cm::location 0
 return
