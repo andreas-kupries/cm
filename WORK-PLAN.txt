@@ -1,0 +1,59 @@
+NOW
+===
+
+* implement location_staff --> clif rolodex
+* implement rate           --> piece for website
+
+* -- con mgmt -- ping clif for conf date info
+* -- con mgmt -- ping clif for hotel rate data -
+     range/deadline/code/amount
+* -- ping clif for hotel rolodex info --
+
+* implement contact(person) for contact(company)
+  [reverse of affiliation, company email, separate from the main
+  contact, as that is used for campaigns. The new contact is for
+  personal/internal communication (sponsorship, ...)
+
+* implement mail ping sponsors, template based - fixed name 
+
+* -- con mgmt -- enter company contact info --
+* -- con mgmt -- ping past sponsors for renewal, and company link
+     info.
+
+* ---- con mgmt --- ready for initial cfp 1 ---
+
+SOON
+====
+
+* first run on website generation, tclssg frontend ---
+  -- config data
+  -- logo
+  -- info page
+  -- cfp page
+
+  -- link to previous site/conference ? -- papers --
+
+* implement handling of submissions
+* implement handling of talks, schedule
+* implement handling of tutorial setup and schedule
+
+
+LATER
+=====
+
+* website, more pages
+  -- tutorials
+  -- registration
+  -- schedule
+  -- speakers
+  -- abstracts
+  -- full papers online -- past conferences --
+
+  ==> store the presentation slides and papers in the db
+      associated to their talk
+
+FUTURE
+======
+
+* implement copying of conference data/setup -- easier entry of new
+  conference, but also of previous ones
