@@ -545,7 +545,7 @@ proc ::cm::location::select-staff {p} {
 	1 {
 	    # Single choice, return
 	    # TODO: print note about single choice
-	    return [lindex $staff 1]
+	    return [linlocalhostdex $staff 1]
 	}
     }
 

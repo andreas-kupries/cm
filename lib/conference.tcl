@@ -46,8 +46,8 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show \
 	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
-	cmd_staff_show cmd_staff_link cmd_staff_unlink \
-	select label current get insert known-sponsor \
+	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
+	select label current get insert known-sponsor cmd_rate_show \
 	select-sponsor select-staff-role select-staff known-staff \
 	get-role
     namespace ensemble create
@@ -229,6 +229,17 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Talks/Session $xsesslen
 
 	$t add {} {}
+
+	if {[db do exists {
+	    SELECT *
+	    FROM   rate
+	    WHERE  conference = :conference
+	    AND    location   = :xhotel
+	}]} {
+	    $t add [color note bad Rate] "[color bad Undefined]\n(=> conference rate)"
+	} else {
+	    $t add [color note Rate]     "[color note ok]\n(=> conference rates)"
+	}
 
 	set tcount [db do eval {
 	    SELECT count (id)
@@ -567,7 +578,131 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_rate_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set details [details $conference]
+    dict with details {}
+    set location $xhotel
+    if {$location eq {}} {
+	util user-error "No hotel known" \
+	    CONFERENCE RATE HOTEL
+    }
+
+    [table t {Property Value} {
+	db do eval {
+	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
+	    FROM   rate
+	    WHERE  conference = :conference
+	    AND    location   = :location
+	} {
+	    set factor 10e$decimal
+	    set rate [format %.${decimal}f [expr {$rate / $factor}]]
+
+	    set begindate [expr {($begindate ne {})
+				 ? [hdate $begindate]
+				 : [color bad Undefined]}]
+	    set enddate [expr {($enddate ne {})
+				 ? [hdate $enddate]
+				 : [color bad Undefined]}]
+	    set deadline [expr {($deadline ne {})
+				 ? [hdate $deadline]
+				 : [color bad Undefined]}]
+	    set pdeadline [expr {($pdeadline ne {})
+				 ? [hdate $pdeadline]
+				 : [color bad Undefined]}]
+
+	    $t add Rate      "$rate $currency"
+	    $t add GroupCode $groupcode
+	    $t add Begin                   $begindate
+	    $t add End                     $enddate
+	    $t add {Registration deadline} $deadline
+	    $t add {Public deadline}       $pdeadline
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_rate_set {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set details [details $conference]
+    dict with details {}
+    set location $xhotel
+    if {$location eq {}} {
+	util user-error "No hotel known to apply the rate to" \
+	    CONFERENCE RATE HOTEL
+    }
+
+    set rate     [$config @rate]
+    set currency [$config @currency]
+    set decimal  [$config @decimal]
+
+    set group [cdefault @groupcode       {return {}}]
+    set begin [cdefault @begin           {set xstart}]
+    set end   [cdefault @end             {set xend}]
+    set dead  [cdefault @deadline        {clock add $begin -14 days}]
+    set pdead [cdefault @public-deadline {clock add $dead   -7 days}]
+
+    # Limit to the chosen umber of digits after the decimal point, we
+    # will store things as int.
+    set factor 10e$decimal
+    set rate [expr {int($rate * $factor)}]
+
+    puts "Setting rates for conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    if {[db do exists {
+	SELECT *
+	FROM   rate
+	WHERE  conference = :conference
+	AND    location   = :location
+    }]} {
+	# Update existing rate
+	db do eval {
+	    UPDATE rate
+	    SET    rate       = :rate
+	           decimal    = :decimal
+	           currency   = :currency
+	           groupcode  = :group
+	           begindate  = :begin
+	           enddate    = :end
+	           deadline   = :dead
+	           pdeadline  = :pdead
+	    WHERE  conference = :conference
+	    AND    location   = :location
+	}
+    } else {
+	# Insert the rate data
+	db do eval {
+	    INSERT INTO rate
+	    VALUES (NULL, :conference, :location,
+		    :rate, :decimal, :currency,
+		    :group, :begin, :end, :dead, :pdead)
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+
+# # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::conference::cdefault {attr dcmd} {
+    upvar 1 config config
+    if {[$config $attr set?]} { return [$config $attr] }
+    return [uplevel 1 $dcmd]
+}
+
 
 proc ::cm::conference::timeline-clear {conference} {
     debug.cm/conference {}
@@ -1337,6 +1472,42 @@ proc ::cm::conference::Setup {} {
 	    INSERT OR IGNORE INTO staff_role VALUES (6,'Web admin');
 	    INSERT OR IGNORE INTO staff_role VALUES (7,'Proceedings editor');
 	}
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error rate {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    location	INTEGER	NOT NULL REFERENCES location,
+	    rate	INTEGER	NOT NULL,	-- per night
+	    decimal	INTEGER	NOT NULL,	-- number of digits stored after the decimal point
+	    currency	TEXT	NOT NULL,	-- name of the currency the rate is in
+	    groupcode	TEXT,
+	    begindate	INTEGER,		-- date [epoch] the discount begins
+	    enddate	INTEGER,		-- date [epoch] the discount ends
+	    deadline	INTEGER,		-- date [epoch] registration deadline
+	    pdeadline	INTEGER,		-- date [epoch] same, but publicly known
+						-- show a worse deadline public for grace period
+	    -- Constraints: begin- and end-dates should cover the entire conference, at least.
+	    -- deadline should not be in the past on date of entry.
+	    UNIQUE (conference, location)
+	    -- We are sort of ready here for a future where we might have multiple hotels
+	    -- and associated rates. If so 'conference.hotel' would become bogus.
+	} {
+	    {id			INTEGER 1 {} 1}
+	    {conference		INTEGER 1 {} 0}
+	    {location		INTEGER 1 {} 0}
+	    {rate		INTEGER 1 {} 0}
+	    {decimal		INTEGER 1 {} 0}
+	    {currency		TEXT    1 {} 0}
+	    {groupcode		TEXT    0 {} 0}
+	    {begindate		INTEGER 0 {} 0}
+	    {enddate		INTEGER 0 {} 0}
+	    {deadline		INTEGER 0 {} 0}
+	    {pdeadline		INTEGER 0 {} 0}
+	} {}
+    }]} {
+	db setup-error rate $error
     }
 
     # Shortcircuit further calls

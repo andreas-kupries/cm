@@ -47,17 +47,19 @@ CREATE TABLE rate (				-- rates change from year to year
 	conference	INTEGER	NOT NULL REFERENCES conference,
 	location	INTEGER	NOT NULL REFERENCES location,
 	rate		INTEGER	NOT NULL,	-- per night
-	ratefactor	INTEGER	NOT NULL,	-- factor the rate is stored by, i.e. as xFactor (like x100)
+	decimal		INTEGER	NOT NULL,	-- number of digits stored after the decimal point
 	currency	TEXT	NOT NULL,	-- name of the currency the rate is in
 	groupcode	TEXT,
 	begindate	INTEGER,		-- date [epoch] the discount begins
 	enddate		INTEGER,		-- date [epoch] the discount ends
 	deadline	INTEGER,		-- date [epoch] registration deadline
-	pdeadline	INTEGER			-- date [epoch] same, but publicly known
+	pdeadline	INTEGER,		-- date [epoch] same, but publicly known
 						-- show a worse deadline public for grace period
 	-- Constraints: begin- and end-dates should cover the entire conference, at least.
 	-- deadline should not be in the past on date of entry.
 	UNIQUE (conference, location)
+	-- We are sort of ready here for a future where we might have multiple hotels
+	-- and associated rates. If so 'conference.hotel' would become bogus.
 );
 -- ---------------------------------------------------------------
 CREATE TABLE contact (

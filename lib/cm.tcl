@@ -605,6 +605,42 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
+
+	private rate {
+	    section {Conference Management}
+	    description { Set the room rate information }
+	    # conference - implied, current
+	    # location   - implied, by conference (hotel)
+	    # (rate, factor, currency) - required
+	    # groupcode, begin/end/deadline/publicdeadline
+	    option groupcode {
+		Groupcode to get the discounted rate
+	    } { alias G ; argument text ; validate str }
+	    option begin {
+		Start of the validity period for discounted rate. Default: Conference start.
+	    } { alias from ; alias F ; argument date ; validate [cm::cvt date] }
+	    option end {
+		End of the validity period for discounted rate. Default: Conference end.
+	    } { alias to ; alias T ; argument date ; validate [cm::cvt date] }
+	    option deadline {
+		End of the period where you can register for the discounted rate.
+		Default: 2 weeks before (--begin).
+	    } { alias D ; argument date ; validate [cm::cvt date] }
+	    option public-deadline {
+		Disclosed end of the period where you can register for the discounted rate.
+		Default: 1 week before (--deadline)
+	    } { alias P ; argument date ; validate [cm::cvt date] }
+	    input rate     { Discounted room rate, in currency }  { validate ::cmdr::validate::double }
+	    # something defined a 'double' procedure wrapping 'expr double()'.
+	    input currency { Currency of the rate }               { }
+	    input decimal  { Decimal points to store, default 2 } { optional ; default 2 ; validate [cm::cvt posint] }
+	} [cm::call conference cmd_rate_set]
+
+	private rates {
+	    section {Conference Management}
+	    description { Show the conference rates }
+	} [cm::call conference cmd_rate_show]
+
     }
     alias conferences = conference list
 
