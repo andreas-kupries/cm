@@ -1,8 +1,6 @@
 NOW
 ===
 
-* implement commands to fix conference dates, and timeline dates
-
 * implement contact(person) for contact(company)
   [reverse of affiliation, company email, separate from the main
   contact, as that is used for campaigns. The new contact is for

@@ -44,8 +44,8 @@ namespace eval ::cm {
 namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
-	cmd_timeline_init cmd_timeline_clear cmd_timeline_show \
-	cmd_timeline_shift cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
+	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_end_set \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	select label current get insert known-sponsor cmd_rate_show \
 	select-sponsor select-staff-role select-staff known-staff \
@@ -729,6 +729,25 @@ proc ::cm::conference::cmd_rate_set {config} {
     return
 }
 
+proc ::cm::conference::cmd_end_set {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    set end        [$config @enddate]
+
+    dict set details xend $end
+
+    puts "Setting new end-date \"[hdate $end]\" for conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    write $conference $details
+
+    puts [color good OK]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.

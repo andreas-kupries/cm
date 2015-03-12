@@ -653,6 +653,15 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the conference rates }
 	} [cm::call conference cmd_rate_show]
 
+
+	private set-end {
+	    section {Conference Management} Advanced
+	    description { Set/fix the conference end-date }
+	    input enddate {
+		New end date
+	    } { optional ; interact ; validate [cm::cvt date] }
+	} [cm::call conference cmd_end_set]
+
     }
     alias conferences = conference list
 
