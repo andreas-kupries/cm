@@ -524,6 +524,18 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Clear the timeline for the conference }
 	} [cm::call conference cmd_timeline_clear]
 
+	private timeline-shift {
+	    section {Conference Management}
+	    description { Shift an event of the timeline for the conference }
+	    input event {
+		The event to shift.
+	    } {	optional ; generate [cm::call conference select-timeline] }
+	    input shift {
+		Number of days to shift the event by.
+		negative numbers to the past, positive numbers to the future.
+	    } {	optional ; interact ; validate integer }
+	} [cm::call conference cmd_timeline_shift]
+
 	private timeline {
 	    section {Conference Management}
 	    description { Show the timeline for the conference }

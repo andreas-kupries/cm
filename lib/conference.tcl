@@ -45,11 +45,11 @@ namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show \
-	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_timeline_shift cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	select label current get insert known-sponsor cmd_rate_show \
 	select-sponsor select-staff-role select-staff known-staff \
-	get-role
+	get-role select-timeline get-timeline
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -359,6 +359,41 @@ proc ::cm::conference::cmd_hotel {config} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_timeline_shift {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set entry      [$config @event]
+    set shift      [$config @shift]
+
+    puts "Shift \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\"\nBy    $shift days"
+
+    db do transaction {
+	set old [db do onecolumn {
+	    SELECT date 
+	    FROM   timeline
+	    WHERE  con  = :conference
+	    AND    type = :entry
+	}]
+
+	set new [clock add $old $shift days]
+
+	puts -nonewline "To    [hdate $new] ... "
+
+	db do eval {
+	    UPDATE timeline
+	    SET    date = :new
+	    WHERE  con  = :conference
+	    AND    type = :entry
+	}
+    }
+
+    puts [color good OK]
+    return
+}
 
 proc ::cm::conference::cmd_timeline_show {config} {
     debug.cm/conference {}
@@ -1293,6 +1328,61 @@ proc ::cm::conference::get-role {id} {
     }]
 }
 
+proc ::cm::conference::known-timeline {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   timeline_type
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::select-timeline {p} {
+    debug.cm/conference {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set entries [known-timeline]
+    set choices [lsort -dict [dict keys $entries]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $entries 1]
+	}
+    }
+
+    set choice [ask menu "" "Which timeline entry: " $choices]
+
+    # Map back to id
+    return [dict get $entries $choice]
+}
+
+proc ::cm::conference::get-timeline {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   timeline_type
+	WHERE  id = :id
+    }]
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
@@ -1401,15 +1491,15 @@ proc ::cm::conference::Setup {} {
 	db setup-error timeline_type $error
     } else {
 	db do eval {
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 1,0,-168,'cfp1',      '1st Call for papers');         --  -24w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 2,0,-126,'cfp2',      '2nd Call for papers');         --  -18w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 1,0,-196,'cfp1',      '1st Call for papers');         --  -28w (--)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 2,0,-140,'cfp2',      '2nd Call for papers');         --  -20w (8w) (~2m)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w (8w) (~2m)
 	    INSERT OR IGNORE INTO timeline_type VALUES ( 4,1, -84,'wipopen',   'WIP & BOF Reservations open'); --  -12w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -49,'authornote','Notifications to Authors');    --   -7w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -21,'writedead', 'Author Materials due');        --   -3w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,0, -14,'procedit',  'Edit proceedings');            --   -2w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0,  -7,'procship',  'Ship proceedings');            --   -1w
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w (4w) (~1m)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -49,'authornote','Notifications to Authors');    --   -7w (1w)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -21,'writedead', 'Author Materials due');        --   -3w (4w)+1w grace
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,0, -14,'procedit',  'Edit proceedings');            --   -2w (1w)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0,  -7,'procship',  'Ship proceedings');            --   -1w (1w)
 	    INSERT OR IGNORE INTO timeline_type VALUES (10,1,   0,'begin-t',   'Tutorial Start');              --  <=>
 	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Start');               --  +2d
 	}
