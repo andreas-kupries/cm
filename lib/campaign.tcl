@@ -481,7 +481,7 @@ proc ::cm::campaign::check-template {text} {
 	1 c:talklength
 	1 c:contact
 	0 c:sponsors
-	0 c:comittee
+	0 c:committee
 	1 c:t:wipopen
 	1 c:t:submitdead
 	1 c:t:authornote

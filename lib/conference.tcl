@@ -619,7 +619,7 @@ proc ::cm::conference::insert {id text} {
     lappend map @c:when@       [when $xstart $xend]
     lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
     lappend map @c:sponsors@   $sponsors
-    lappend map @c:comittee@   $committee
+    lappend map @c:committee@  $committee
     lappend map @c:talklength@ $xtalklen
 
     db do eval {

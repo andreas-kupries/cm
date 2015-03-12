@@ -20,8 +20,10 @@
  @c:when@
  @c:talklength@ minutes
  @c:contact@
- @c:sponsors@
- @c:comittee@
+
+@c:sponsors@
+
+@c:committee@
 
 WIP/BOF opens  @c:t:wipopen@
 Submit till    @c:t:submitdead@
