@@ -18,9 +18,10 @@ package require cmdr::color
 package require tls
 package require smtp
 package require mime
-package require cm::table
 package require cm::config::core
+package require cm::db
 package require cm::mailgen
+package require cm::table
 package require cm::validate::config
 
 debug level  cm/mailer
@@ -36,11 +37,12 @@ namespace eval ::cm::mailer {
     namespace export \
 	cmd_test_address cmd_test_mail_config \
 	good-address dedup-addresses drop-address \
-	get-config get has send
+	get-config get has send batch
     namespace ensemble create
 
     namespace import ::cmdr::color
 
+    namespace import ::cm::db
     namespace import ::cm::mailgen
 
     namespace import ::cm::validate::config
@@ -237,6 +239,22 @@ proc ::cm::mailer::has {setting} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::mailer::batch {r a n destinations script} {
+    upvar 1 $r receiver $a address $n name
+
+    db do eval [string map [list @@@ [join $destinations ,]] {
+	SELECT E.id    AS receiver,
+               E.email AS address,
+	       C.dname AS name
+	FROM   email   E,
+	       contact C
+	WHERE E.id IN (@@@)
+	AND   C.id = E.contact
+    }] {
+	uplevel 1 $script
+    }
+}
 
 proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
     debug.cm/mailer {}
