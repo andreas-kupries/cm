@@ -23,6 +23,7 @@ package require debug::caller
 package require dbutil
 package require try
 
+package require cm::util
 package require cm::table
 package require cm::db
 
@@ -35,12 +36,13 @@ namespace eval ::cm {
 namespace eval ::cm::template {
     namespace export \
 	cmd_create cmd_remove cmd_set cmd_list cmd_show \
-	get details known select
+	get details known select find
     namespace ensemble create
 
     namespace import ::cmdr::color
     namespace import ::cmdr::ask
     namespace import ::cm::db
+    namespace import ::cm::util
 
     namespace import ::cm::table::do
     rename do table
@@ -195,6 +197,21 @@ proc ::cm::template::known {} {
     }
 
     return $known
+}
+
+proc ::cm::template::find {name p} {
+    debug.cm/template {}
+
+    # dict: label -> id
+    set templates [known]
+
+    if {![dict exists $templates $name]} {
+	util user-error "Template \"$name\" not found"
+	#$p undefined!
+    }
+
+    # Map to id
+    return [dict get $templates $name]
 }
 
 proc ::cm::template::select {p} {
