@@ -26,6 +26,7 @@ package require Tcl 8.5
 package require debug
 package require debug::caller
 package require cmdr::color
+package require textutil::adjust
 package require linenoise
 
 # # ## ### ##### ######## ############# #####################
@@ -39,7 +40,7 @@ namespace eval ::cm {
 namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
-	tspace
+	tspace adjust
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -53,10 +54,16 @@ debug prefix cm/util {[debug caller] | }
 
 # # ## ### ##### ######## ############# #####################
 
-proc ::cm::util::tspace {sub} {
+proc ::cm::util::tspace {sub {tmax -1}} {
     set max [linenoise columns]
     incr max -$sub
-    if {$max < 0} { set max 10 }
+    if {$max < 0} {
+	set max 10
+    }
+    if {($tmax > 0) &&
+	($max > $tmax)} {
+	set max $tmax
+    }
     return $max
 }
 
@@ -126,6 +133,30 @@ proc ::cm::util::dictsort {dict} {
 	lappend r $k [dict get $dict $k]
     }
     return $r
+}
+
+proc ::cm::util::adjust {width text} {
+    # 1. split text into paragraphs separated by empty lines.
+    # 2. Adjust each paragraph separately.
+    # 3. Rejoin into whole text.
+    set para {}
+    set buf  {}
+    foreach line [split $text \n] {
+	if {[string trim $line] eq {}} {
+	    if {$buf ne {}} {
+		set buf [textutil::adjust::adjust $buf -length $width]
+		lappend para $buf
+	    }
+	    set buf {}
+	} else {
+	    append buf \n$line
+	}
+    }
+    if {$buf ne {}} {
+	set buf [textutil::adjust::adjust $buf -length $width]
+	lappend para $buf
+    }
+    return [join $para \n\n]
 }
 
 proc ::cm::util::reflow {text {prefix {    }}} {
