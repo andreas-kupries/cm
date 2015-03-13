@@ -465,6 +465,7 @@ proc ::cm::conference::cmd_sponsor_show {config} {
 	# TODO: sponsors - mail/link/notes ?
 	db do eval {
 	    SELECT C.dname       AS name,
+	           C.type        AS type,
 	           C.affiliation AS affiliation
 	    FROM   sponsors S,
 	           contact  C
@@ -477,7 +478,7 @@ proc ::cm::conference::cmd_sponsor_show {config} {
 		set affiliation [db do onecolumn {
 		    SELECT dname FROM contact WHERE id = :affiliation
 		}]
-		if {$type eq "Company"} {
+		if {$type == 2} { ;# company
 		    # affiliation actually is "liason"
 		    set affiliation "Liaising: $affiliation"
 		} else {
