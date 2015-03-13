@@ -23,7 +23,6 @@ package require debug::caller
 package require dbutil
 package require try
 package require struct::list
-package require textutil::adjust
 
 package provide cm::contact 0 ; # campaign and contact are circular
 
@@ -107,7 +106,7 @@ proc ::cm::contact::cmd_show {config} {
 		set key Affiliation
 	    }
 
-	    set bio [textutil::adjust::adjust $bio -length $w]
+	    set bio [util adjustam $w $bio]
 
 	    $t add Tag                $tag
 	    $t add Name               $name
