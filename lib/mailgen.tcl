@@ -67,7 +67,7 @@ proc ::cm::mailgen::call {sender name text} {
 
     debug.cm/mailgen {}
     Begin
-    Headers $subject [clock seconds]
+    Headers [string map $map $subject] [clock seconds]
     Body    $sender {}
     +       [string map $map $body]
     Done    $sender {}
