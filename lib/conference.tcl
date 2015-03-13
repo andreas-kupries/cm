@@ -33,7 +33,10 @@ package require cm::contact
 package require cm::db
 package require cm::location
 package require cm::table
+package require cm::template
 package require cm::util
+package require cm::mailgen
+package require cm::mailer
 
 # # ## ### ##### ######## ############# ######################
 
@@ -45,7 +48,8 @@ namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
-	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_end_set \
+	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
+	cmd_website_make cmd_end_set \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	select label current get insert known-sponsor cmd_rate_show \
 	select-sponsor select-staff-role select-staff known-staff \
@@ -60,6 +64,9 @@ namespace eval ::cm::conference {
     namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::location
+    namespace import ::cm::mailer
+    namespace import ::cm::mailgen
+    namespace import ::cm::template
     namespace import ::cm::util
 
     namespace import ::cm::config::core
@@ -453,6 +460,67 @@ proc ::cm::conference::cmd_timeline_clear {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_sponsor_ping {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set template   [$config @template]
+    set tlabel     [template get $template]
+
+    puts "Mailing the sponsors of \"[color name [get $conference]]\":"
+    puts "Using template: [color name $tlabel]"
+
+    set template     [template details $template]
+    set destinations [db do eval {
+	SELECT id, email
+	FROM   email
+	WHERE  contact IN (SELECT affiliation
+			   FROM   contact
+			   WHERE  affiliation IS NOT NULL
+			   AND    id IN (SELECT contact
+					 FROM   sponsors
+					 WHERE  conference = :conference))
+    }]
+
+    debug.cm/conference {destinations = ($destinations)}
+
+    set addresses    [lsort -dict [dict values $destinations]]
+    set destinations [dict keys $destinations]
+
+    debug.cm/conference {addresses    = ($addresses)}
+    debug.cm/conference {destinations = ($destinations)}
+
+    puts [util indent [join $addresses \n] "To: "]
+
+    # TODO: sponsor-ping - Allow conference placeholders ?
+    # TODO: sponsor-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
+
+    [table t Text {
+	lappend map @mg:sender@ [color red <<sender>>]
+	lappend map @mg:name@   [color red <<name>>]
+	$t noheader
+	$t add [util adjust [util tspace 0 60] \
+		    [string map $map $template]]
+    }] show
+
+    if {![ask yn "Send mail ? " no]} {
+	puts [color note Aborted]
+	return
+    }
+
+    set mconfig [mailer get-config]
+    mailer batch _ address name $destinations {
+	mailer send $mconfig \
+	    [list $address] \
+	    [mailgen call $address $name $template] \
+	    0 ;# not verbose
+    }
+
+    puts [color good OK]
+}
+
 proc ::cm::conference::cmd_sponsor_show {config} {
     debug.cm/conference {}
     Setup
@@ -762,6 +830,18 @@ proc ::cm::conference::cmd_end_set {config} {
 
     puts [color good OK]
     return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_website_make {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    error not-yet-done
 }
 
 # # ## ### ##### ######## ############# ######################

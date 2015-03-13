@@ -1,12 +1,8 @@
 NOW
 ===
 
-* implement mail ping sponsors, template based - fixed name 
-
-* -- con mgmt -- enter company contact info --
 * -- con mgmt -- ping past sponsors for renewal, and company link info.
   /ANSWERS pending/
-
 * ---- con mgmt --- ready for initial cfp 1 ---
 
 SOON
@@ -45,4 +41,9 @@ FUTURE
 * implement copying of conference data/setup -- easier entry of new
   conference, but also of previous ones
 
-* implement commands to modiy the timeline defaults (deltas)
+* implement commands to modify the timeline defaults (deltas)
+
+* split the main packages into 3 layers proper:
+  - database
+  - manager (database across modules)
+  - command implementation

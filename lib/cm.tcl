@@ -559,9 +559,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call conference cmd_hotel]
 
-	# remove - if not used
-	# modify - change title, start, length, alignment
-
 	private add-sponsor {
 	    section {Conference Management}
 	    description { Add one or more sponsoring contacts }
@@ -653,7 +650,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the conference rates }
 	} [cm::call conference cmd_rate_show]
 
-
 	private set-end {
 	    section {Conference Management} Advanced
 	    description { Set/fix the conference end-date }
@@ -661,6 +657,29 @@ cmdr create cm::cm [file tail $::argv0] {
 		New end date
 	    } { optional ; interact ; validate [cm::cvt date] }
 	} [cm::call conference cmd_end_set]
+
+
+	# TODO: conference remove - if not used
+	# TODO: conference modify - change title, start, length, alignment
+
+	private sponsor-ping {
+	    section {Conference Management}
+	    description { Send a mail to the sponsors }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find mail-sponsors]
+		validate [cm::vt template] }
+	} [cm::call conference cmd_sponsor_ping]
+
+
+	private make-website {
+	    section {Conference Management}
+	    description { Create a website from the conference information }
+	    input destination {
+		Path to the directory to create the website.
+	    } { validate wdirectory }
+	} [cm::call conference cmd_website_make]
 
     }
     alias conferences = conference list
