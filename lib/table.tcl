@@ -35,6 +35,18 @@ package require report
     return
 }
 
+::report::defstyle table/noheader {} {
+    data	set [split "[string repeat "| "   [columns]]|"]
+    top		set [split "[string repeat "+ - " [columns]]+"]
+    bottom	set [top get]
+    top		enable
+    bottom	enable
+    for {set i 0 ; set n [columns]} {$i < $n} {incr i} {
+	pad $i both { }
+    }
+    return
+}
+
 namespace eval ::cm::table {
     namespace export do
 }
@@ -97,8 +109,12 @@ oo::class create ::cm::table {
     method String {} {
 	if {$myplain} {
 	    set str [M format 2string]
-	} else {
+	} elseif {$myheader} {
 	    set r [report::report [self namespace]::R [M columns] style table/table]
+	    set str [M format 2string $r]
+	    $r destroy
+	} else {
+	    set r [report::report [self namespace]::R [M columns] style table/noheader]
 	    set str [M format 2string $r]
 	    $r destroy
 	}
