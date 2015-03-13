@@ -256,10 +256,10 @@ proc ::cm::location::cmd_staff_show {config} {
     set location [current]
 
     puts "Staff of \"[color name [get $location]]\":"
-    [table t {Role Staff} {
+    [table t {Role Staff Phone Email} {
 	set first 1
 	db do eval {
-	    SELECT position, name
+	    SELECT position, name, phone, email
 	    FROM   location_staff
 	    WHERE  location = :location
 	    ORDER BY position, name
@@ -273,7 +273,7 @@ proc ::cm::location::cmd_staff_show {config} {
 	    } else {
 		set position {}
 	    }
-	    $t add $position $name
+	    $t add $position $name $phone $email
 	}
     }] show
     return
@@ -545,7 +545,7 @@ proc ::cm::location::select-staff {p} {
 	1 {
 	    # Single choice, return
 	    # TODO: print note about single choice
-	    return [linlocalhostdex $staff 1]
+	    return [lindex $staff 1]
 	}
     }
 
