@@ -461,17 +461,31 @@ proc ::cm::conference::cmd_sponsor_show {config} {
     set conference [current]
 
     puts "Sponsors of \"[color name [get $conference]]\":"
-    [table t {Sponsor} {
+    [table t {Sponsor Reference} {
 	# TODO: sponsors - mail/link/notes ?
 	db do eval {
-	    SELECT C.dname AS name
+	    SELECT C.dname       AS name,
+	           C.affiliation AS affiliation
 	    FROM   sponsors S,
 	           contact  C
 	    WHERE  S.conference = :conference
 	    AND    S.contact    = C.id
 	    ORDER BY C.dname
 	} {
-	    $t add $name
+	    # coded left join
+	    if {$affiliation ne {}} {
+		set affiliation [db do onecolumn {
+		    SELECT dname FROM contact WHERE id = :affiliation
+		}]
+		if {$type eq "Company"} {
+		    # affiliation actually is "liason"
+		    set affiliation "Liaising: $affiliation"
+		} else {
+		    set affiliation "Of: $affiliation"
+		}
+	    }
+
+	    $t add $name $affiliation
 	}
     }] show
     return

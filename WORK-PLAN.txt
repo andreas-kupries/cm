@@ -1,8 +1,6 @@
 NOW
 ===
 
-* list sponsors - show liaison
-
 * implement mail ping sponsors, template based - fixed name 
 
 * -- con mgmt -- enter company contact info --
