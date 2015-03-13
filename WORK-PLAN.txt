@@ -1,11 +1,6 @@
 NOW
 ===
 
-* implement contact(person) for contact(company)
-  [reverse of affiliation, company email, separate from the main
-  contact, as that is used for campaigns. The new contact is for
-  personal/internal communication (sponsorship, ...)
-
 * implement mail ping sponsors, template based - fixed name 
 
 * -- con mgmt -- enter company contact info --

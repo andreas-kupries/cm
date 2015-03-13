@@ -73,7 +73,10 @@ CREATE TABLE contact (
 	name		TEXT	NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	dname		TEXT	NOT NULL,		-- display name
 	biography	TEXT,
-	affiliation	INTEGER REFERENCES contact,	-- company, if any; not for lists nor companies
+
+	affiliation	INTEGER REFERENCES contact,	-- person  => company they belong to
+	                                                -- company => person used as liaison
+	                                                -- mlist   => not applicable
 
 	can_recvmail	INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
 	can_register	INTEGER NOT NULL,	-- actual person can register for attendance

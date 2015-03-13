@@ -790,15 +790,27 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private set-company {
 	    section {Contact Management}
-	    description {Set tag of the specified contact}
+	    description {Set company affiliation of the specified person}
 	    input name {
-		Name of the contact to tag
+		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
 	    input company {
 		Name of the company to set as affiliation
 	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
 	} [cm::call contact cmd_set_company]
 	alias affiliate
+
+	# Reverse affiliation. A personal contact into the company ... A liaison
+	private set-liaison {
+	    section {Contact Management}
+	    description {Set liaison of the specified company}
+	    input company {
+		Name of the company to modify
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    input name {
+		Name of the contact to set oas liaison
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	} [cm::call contact cmd_set_liaison]
 
 	private set-tag {
 	    section {Contact Management}

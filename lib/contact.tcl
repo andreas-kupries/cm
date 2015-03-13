@@ -42,7 +42,7 @@ namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
 	cmd_add_mail cmd_add_link cmd_list cmd_show \
-	cmd_set_tag cmd_set_bio cmd_set_company \
+	cmd_set_tag cmd_set_bio cmd_set_company cmd_set_liaison \
 	cmd_disable cmd_enable cmd_disable_mail \
 	cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
 	cmd_merge \
@@ -101,13 +101,18 @@ proc ::cm::contact::cmd_show {config} {
 		    SELECT dname FROM contact WHERE id = :affiliation
 		}]
 	    }
+	    if {$type eq "Company"} {
+		set key Liaison
+	    } else {
+		set key Affiliation
+	    }
 
 	    set bio [textutil::adjust::adjust $bio -length $w]
 
 	    $t add Tag                $tag
 	    $t add Name               $name
 	    $t add Type               $type
-	    $t add Affiliation        $affiliation
+	    $t add $key               $affiliation
 	    $t add {Can Receive Mail} $crecv
 	    $t add {Can Register}     $creg
 	    $t add {Can Book}         $cbook
@@ -172,6 +177,13 @@ proc ::cm::contact::cmd_list {config} {
 		set affiliation [db do onecolumn {
 		    SELECT dname FROM contact WHERE id = :affiliation
 		}]
+
+		if {$type eq "Company"} {
+		    # affiliation actually is "liason"
+		    set affiliation "Liaising: $affiliation"
+		} else {
+		    set affiliation "Of: $affiliation"
+		}
 	    }
 
 	    set flags {}
@@ -632,6 +644,23 @@ proc ::cm::contact::cmd_set_company {config} {
     flush stdout
 
     update-affiliation $contact $company
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_set_liaison {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set company [$config @company]
+    set contact [$config @name]
+
+    puts -nonewline "Set \"[color name [get $company]]\"'s liaison as \"[color name [get $contact]]\" ..."
+    flush stdout
+
+    update-affiliation $company $contact
 
     puts [color good OK]
     return
@@ -1228,7 +1257,9 @@ proc ::cm::contact::Setup {} {
 	    dname	 TEXT	 NOT NULL,		-- display name
 	    biography	 TEXT,
 
-	    affiliation	 INTEGER REFERENCES contact,	-- company, if any; not for lists nor companies
+	    affiliation	 INTEGER REFERENCES contact,	-- person  => company they belong to
+	                                                -- company => person used as liaison
+	                                                -- mlist   => not applicable
 
 	    can_recvmail INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
