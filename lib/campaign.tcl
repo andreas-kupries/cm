@@ -356,22 +356,15 @@ proc ::cm::campaign::cmd_mail {config} {
     }
     set run [db do last_insert_rowid]
 
-    db do eval [string map [list @@@ [join $destinations ,]] {
-	SELECT E.id    AS receiver,
-               E.email AS address,
-	       C.dname AS name
-	FROM   email   E,
-	       contact C
-	WHERE E.id IN (@@@)
-	AND   C.id = E.contact
-    }] {
+    set mconfig [mailer get-config]
+    mailer batch receiver address name $destinations {
 	# Insert address and name into the template
 
 	puts "To: $name [color name $address]"
 
 	if 1 {
 	    #TODO: non-dry
-	    mailer send [mailer get-config] \
+	    mailer send $mconfig \
 		[list $address] \
 		[mailgen call $address $name $text] \
 		0 ;# not verbose
