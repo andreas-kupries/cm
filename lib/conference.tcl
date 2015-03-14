@@ -411,6 +411,7 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     puts "Timeline of \"[color name [get $conference]]\":"
     [table t {Event When} {
+	$t style table/html ;# quick testing
 	db do eval {
 	    SELECT T.date AS date,
 	           E.text AS text
@@ -840,12 +841,101 @@ proc ::cm::conference::cmd_website_make {config} {
     db show-location
 
     set conference [current]
+    set dstdir     [$config @destination]
 
-    error not-yet-done
+    puts "Remove old..."
+    file delete -force  $dstdir ${dstdir}_out
+
+    puts "Initialization..."
+    exec >@stdout 2>@stderr <@stdin \
+	ssg init $dstdir ${dstdir}_out ;# TODO Use a tmp dir for this
+
+    #unset navbar
+
+
+
+    puts "Filling in..."
+    puts "\tMain page..."
+    puts [color bad TODO:]\tpage-info/always
+    #set text [template details [template find-by-name www-main]]
+    #set text [insert $conference $text]
+    # automatic replacement of special placeholders (hotel specific, general common blocks?)
+    #fileutil::writeFile $dstdir/pages/index.md $text
+    #lappend navbar Main {$rootDirPath/index.html}
+
+    puts [color bad TODO:]\tpage-location-aka-info/always
+
+    puts "\tCall for papers..."
+    puts [color bad TODO:]\tpage-cfp/always
+    #set text [template details [template find-by-name www-cfp]]
+    #set text [insert $conference $text]
+    # automatic replacement of special placeholders (hotel specific, general common blocks?)
+    #fileutil::writeFile $dstdir/pages/index.md $text
+    #lappend navbar {Call For Papers} {$rootDirPath/cfp.html}
+
+    puts [color bad TODO:]\tpage-registration-info/complexity:ref-cgi-script/when-activated/flag
+    puts [color bad TODO:]\tpage-tutorials/input:t-schedule/when-schedule-exists
+    puts [color bad TODO:]\tpage-speakers/input:talks-and-tutorials/when-schedule|t-schedule-exists
+    puts [color bad TODO:]\tpage-schedule/input:talks/when-schedule|t-schedule-exists
+    puts [color bad TODO:]\tpage-abstracts/input:submissions-via-talks|when-schedule-exists
+    puts [color bad TODO:]\tref-previous-conference/todo-config-information/flag
+    puts [color bad TODO:]\tpage-open-online-proceedings/conditional-past-conference-next-year/flag
+    puts [color bad TODO:]\tconfiguration-data
+    # -- @wc:nav@ - navbar: Page names and filenames, dynamic : 
+    # -- @wc:contact@
+    # -- @wc:sidebar@ -- timeline table, contact.
+    puts [color bad TODO:]\tpage-contact/always
+    puts [color bad TODO:]\tlogo/always
+
+    # Configuration file.
+    puts "\tWebsite configuration"
+    set text [template details [template find-by-name www-wconf]]
+    set text [insert $conference $text]
+    lappend map @wc:nav@     {}
+    lappend map @wc:contact@ XXX
+    lappend map @wc:sidebar@ <table>[website-sidebar $conference]</table>
+    set text [string map $map $text]
+    unset map
+    fileutil::writeFile $dstdir/website.conf $text
+
+
+    #return
+    #error not-yet-done
+
+    puts "Generation..."
+    exec >@stdout 2>@stderr <@stdin \
+	ssg build $dstdir ${dstdir}_out ;# TODO from tmp dir, use actual destination => implied deployment
+
+    return
+    puts "Deploy..."
+    exec >@stdout 2>@stderr <@stdin \
+	ssg deploy-copy $dstdir
+    # custom - use rsync - or directory swap
+
 }
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::conference::website-sidebar {conference} {
+    return [[table t {Event When} {
+	$t style table/html
+	$t noheader
+	db do eval {
+	    SELECT T.date AS date,
+	           E.text AS text
+	    FROM   timeline      T,
+	           timeline_type E
+	    WHERE T.con  = :conference
+	    AND   T.type = E.id
+	    AND   E.ispublic
+	    ORDER BY T.date
+	} {
+	    $t add "$text" [hdate $date]
+	}
+    }] show return]
+}
+
 
 proc ::cm::conference::cdefault {attr dcmd} {
     upvar 1 config config

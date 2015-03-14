@@ -678,7 +678,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Create a website from the conference information }
 	    input destination {
 		Path to the directory to create the website.
-	    } { validate wdirectory }
+	    } { optional ; default conweb
+		;#validate wdirectory - TODO cmdr
+	    }
 	} [cm::call conference cmd_website_make]
 
     }

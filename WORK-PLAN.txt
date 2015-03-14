@@ -5,14 +5,15 @@ NOW
   /ANSWERS pending/
 * ---- con mgmt --- ready for initial cfp 1 ---
 
-SOON
-====
 
 * first run on website generation, tclssg frontend ---
   -- config data
   -- logo
   -- info page
   -- cfp page
+
+SOON
+====
 
   -- link to previous site/conference ? -- papers --
 

@@ -1,0 +1,41 @@
+websiteTitle {@c:name@}
+url {@-------------------XXX---@/}
+sitemap { enable 1 }
+rss { enable 1 tagFeeds 1 }
+indexPage {index.md}
+blogIndexPage {blog/index.md}
+tagPage {blog/tags/tag.md}
+outputDir {../output}
+blogPostsPerFile 10
+description {@c:name@}
+pageSettings {
+    gridClassPrefix col-md-
+    contentColumns 8
+    locale en_US
+    hideUserComments 1
+    hideSidebarNote 0
+    sidebarPosition right
+    sidebarNote {@wc:sidebar@}
+    navbarItems {@wc:nav@}
+    bootstrapTheme {$rootDirPath/external/bootstrap-3.3.1-dist/css/bootstrap-theme.min.css}
+    customCss {{$rootDirPath/tclssg.css}}
+}
+blogPostSettings {
+    hideUserComments 0
+    hideSidebarNote 0
+    moreText {(<a href="$link">read more</a>)}
+    sidebarNote {
+        <h3>About</h3>
+        This is the blog of the sample Tclssg project.
+    }
+}
+deployCustom {
+    start {scp -rp "$outputDir" localhost:/tmp/deployment-test/}
+    file {}
+    end {}
+}
+enableMacrosInPages 0
+comments {
+    engine none
+    disqusShortname {}
+}
