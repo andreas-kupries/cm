@@ -1,33 +1,27 @@
 websiteTitle {@c:name@}
-url {@-------------------XXX---@/}
+copyright    {<a href="$rootDirPath/disclaimer.html">Copyright &copy;</a> @c:year@ <a href='mailto:tclcommunityassociation@gmail.com'>Tcl Community Association</a>}
+url          {https://core.tcl.tk/tmp/tcl@c:year@/}
+description  {@c:name@}
+
 sitemap { enable 1 }
-rss { enable 1 tagFeeds 1 }
+rss     { enable 1 tagFeeds 1 }
 indexPage {index.md}
-blogIndexPage {blog/index.md}
-tagPage {blog/tags/tag.md}
 outputDir {../output}
 blogPostsPerFile 10
-description {@c:name@}
 pageSettings {
+    navbarBrand {<div class="pull-left"> <img src="http://www.tclcommunityassociation.org/wub/imgs/tcla_logo2c-tiny.gif" style="height: 33px; margin-top: -10px;"> @c:name@</div>}
+    favicon     images/favicon.png
+    sidebarNote {@wc:sidebar@}
+    navbarItems {@wc:nav@}
+
     gridClassPrefix col-md-
     contentColumns 8
     locale en_US
     hideUserComments 1
     hideSidebarNote 0
     sidebarPosition right
-    sidebarNote {@wc:sidebar@}
-    navbarItems {@wc:nav@}
     bootstrapTheme {$rootDirPath/external/bootstrap-3.3.1-dist/css/bootstrap-theme.min.css}
     customCss {{$rootDirPath/tclssg.css}}
-}
-blogPostSettings {
-    hideUserComments 0
-    hideSidebarNote 0
-    moreText {(<a href="$link">read more</a>)}
-    sidebarNote {
-        <h3>About</h3>
-        This is the blog of the sample Tclssg project.
-    }
 }
 deployCustom {
     start {scp -rp "$outputDir" localhost:/tmp/deployment-test/}

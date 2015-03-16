@@ -46,7 +46,7 @@ namespace eval ::cm::contact {
 	cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
 	cmd_merge \
 	select label get known known-email known-type details \
-	get-name
+	get-name get-links
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -967,6 +967,16 @@ proc ::cm::contact::get-name {id} {
 	SELECT dname
 	FROM   contact
 	WHERE  id = :id
+    }]
+}
+
+proc ::cm::contact::get-links {id} {
+    debug.cm/contact {}
+    Setup
+    return [db do eval {
+	SELECT link
+	FROM   link
+	WHERE  contact = :id
     }]
 }
 

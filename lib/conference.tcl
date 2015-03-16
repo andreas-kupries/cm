@@ -843,82 +843,218 @@ proc ::cm::conference::cmd_website_make {config} {
     set conference [current]
     set dstdir     [$config @destination]
 
+    # # ## ### ##### ######## #############
     puts "Remove old..."
     file delete -force  $dstdir ${dstdir}_out
 
+    # # ## ### ##### ######## #############
     puts "Initialization..."
     exec >@stdout 2>@stderr <@stdin \
 	ssg init $dstdir ${dstdir}_out ;# TODO Use a tmp dir for this
+    file delete -force $dstdir/pages/blog
 
-    #unset navbar
-
-
-
+    # # ## ### ##### ######## #############
     puts "Filling in..."
-    puts "\tMain page..."
-    puts [color bad TODO:]\tpage-info/always
-    #set text [template details [template find-by-name www-main]]
-    #set text [insert $conference $text]
-    # automatic replacement of special placeholders (hotel specific, general common blocks?)
-    #fileutil::writeFile $dstdir/pages/index.md $text
-    #lappend navbar Main {$rootDirPath/index.html}
+    lappend navbar {*}[make_page Overview          index       make_overview]
+    lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
+    lappend navbar {*}[make_page Location          location    make_location]
+    lappend navbar {*}[make_page Registration      register    make_registration]
+    lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials]
+    lappend navbar {*}[make_page Schedule          schedule    make_schedule]
+    make_page Abstracts         abstracts   make_abstracts
+    make_page Speakers          bios        make_speakers
+    lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
+    lappend navbar {*}[make_page Contact           contact     make_contact]
+    make_page Disclaimer        disclaimer  make_disclaimer
 
-    puts [color bad TODO:]\tpage-location-aka-info/always
-
-    puts "\tCall for papers..."
-    puts [color bad TODO:]\tpage-cfp/always
-    #set text [template details [template find-by-name www-cfp]]
-    #set text [insert $conference $text]
-    # automatic replacement of special placeholders (hotel specific, general common blocks?)
-    #fileutil::writeFile $dstdir/pages/index.md $text
-    #lappend navbar {Call For Papers} {$rootDirPath/cfp.html}
-
-    puts [color bad TODO:]\tpage-registration-info/complexity:ref-cgi-script/when-activated/flag
-    puts [color bad TODO:]\tpage-tutorials/input:t-schedule/when-schedule-exists
-    puts [color bad TODO:]\tpage-speakers/input:talks-and-tutorials/when-schedule|t-schedule-exists
-    puts [color bad TODO:]\tpage-schedule/input:talks/when-schedule|t-schedule-exists
-    puts [color bad TODO:]\tpage-abstracts/input:submissions-via-talks|when-schedule-exists
-    puts [color bad TODO:]\tref-previous-conference/todo-config-information/flag
-    puts [color bad TODO:]\tpage-open-online-proceedings/conditional-past-conference-next-year/flag
-    puts [color bad TODO:]\tconfiguration-data
-    # -- @wc:nav@ - navbar: Page names and filenames, dynamic : 
-    # -- @wc:contact@
-    # -- @wc:sidebar@ -- timeline table, contact.
-    puts [color bad TODO:]\tpage-contact/always
-    puts [color bad TODO:]\tlogo/always
-
+    # # ## ### ##### ######## #############
     # Configuration file.
     puts "\tWebsite configuration"
-    set text [template details [template find-by-name www-wconf]]
+    set text [template use www-wconf]
     set text [insert $conference $text]
-    lappend map @wc:nav@     {}
-    lappend map @wc:contact@ XXX
-    lappend map @wc:sidebar@ <table>[website-sidebar $conference]</table>
+    lappend map @wc:nav@     $navbar
+    lappend map @wc:sidebar@ [make_sidebar $conference]
     set text [string map $map $text]
     unset map
     fileutil::writeFile $dstdir/website.conf $text
-
-
-    #return
-    #error not-yet-done
+    # # ## ### ##### ######## #############
 
     puts "Generation..."
     exec >@stdout 2>@stderr <@stdin \
 	ssg build $dstdir ${dstdir}_out ;# TODO from tmp dir, use actual destination => implied deployment
+
 
     return
     puts "Deploy..."
     exec >@stdout 2>@stderr <@stdin \
 	ssg deploy-copy $dstdir
     # custom - use rsync - or directory swap
-
 }
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
-proc ::cm::conference::website-sidebar {conference} {
-    return [[table t {Event When} {
+proc ::cm::conference::make_page {title fname generatorcmd} {
+    upvar 1 dstdir dstdir conference conference
+    puts \t${title}...
+
+    set text [make_page_header]
+
+    try {
+	append text \n [uplevel 1 $generatorcmd]
+    } on error {e o} {
+	puts [color bad TODO:]\t${title}
+	append text "\nNOT YET IMPLEMENTED\n" $::errorInfo
+    }
+
+    append text [make_page_footer]
+    set    text [insert $conference $text]
+
+    fileutil::writeFile $dstdir/pages/${fname}.md $text
+    return [list $title "\$rootDirPath/${fname}.html"]
+}
+
+proc ::cm::conference::make_page_header {} {
+    # page-header - TODO: Separate hotel and facilities.
+    # page-header - TODO: Move text into a configurable template? This one is a maybe.
+    # page-header - TODO: Conditional text for link, phone, and fax, any could be missing.
+
+    return [string trimleft [util undent {
+	#
+	## @c:when@
+
+	[@h:hotel@](@h:booklink@)		</br>
+	[@h:city@](@h:booklink@)		</br>
+	[@h:street@](@h:booklink@)		</br>
+	[Phone: @h:bookphone@](@h:booklink@)	</br>
+	[Fax: @h:bookfax@](@h:booklink@)
+
+	---
+    }]]
+}
+
+proc ::cm::conference::make_page_footer {} {
+    # page-footer - TODO: Move text into a configurable template
+    return [util undent {
+	# Contact information
+
+	[@c:contact@](mailto:@c:contact@)
+    }]
+}
+
+proc ::cm::conference::make_overview {} {
+    # make-overview - TODO: Move text into a configurable template
+    return [template use www-main]
+}
+
+proc ::cm::conference::make_callforpapers {} {
+    return [template use www-cfp]
+}
+
+proc ::cm::conference::make_location {} {
+    # make-location - TODO: Move text into a configurable template
+    # make-location - TODO: insert booking information, rate information.
+    return [util undent {
+	We have negotiated a reduced room rate for attendees of the
+	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
+
+	To register for a room at the hotel you can use phone (@h:bookphone@), fax (@h:bookfax@), or their [website](@h:booklink@).
+	Be certain to mention that you are with the Tcl/Tk Conference to
+	get the Tcl/Tk Conference room rate. Our coupon code is __@r:group@__.
+
+	These rooms will be released to the general public after __@r:deadline@__,
+	so be sure to reserve your room before.
+
+	@h:transport@
+    }]
+}
+
+proc ::cm::conference::make_registration {} {
+    # make-registration - TODO: Move text into a configurable template
+    # make-registration - TODO: flag/data controlled
+    # make-registration - TODO: registration opening date ?!
+    return [util undent {
+	Registration is not open yet.
+
+	Please check back in the future.
+    }]
+}
+
+proc ::cm::conference::make_tutorials {} {
+    # make-tutorials - TODO: Move text into a configurable template
+    # make-tutorials - TODO: flag/data controlled
+    return [util undent {
+	Tutorials have not been set yet.
+	We are working on this.
+
+	Please check back in the future.
+    }]
+}
+
+proc ::cm::conference::make_schedule {} {
+    # make-schedule - TODO: Move text into a configurable template
+    # make-schedule - TODO: data driven on schedule data
+    return [util undent {
+	The schedule will be finalized and put up after
+	all the notifications to authors have been sent
+	out on @c:t:authornote@.
+
+	Please check back after.
+    }]
+}
+
+proc ::cm::conference::make_abstracts {} {
+    # make-abstracts - TODO: Move text into a configurable template
+    # make-abstracts - TODO: data driven on schedule data
+    return [util undent {
+	The paper abstracts will be finalized and put up after
+	all the notifications to authors have been sent out on
+	@c:t:authornote@, as part of creating the schedule.
+
+	Please check back after.
+    }]
+}
+
+proc ::cm::conference::make_speakers {} {
+    # make-speakers - TODO: Move text into a configurable template
+    # make-speakers - TODO: data driven on schedule data
+    return [util undent {
+	The list of speakers and their biographies will be finalized
+	and put up after all the notifications to authors have been
+	sent out on @c:t:authornote@, as part of creating the schedule.
+
+	Please check back after.
+    }]
+}
+
+proc ::cm::conference::make_contact {} {
+    # No content, the information is in the footer.
+    return
+}
+
+proc ::cm::conference::make_disclaimer {} {
+    # make-abstracts - TODO: Move text into a configurable template
+    return [util undent {
+	This is the disclaimer and copyright.
+    }]
+}
+
+proc ::cm::conference::make_proceedings {} {
+    # make-proceedings - TODO: Move text into a configurable template
+    # make-proceedings - TODO: flag/data controlled
+    return [util undent {
+	Our proceedings will be made public next year,
+	as part of the next conference.
+
+	Please check back.
+    }]
+}
+
+proc ::cm::conference::make_sidebar {conference} {
+    append sidebar <table>
+    append sidebar <tr><td span=2><strong> "Important Information &mdash; Timeline" </strong></td></tr>
+    #append sidebar <tr><td> "Email contact" </td><td> "<a href='mailto:@c:contact@'>" @c:contact@</a></td></tr>
+    append sidebar [[table t {Event When} {
 	$t style table/html
 	$t noheader
 	db do eval {
@@ -934,6 +1070,8 @@ proc ::cm::conference::website-sidebar {conference} {
 	    $t add "$text" [hdate $date]
 	}
     }] show return]
+    append sidebar </table>
+    return [insert $conference $sidebar]
 }
 
 
@@ -1007,8 +1145,28 @@ proc ::cm::conference::insert {id text} {
     #array set _ $details ; parray _ ; unset _
     #array set _ $hotel ; parray _ ; unset _
 
-    set sponsors [join [lsort -dict [dict keys [known-sponsor-select $id]]] \n]
+    # Basic sponsor list, names only -- TODO: Exclude TCA/conference manager org
+    set thesponsors [known-sponsor-select $id]
+    set sponsors [lsort -dict [dict keys $thesponsors]]
+
+    set shortsponsors [string map {and, and} [join [linsert $sponsors end-1 and] {, }]]
+
+    set sponsors [join $sponsors \n]
     set sponsors [util indent $sponsors "   * "]
+
+    # Extended Sponsor text, with links.
+    dict for {label sid} $thesponsors {
+	set links [lsort -dict [contact get-links $sid]]
+	if {[llength $links]} {
+	    set link [lindex $links 0]
+	    set label "\[$label\]($link)"
+	}
+	lappend mdsponsors $label
+    }
+
+    set mdshortsponsors [string map {and, and} [join [linsert $mdsponsors end-1 and] {, }]]
+
+    set mdsponsors [util indent [join [lsort -dict $mdsponsors] \n] "   * "]
 
     # Staff names, roles and affiliations, limit to the committee
     set cdata  [committee $id]
@@ -1021,14 +1179,29 @@ proc ::cm::conference::insert {id text} {
 	#debug.cm/conference {c.member = ($contact)}
 	#debug.cm/conference {[util indent [debug pdict $contact] "  "]}
 
+	set cl $clabel
 	set a [dict get $contact xaffiliation]
 	if {$a ne {}} {
+	    set alinks [lsort -dict [contact get-links $a]]
 	    set a [contact get-name $a]
+	    if {[llength $alinks]} {
+		set alink [lindex $alinks 0]
+		set amd "\[$a\]($alink)"
+	    } else {
+		set amd $a
+	    }
+
 	    append clabel " " $a
+	} else {
+	    set amd {}
 	}
 	lappend committee [string trim $clabel]
+	lappend mdcommittee |$cl|$amd|
     }
     set committee [util indent [join $committee \n] "   * "]
+    set mdcommittee [join $mdcommittee \n]
+
+    set rate [get-rate $id $xhotel]
 
     # Needs:
     # - conference information
@@ -1049,13 +1222,13 @@ proc ::cm::conference::insert {id text} {
     lappend map @h:street@     "$xstreet, $xzipcode"
     lappend map @h:transport@  $xtransport
 
-    lappend map @h:bookphone   [ifempty $xbookphone $xlocalphone]
-    lappend map @h:bookfax     [ifempty $xbookfax   $xlocalfax]
-    lappend map @h:booklink    [ifempty $xbooklink  $xlocallink]
+    lappend map @h:bookphone@   [ifempty $xbookphone $xlocalphone]
+    lappend map @h:bookfax@     [ifempty $xbookfax   $xlocalfax]
+    lappend map @h:booklink@    [ifempty $xbooklink  $xlocallink]
 
-    lappend map @h:localphone  $xlocalphone
-    lappend map @h:localfax    $xlocalfax
-    lappend map @h:locallink   $xlocallink
+    lappend map @h:localphone@  $xlocalphone
+    lappend map @h:localfax@    $xlocalfax
+    lappend map @h:locallink@   $xlocallink
 
     lappend map @c:name@       $xtitle
     lappend map @c:city@       $clabel
@@ -1065,8 +1238,19 @@ proc ::cm::conference::insert {id text} {
     lappend map @c:when@       [when $xstart $xend]
     lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
     lappend map @c:sponsors@   $sponsors
+    lappend map @c:sponsors:md@    $mdsponsors
+    lappend map @c:sponsors:short@ $shortsponsors
+    lappend map @c:sponsors:short:md@ $mdshortsponsors
     lappend map @c:committee@  $committee
+    lappend map @c:committee:md@  $mdcommittee
     lappend map @c:talklength@ $xtalklen
+
+    lappend map @r:rate@     [dict get $rate rate]
+    lappend map @r:currency@ [dict get $rate currency]
+    lappend map @r:begin@    [dict get $rate begin]
+    lappend map @r:end@      [dict get $rate end]
+    lappend map @r:deadline@ [dict get $rate pdeadline]
+    lappend map @r:group@    [dict get $rate group]
 
     db do eval {
 	SELECT E.key  AS key,
@@ -1585,6 +1769,42 @@ proc ::cm::conference::get-timeline {id} {
 	FROM   timeline_type
 	WHERE  id = :id
     }]
+}
+
+proc ::cm::conference::get-rate {conference location} {
+    debug.cm/conference {}
+    Setup
+
+    db do eval {
+	SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
+	FROM   rate
+	WHERE  conference = :conference
+	AND    location   = :location
+    } {
+	set factor 10e$decimal
+	set rate [format %.${decimal}f [expr {$rate / $factor}]]
+
+	set begindate [expr {($begindate ne {})
+			     ? [hdate $begindate]
+			     : "Undefined"}]
+	set enddate [expr {($enddate ne {})
+			   ? [hdate $enddate]
+			   : "Undefined"}]
+	set deadline [expr {($deadline ne {})
+			    ? [hdate $deadline]
+			    : "Undefined"}]
+	set pdeadline [expr {($pdeadline ne {})
+			     ? [hdate $pdeadline]
+			     : "Undefined"}]
+	return [dict create \
+		    rate      $rate \
+		    currency  $currency \
+		    begin     $begindate \
+		    end       $enddate \
+		    deadline  $deadline \
+		    pdeadline $pdeadline \
+		    group     $groupcode]
+    }
 }
 
 # # ## ### ##### ######## ############# ######################
