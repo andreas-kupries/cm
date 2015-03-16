@@ -1199,7 +1199,7 @@ proc ::cm::conference::insert {id text} {
 	lappend mdcommittee |$cl|$amd|
     }
     set committee [util indent [join $committee \n] "   * "]
-    set mdcommittee [join $mdcommittee \n]
+    set mdcommittee |||\n|-|-|\n[join $mdcommittee \n]
 
     set rate [get-rate $id $xhotel]
 
