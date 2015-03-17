@@ -1,6 +1,6 @@
 websiteTitle {@c:name@}
-copyright    {<a href="$rootDirPath/disclaimer.html">Copyright &copy;</a> @c:year@ <a href='mailto:tclcommunityassociation@gmail.com'>Tcl Community Association</a>}
-url          {https://core.tcl.tk/tmp/tcl@c:year@/}
+copyright    {<a href="$rootDirPath/disclaimer.html">Copyright &copy;</a> @c:year@ <a href='mailto:tclcommunityassociation@gmail.com'>@c:management@</a>}
+url          {https://core.tcl.tk/conference/tcl@c:year@/}
 description  {@c:name@}
 
 sitemap { enable 1 }

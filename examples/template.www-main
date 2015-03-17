@@ -1,6 +1,6 @@
-We are pleased to announce the __@c:name@ (Tcl'@c:year@)__, managed by
-[The Tcl Community Association](http://www.tclcommunityassociation.org),
-with help from @c:sponsors:short:md@.
+We are pleased to announce the __@c:name@ (Tcl'@c:year@)__,
+managed by [@c:management@](@c:management:link@) with help
+from @c:sponsors:md:short@.
 
 Learn from the experts and share your knowledge. The annual Tcl/Tk
 conference is the best opportunity to talk with experts and peers,
@@ -43,5 +43,5 @@ The list of papers and their abstracts will be made available in the
 [schedule](schedule.html) section of these pages after the
 notifications to authors have been sent out, on @c:t:authornote@.
 
-Last year's papers are available on The Tcl Community Association's
+Last year's papers are available at [@c:management@](@c:management:link@)'s
 proceedings page.
