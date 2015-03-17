@@ -683,6 +683,16 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::vt template] }
 	} [cm::call conference cmd_sponsor_ping]
 
+	private committee-ping {
+	    section {Conference Management}
+	    description { Send a mail to the program committee }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find mail-committee]
+		validate [cm::vt template] }
+	} [cm::call conference cmd_committee_ping]
+
 
 	private make-website {
 	    section {Conference Management}
