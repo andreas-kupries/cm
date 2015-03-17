@@ -418,15 +418,20 @@ proc ::cm::conference::cmd_timeline_show {config} {
     [table t {Event When} {
 	#$t style table/html ;# quick testing
 	db do eval {
-	    SELECT T.date AS date,
-	           E.text AS text
+	    SELECT T.date     AS date,
+	           E.text     AS text,
+	           E.ispublic AS ispublic
 	    FROM   timeline      T,
 	           timeline_type E
 	    WHERE T.con  = :conference
 	    AND   T.type = E.id
 	    ORDER BY T.date
 	} {
-	    $t add "$text" [hdate $date]
+	    if {$ispublic} {
+		$t add [color note $text] [color note [hdate $date]]
+	    } else {
+		$t add $text [hdate $date]
+	    }
 	}
     }] show
     return
@@ -1046,7 +1051,8 @@ proc ::cm::conference::make_location {} {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
 
-	To register for a room at the hotel you can use phone (@h:bookphone@), fax (@h:bookfax@), or their [website](@h:booklink@).
+	To register for a room at the hotel you can use phone (@h:bookphone@),
+	fax (@h:bookfax@), or their [website](@h:booklink@).
 	Be certain to mention that you are with the Tcl/Tk Conference to
 	get the Tcl/Tk Conference room rate. Our coupon code is __@r:group@__.
 
@@ -1062,9 +1068,9 @@ proc ::cm::conference::make_registration {} {
     # make-registration - TODO: flag/data controlled
     # make-registration - TODO: registration opening date ?!
     return [util undent {
-	Registration is not open yet.
+	It is planned to open registration on @c:t:regopen@.
 
-	Please check back in the future.
+	Please check back at that time.
     }]
 }
 
