@@ -47,6 +47,15 @@ package require report
     return
 }
 
+::report::defstyle table/html {} {
+    data	set [split "<tr><td> [string repeat "</td><td> " [expr {[columns]-1}]]</td></tr>"]
+    #top		set <table>
+    #bottom	set </table>
+    #top		enable
+    #bottom	enable
+    return
+}
+
 namespace eval ::cm::table {
     namespace export do
 }
@@ -69,6 +78,7 @@ oo::class create ::cm::table {
 	M add row $args
 	set myplain 0
 	set myheader 1
+	set mystyle {}
 	return
     }
 
@@ -97,6 +107,12 @@ oo::class create ::cm::table {
 
     method plain {} {
 	set myplain 1
+	return
+    }
+
+    method style {style} {
+	set mystyle $style
+	return
     }
 
     method noheader {} {
@@ -107,7 +123,11 @@ oo::class create ::cm::table {
     }
 
     method String {} {
-	if {$myplain} {
+	if {$mystyle ne {}} {
+	    set r [report::report [self namespace]::R [M columns] style $mystyle]
+	    set str [M format 2string $r]
+	    $r destroy
+	} elseif {$myplain} {
 	    set str [M format 2string]
 	} elseif {$myheader} {
 	    set r [report::report [self namespace]::R [M columns] style table/table]
@@ -127,7 +147,7 @@ oo::class create ::cm::table {
     # # ## ### ##### ######## #############
     ## State
 
-    variable myplain myheader
+    variable myplain myheader mystyle
 
     # # ## ### ##### ######## #############
 }

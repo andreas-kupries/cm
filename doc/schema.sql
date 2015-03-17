@@ -177,6 +177,9 @@ CREATE TABLE conference (
 	title		TEXT	UNIQUE,
 	year		INTEGER,
 
+	management	INTEGER	NOT NULL REFERENCES contact,	-- Org/company/person managing the conference
+	submission	INTEGER	NOT NULL REFERENCES email,	-- Email to receive submissions.
+
 	city		INTEGER	REFERENCES city,
 	hotel		INTEGER REFERENCES location	-- We will not immediately know where we will be
 	facility	INTEGER REFERENCES location	-- While sessions are usually at the hotel, they may not be.
