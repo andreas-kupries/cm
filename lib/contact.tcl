@@ -106,7 +106,7 @@ proc ::cm::contact::cmd_show {config} {
 		set key Affiliation
 	    }
 
-	    set bio [util adjustam $w $bio]
+	    set bio [util adjust $w $bio]
 
 	    $t add Tag                $tag
 	    $t add Name               $name
