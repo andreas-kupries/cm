@@ -416,7 +416,7 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     puts "Timeline of \"[color name [get $conference]]\":"
     [table t {Event When} {
-	$t style table/html ;# quick testing
+	#$t style table/html ;# quick testing
 	db do eval {
 	    SELECT T.date AS date,
 	           E.text AS text
@@ -2094,12 +2094,13 @@ proc ::cm::conference::Setup {} {
 	    INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w (8w) (~2m)
 	    INSERT OR IGNORE INTO timeline_type VALUES ( 4,1, -84,'wipopen',   'WIP & BOF Reservations open'); --  -12w
 	    INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w (4w) (~1m)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -49,'authornote','Notifications to Authors');    --   -7w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -21,'writedead', 'Author Materials due');        --   -3w (4w)+1w grace
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,0, -14,'procedit',  'Edit proceedings');            --   -2w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0,  -7,'procship',  'Ship proceedings');            --   -1w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES (10,1,   0,'begin-t',   'Tutorial Start');              --  <=>
-	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Start');               --  +2d
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -56,'regopen',   'Registration opens');          --   -8w same
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -49,'authornote','Notifications to Authors');    --   -7w (1w)
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,1, -21,'writedead', 'Author Materials due');        --   -3w (4w)+1w grace
+	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0, -14,'procedit',  'Edit proceedings');            --   -2w (1w)
+	    INSERT OR IGNORE INTO timeline_type VALUES (10,0,  -7,'procship',  'Ship proceedings');            --   -1w (1w)
+	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   0,'begin-t',   'Tutorial Start');              --  <=>
+	    INSERT OR IGNORE INTO timeline_type VALUES (12,1,   2,'begin-s',   'Session Start');               --  +2d
 	}
     }
 
