@@ -38,7 +38,8 @@ namespace eval ::cm {
 namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	 cmd_map cmd_staff_show cmd_staff_link cmd_staff_unlink \
+	 cmd_map cmd_staff_show cmd_map_get \
+	cmd_staff_link cmd_staff_unlink \
 	select label get details known-staff select-staff
     namespace ensemble create
 
@@ -210,11 +211,22 @@ proc ::cm::location::cmd_map {config} {
 
     set map [read stdin]
 
-    dict set details transport $map
+    dict set details xtransport $map
 
     puts -nonewline "Saving ... "
     write $id $details
     puts [color good OK]
+    return
+}
+
+proc ::cm::location::cmd_map_get {config} {
+    debug.cm/location {}
+    Setup
+
+    set id      [current]
+    set details [details $id]
+
+    puts [dict get $details xtransport]
     return
 }
 

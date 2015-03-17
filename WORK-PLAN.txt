@@ -5,24 +5,24 @@ NOW
   /ANSWERS pending/
 * ---- con mgmt --- ready for initial cfp 1 ---
 
+* 'isprimary' attribute of emails and links for a contact ?
+  Or reverse link to the primary items from the contact ?
+
+* implement handling of submissions
+
 SOON
 ====
 
-* first run on website generation, tclssg frontend ---
-  -- config data
-  -- logo
-  -- info page
-  -- cfp page
-
   -- link to previous site/conference ? -- papers --
 
-* implement handling of submissions
 * implement handling of talks, schedule
 * implement handling of tutorial setup and schedule
 
 
 LATER
 =====
+
+* -- cgi form for the submission of a paper ?
 
 * website, more pages
   -- tutorials
@@ -47,3 +47,6 @@ FUTURE
   - database
   - manager (database across modules)
   - command implementation
+
+* (login-locked) admin pages for managing a conference from the
+  browser instead of the cli

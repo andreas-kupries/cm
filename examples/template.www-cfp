@@ -1,0 +1,93 @@
+The program committee is asking for papers and presentation proposals
+from anyone using or developing with Tcl/Tk (and extensions). Past
+conferences have seen submissions covering a wide variety of topics
+including:
+
+   * Scientific and engineering applications
+   * Industrial controls
+   * Distributed applications and Network Managment
+   * Object oriented extensions to Tcl/Tk
+   * New widgets for Tk
+   * Simulation and application steering with Tcl/Tk
+   * Tcl/Tk-centric operating environments
+   * Tcl/Tk on small and embedded devices
+   * Medical applications and visualization
+   * Use of different programming paradigms in Tcl/Tk and proposals for new directions.
+   * New areas of exploration for the Tcl/Tk language
+
+Submissions should consist of an abstract of about 100 words and a
+summary of not more than two pages, and should be sent as plain text
+to @c:contact@ no later than @c:t:submitdead@. Authors of accepted
+abstracts will have until @c:t:writedead@ to submit their final
+paper for the inclusion in the conference proceedings. The proceedings
+will be made available on digital media, so extra materials such as
+presentation slides, code examples, code for extensions etc. are
+encouraged.
+
+Printed proceedings will be produced as an on-demand book at lulu.com
+
+The authors will have @c:talklength@ minutes to present their paper at
+the conference.
+
+The program committee will review and evaluate papers according to the
+following criteria:
+
+   * Quantity and quality of novel content
+   * Relevance and interest to the Tcl/Tk community
+   * Suitability of content for presentation at the conference
+
+Proposals may report on commercial or non-commercial systems, but
+those with only blatant marketing content will not be accepted.
+
+Application and experience papers need to strike a balance between
+background on the application domain and the relevance of Tcl/Tk to
+the application. Application and experience papers should clearly
+explain how the application or experience illustrates a novel use of
+Tcl/Tk, and what lessons the Tcl/Tk community can derive from the
+application or experience to apply to their own development efforts.
+
+Papers accompanied by non-disclosure agreements will be returned to
+the author(s) unread. All submissions are held in the highest
+confidentiality prior to publication in the Proceedings, both as a
+matter of policy and in accord with the U. S. Copyright Act of 1976.
+
+The primary author for each accepted paper will receive registration
+to the Technical Sessions portion of the conference at a reduced rate.
+
+# Other Forms of Participation
+
+The program committee also welcomes proposals for panel discussions of
+up to 90 minutes. Proposals should include a list of confirmed
+panelists, a title and format, and a panel description with position
+statements from each panelist. Panels should have no more than four
+speakers, including the panel moderator, and should allow time for
+substantial interaction with attendees. Panels are not presentations
+of related research papers.
+
+Slots for Works-in-Progress (WIP) presentations and Birds-of-a-Feather
+sessions (BOFs) are available on a first-come, first-served basis
+starting in @c:t:wipopen@. Specific instructions for reserving WIP
+and BOF time slots will be provided in the registration information
+available in @c:t:wipopen@. Some WIP and BOF time slots will be held open
+for on-site reservation. All attendees with an interesting work in
+progress should consider reserving a WIP slot.
+
+# Registration Information
+
+More information is available at the
+[conference web site](http://www.tcl.tk/community/tcl@c:year@/)
+and will be published on various Tcl/Tk-related information channels.
+
+To keep in touch with news regarding the conference and Tcl events in
+general, subscribe to the tcl-announce list managed at
+[http://code.activestate.com/lists/tcl-announce](http://code.activestate.com/lists/tcl-announce)
+
+# Conference Committee
+
+@c:committee:md@
+
+# Sponsors
+
+Tcl'@c:year@ would like to thank those who are sponsoring the conference:
+
+@c:sponsors:md@

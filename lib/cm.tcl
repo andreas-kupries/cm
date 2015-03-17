@@ -310,6 +310,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt template] }
 	} [cm::call template cmd_set]
 	alias update
+	alias replace
     }
     alias templates = template list
 
@@ -398,13 +399,23 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Set the contact information of the current location }
 	} [cm::call location cmd_contact]
 
-	private map {
+	private map-set {
 	    section {Location Management}
 	    description {
 		Set the map, directions, transport information of the current location.
 		Note: The data is read from stdin.
 	    }
-	} [cm::call hotel cmd_map]
+	} [cm::call location cmd_map]
+	alias directions-set
+	alias transport-set
+	alias note-set
+
+	private map {
+	    section {Location Management}
+	    description {
+		Return the map and other hotel specific data.
+	    }
+	} [cm::call location cmd_map_get]
 	alias directions
 	alias transport
 	alias note
@@ -688,7 +699,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Create a website from the conference information }
 	    input destination {
 		Path to the directory to create the website.
-	    } { validate wdirectory }
+	    } { optional ; default conweb
+		;#validate wdirectory - TODO cmdr
+	    }
 	} [cm::call conference cmd_website_make]
 
     }
