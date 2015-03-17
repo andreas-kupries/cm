@@ -49,7 +49,7 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
-	cmd_website_make cmd_end_set \
+	cmd_committee_ping cmd_website_make cmd_end_set \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	select label current get insert known-sponsor cmd_rate_show \
 	select-sponsor select-staff-role select-staff known-staff \
@@ -460,6 +460,89 @@ proc ::cm::conference::cmd_timeline_clear {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_committee_ping {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    set template   [$config @template]
+    set tlabel     [template get $template]
+
+    puts "Mailing the committee of \"[color name [get $conference]]\":"
+    puts "Using template: [color name $tlabel]"
+
+    set template     [template details $template]
+    set destinations [db do eval {
+	SELECT id, email
+	FROM   email
+	WHERE  contact IN (SELECT contact
+			   FROM   conference_staff
+			   WHERE  conference = :conference
+			   AND    role       = 4) -- program committee
+    }]
+
+    debug.cm/conference {destinations = ($destinations)}
+
+    set addresses    [lsort -dict [dict values $destinations]]
+    set destinations [dict keys $destinations]
+
+    debug.cm/conference {addresses    = ($addresses)}
+    debug.cm/conference {destinations = ($destinations)}
+
+    set origins [db do eval {
+	SELECT dname
+	FROM   contact
+	WHERE  id IN (SELECT contact
+		      FROM   conference_staff
+		      WHERE  conference = :conference
+		      AND    role       = 3) -- program chair
+    }]
+
+    set origins [lsort -dict $origins]
+    if {[llength $origins] > 1} {
+	set origins [string map {and, and} [join [linsert end-1 and] {, }]]
+    } else {
+	set origins [join $origins {, }]
+    }
+
+    puts "From: $origins"
+    puts [util indent [join $addresses \n] "To: "]
+
+    # TODO: sponsor-ping - Allow conference placeholders ?
+    # TODO: sponsor-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
+
+    [table t Text {
+	lappend map @mg:sender@ [color red <<sender>>]
+	lappend map @mg:name@   [color red <<name>>]
+	lappend map @c:year@    [color red <<year>>]
+	lappend map @origins@   [color red <<origins>>]
+	$t noheader
+	$t add [util adjust [util tspace 0 60] \
+		    [string map $map $template]]
+    }] show
+
+    if {![ask yn "Send mail ? " no]} {
+	puts [color note Aborted]
+	return
+    }
+
+    set mconfig [mailer get-config]
+    set template [string map [list @origins@ $origins] [insert $conference $template]]
+
+    mailer batch _ address name $destinations {
+	mailer send $mconfig \
+	    [list $address] \
+	    [mailgen call $address $name $template] \
+	    0 ;# not verbose
+    }
+
+    puts [color good OK]
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_sponsor_ping {config} {
     debug.cm/conference {}
     Setup
@@ -476,7 +559,7 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
-	WHERE  contact IN (SELECT affiliation
+	WHERE  contact IN (SELECT affiliation -- liaison actually
 			   FROM   contact
 			   WHERE  affiliation IS NOT NULL
 			   AND    id IN (SELECT contact
