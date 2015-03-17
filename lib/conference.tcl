@@ -219,22 +219,27 @@ proc ::cm::conference::cmd_show {config} {
 	    set xalign <<none>>
 	}
 
-	if {$xcity     ne {}} { set xcity     [city  get $xcity] }
+	if {$xcity     ne {}} { set xcity     [city     get $xcity] }
 	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
 	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
 
-	$t add Year          $xyear
-	$t add Start         $xstart
-	$t add End           $xend
-	$t add Aligned       $xalign
-	$t add Days          $xlength
+	set xmanagement [contact get       $xmanagement]
+	set xsubmission [contact get-email $xsubmission]
+
+	$t add Year             $xyear
+	$t add Management       $xmanagement
+	$t add {Submissions To} $xsubmission
+	$t add Start            $xstart
+	$t add End              $xend
+	$t add Aligned          $xalign
+	$t add Days             $xlength
 	$t add {} {}
-	$t add In            $xcity
-	$t add @Hotel        $xhotel
-	$t add @Facility     $xfacility
+	$t add In               $xcity
+	$t add @Hotel           $xhotel
+	$t add @Facility        $xfacility
 	$t add {} {}
-	$t add Minutes/Talk  $xtalklen
-	$t add Talks/Session $xsesslen
+	$t add Minutes/Talk     $xtalklen
+	$t add Talks/Session    $xsesslen
 
 	$t add {} {}
 
@@ -1214,126 +1219,64 @@ proc ::cm::conference::insert {id text} {
     Setup
 
     set details [details $id]
-    dict with details {}
-    set xtitle [get $id]
 
-    set clabel [city get $xcity]
+    # Basic conference information
 
-    set hotel  [location details $xhotel]
-    dict with hotel {} ;# overwrites conference city
-    set hclabel [city get $xcity]
+    set xstart [dict get $details xstart]
+    set xend   [dict get $details xstart]
+    set xmgmt  [dict get $details xmanagement]
 
-    # con-insert TODO - hotel != facilities
+    +map @c:name@            [get $id]
+    +map @c:year@            [dict get $details xyear]
+    +map @c:contact@         [contact get-email [dict get $details xsubmission]]
+    +map @c:management@      [contact get-name $xmgmt]
+    +map @c:management:link@ [contact get-the-link $xmgmt]
+    +map @c:start@           [hdate $xstart]
+    +map @c:end@             [hdate $xend]
+    +map @c:when@            [when $xstart $xend]
+    +map @c:talklength@      [dict get $details xtalklen]
+    # NOTE: xsesslen == 'talks per session' ignored - not relevant in any page, so far.
 
-    #array set _ $details ; parray _ ; unset _
-    #array set _ $hotel ; parray _ ; unset _
+    # City information
 
-    # Basic sponsor list, names only -- TODO: Exclude TCA/conference manager org
-    set thesponsors [known-sponsor-select $id]
-    set sponsors [lsort -dict [dict keys $thesponsors]]
+    +map @c:city@ [city get [dict get $details xcity]]
 
-    set shortsponsors [string map {and, and} [join [linsert $sponsors end-1 and] {, }]]
+    # Hotel information.
+    # insert - TODO: Facility information, and hotel != facility.
 
-    set sponsors [join $sponsors \n]
-    set sponsors [util indent $sponsors "   * "]
+    set xhotel   [dict get $details xhotel]
+    set hdetails [location details $xhotel]
 
-    # Extended Sponsor text, with links.
-    dict for {label sid} $thesponsors {
-	set links [lsort -dict [contact get-links $sid]]
-	if {[llength $links]} {
-	    set link [lindex $links 0]
-	    set label "\[$label\]($link)"
-	}
-	lappend mdsponsors $label
-    }
+    set xlocalphone [dict get $hdetails xlocalphone]
+    set xlocalfax   [dict get $hdetails xlocalfax]
+    set xlocallink  [dict get $hdetails xlocallink]
+    set xbookphone  [dict get $hdetails xbookphone]
+    set xbookfax    [dict get $hdetails xbookfax]
+    set xbooklink   [dict get $hdetails xbooklink]
 
-    set mdshortsponsors [string map {and, and} [join [linsert $mdsponsors end-1 and] {, }]]
+    +map @h:hotel@      [dict get $hdetails xname]
+    +map @h:city@       [city get [dict get $hdetails xcity]]
+    +map @h:street@     "[dict get $hdetails xstreet], [dict get $hdetails xzipcode]"
+    +map @h:transport@  [dict get $hdetails xtransport]
+    +map @h:bookphone@  [ifempty $xbookphone $xlocalphone]
+    +map @h:bookfax@    [ifempty $xbookfax   $xlocalfax]
+    +map @h:booklink@   [ifempty $xbooklink  $xlocallink]
+    +map @h:localphone@ $xlocalphone
+    +map @h:localfax@   $xlocalfax
+    +map @h:locallink@  $xlocallink
 
-    set mdsponsors [util indent [join [lsort -dict $mdsponsors] \n] "   * "]
+    # Room rate information
 
-    # Staff names, roles and affiliations, limit to the committee
-    set cdata  [committee $id]
-    set cnames [lsort -dict [dict keys $cdata]]
-    set committee {}
-    foreach c $cnames clabel [util padr $cnames] {
-	set contact [dict get $cdata $c]
-	set contact [contact details $contact]
+    set rdetails [get-rate $id $xhotel]
 
-	#debug.cm/conference {c.member = ($contact)}
-	#debug.cm/conference {[util indent [debug pdict $contact] "  "]}
+    +map @r:rate@     [dict get $rdetails rate]
+    +map @r:currency@ [dict get $rdetails currency]
+    +map @r:begin@    [dict get $rdetails begin]
+    +map @r:end@      [dict get $rdetails end]
+    +map @r:deadline@ [dict get $rdetails pdeadline]
+    +map @r:group@    [dict get $rdetails group]
 
-	set cl $clabel
-	set a [dict get $contact xaffiliation]
-	if {$a ne {}} {
-	    set alinks [lsort -dict [contact get-links $a]]
-	    set a [contact get-name $a]
-	    if {[llength $alinks]} {
-		set alink [lindex $alinks 0]
-		set amd "\[$a\]($alink)"
-	    } else {
-		set amd $a
-	    }
-
-	    append clabel " " $a
-	} else {
-	    set amd {}
-	}
-	lappend committee [string trim $clabel]
-	lappend mdcommittee |$cl|$amd|
-    }
-    set committee [util indent [join $committee \n] "   * "]
-    set mdcommittee |||\n|-|-|\n[join $mdcommittee \n]
-
-    set rate [get-rate $id $xhotel]
-
-    # Needs:
-    # - conference information
-    #   - year
-    #   - title
-    #   - start-date
-    #   - end-end
-    #   - timeline
-    #   - location-references
-    #     - location info (phone, fax, link)
-    #   - sponsors
-    #   - comittee
-    #
-    # --> insertion into template
-
-    lappend map @h:hotel@      $xname
-    lappend map @h:city@       $hclabel
-    lappend map @h:street@     "$xstreet, $xzipcode"
-    lappend map @h:transport@  $xtransport
-
-    lappend map @h:bookphone@   [ifempty $xbookphone $xlocalphone]
-    lappend map @h:bookfax@     [ifempty $xbookfax   $xlocalfax]
-    lappend map @h:booklink@    [ifempty $xbooklink  $xlocallink]
-
-    lappend map @h:localphone@  $xlocalphone
-    lappend map @h:localfax@    $xlocalfax
-    lappend map @h:locallink@   $xlocallink
-
-    lappend map @c:name@       $xtitle
-    lappend map @c:city@       $clabel
-    lappend map @c:year@       $xyear
-    lappend map @c:start@      [hdate $xstart]
-    lappend map @c:end@        [hdate $xend]
-    lappend map @c:when@       [when $xstart $xend]
-    lappend map @c:contact@    tclconference@googlegroups.com ;# TODO configurable
-    lappend map @c:sponsors@   $sponsors
-    lappend map @c:sponsors:md@    $mdsponsors
-    lappend map @c:sponsors:short@ $shortsponsors
-    lappend map @c:sponsors:short:md@ $mdshortsponsors
-    lappend map @c:committee@  $committee
-    lappend map @c:committee:md@  $mdcommittee
-    lappend map @c:talklength@ $xtalklen
-
-    lappend map @r:rate@     [dict get $rate rate]
-    lappend map @r:currency@ [dict get $rate currency]
-    lappend map @r:begin@    [dict get $rate begin]
-    lappend map @r:end@      [dict get $rate end]
-    lappend map @r:deadline@ [dict get $rate pdeadline]
-    lappend map @r:group@    [dict get $rate group]
+    # Conference timeline (only public events)
 
     db do eval {
 	SELECT E.key  AS key,
@@ -1341,14 +1284,153 @@ proc ::cm::conference::insert {id text} {
 	FROM   timeline      T,
 	       timeline_type E
 	WHERE  T.type = E.id
-	AND    E.ispublic
 	AND    T.con = :id
+	AND    E.ispublic
     } {
-	lappend map @c:t:${key}@ [hdate $date]
+	+map @c:t:${key}@ [hdate $date]
     }
+
+    # Program committee ...
+    # Subset of conference staff ...
+    # Multiple variants, for mail and website.
+
+    +map @c:committee@    [mail-committee $id]
+    +map @c:committee:md@ [web-committee  $id]
+
+    # Sponsors ...
+    # Multiple variants...
+    # - mail, website (bullet list, inline list)
+    # - mail contains can contain management as sponsor.
+    # - web excludes manager from list, see above for separate keys.
+
+    +map @c:sponsors@          [mail-sponsors $id]
+    +map @c:sponsors:md@       [web-sponsors-bullet $id $xmgmt]
+    +map @c:sponsors:md:short@ [web-sponsors-inline $id $xmgmt]
+
+    # Execute the accumulated substitutions
 
     set text [string map $map $text]
     return $text
+}
+
+proc ::cm::conference::web-sponsors-inline {id mgmt} {
+    debug.cm/conference {}
+    Setup
+
+    set sponsors {}
+    dict for {label sponsor} [known-sponsor-select $id] {
+	# Exclude managing org from the enumeration
+	if {$sponsor == $mgmt} continue
+
+	set link [contact get-the-link $sponsor]
+	if {$link ne {}} {
+	    set label "\[$label\]($link)"
+	}
+	lappend sponsors $label
+    }
+
+    if {[llength $sponsors] > 1} {
+	set sponsors [string map {and, and} [join [linsert $sponsors end-1 and] {, }]]
+    } else {
+	set sponsors [join $sponsors {}]
+    }
+
+    return $sponsors
+}
+
+proc ::cm::conference::web-sponsors-bullet {id mgmt} {
+    debug.cm/conference {}
+    Setup
+
+    set sponsors {}
+    dict for {label sponsor} [known-sponsor-select $id] {
+	# Exclude managing org from the enumeration
+	if {$sponsor == $mgmt} continue
+
+	set link [contact get-the-link $sponsor]
+	if {$link ne {}} {
+	    set label "\[$label\]($link)"
+	}
+	lappend sponsors $label
+    }
+
+    return [util indent [join [lsort -dict $sponsors] \n] \
+		"   * "]
+}
+
+proc ::cm::conference::mail-sponsors {id} {
+    debug.cm/conference {}
+    Setup
+
+    set sponsors [known-sponsor-select $id]
+    set sponsors [lsort -dict [dict keys $sponsors]]
+    set sponsors [join $sponsors \n]
+
+    return [util indent $sponsors "   * "]
+}
+
+proc ::cm::conference::web-committee {id} {
+    debug.cm/conference {}
+    Setup
+
+    set cdata  [committee $id]
+    set cnames [lsort -dict [dict keys $cdata]]
+
+    set mdcommittee {}
+    foreach cname $cnames {
+	# Get full details of person, and pull affiliation, if any.
+	# Get link for affiliatin, if any.
+	set contact [contact details [dict get $cdata $cname]]
+
+	set affiliation [dict get $contact xaffiliation]
+	if {$affiliation ne {}} {
+	    set alink       [contact get-the-link $affiliation]
+	    set affiliation [contact get-name     $affiliation]
+	    if {$alink ne {}} {
+		set affiliation "\[$affiliation\]($alink)"
+	    }
+	}
+
+	lappend mdcommittee |$cname|$affiliation|
+    }
+
+    return |||\n|-|-|\n[join $mdcommittee \n]
+}
+
+proc ::cm::conference::mail-committee {id} {
+    debug.cm/conference {}
+    Setup
+
+    set cdata  [committee $id]
+    # name -> id(contact)
+
+    set cnames [lsort -dict [dict keys $cdata]]
+    # Need mainly the names.
+
+    set committee {}
+    foreach c $cnames clabel [util padr $cnames] {
+	# Iterating over names instead of dict to have proper padded
+	# names for proper tabular alignment in the generated text.
+
+	# Get full details, and pull the affiliation, if any.
+	set contact     [contact details [dict get $cdata $c]]
+	set affiliation [dict get $contact xaffiliation]
+
+	if {$affiliation ne {}} {
+	    append clabel " " [contact get-name $affiliation]
+	}
+
+	lappend committee [string trim $clabel]
+    }
+
+    return [util indent [join $committee \n] "   * "]
+}
+
+proc ::cm::conference::+map {key value} {
+    debug.cm/conference {}
+    upvar 1 map map
+    lappend map $key $value
+    return
 }
 
 proc ::cm::conference::ifempty {x y} {
@@ -1611,6 +1693,8 @@ proc ::cm::conference::details {id} {
     return [db do eval {
 	SELECT "xconference", id,
 	       "xyear",       year,
+	       "xmanagement", management,
+	       "xsubmission", submission,
 	       "xcity",       city,
 	       "xhotel",      hotel,
 	       "xfacility",   facility,
@@ -1633,6 +1717,8 @@ proc ::cm::conference::write {id details} {
     db do eval {
 	UPDATE conference
 	SET    year       = :xyear,
+	       management = :xmanagement,
+	       submission = :xsubmission,
 	       city       = :xcity,
 	       hotel      = :xhotel,
 	       facility   = :xfacility,
@@ -1906,6 +1992,9 @@ proc ::cm::conference::Setup {} {
 	    title	TEXT	NOT NULL UNIQUE,
 	    year	INTEGER NOT NULL,
 
+	    management	INTEGER	NOT NULL REFERENCES contact,	-- Org/company/person managing the conference
+	    submission	INTEGER	NOT NULL REFERENCES email,	-- Email to receive submissions.
+
 	    city	INTEGER REFERENCES city,
 	    hotel	INTEGER REFERENCES location, -- We do not immediately know where we will be
 	    facility	INTEGER REFERENCES location, -- While sessions are usually at the hotel, they may not be.
@@ -1941,6 +2030,8 @@ proc ::cm::conference::Setup {} {
 	    {id			INTEGER 1 {} 1}
 	    {title		TEXT    1 {} 0}
 	    {year		INTEGER 1 {} 0}
+	    {management		INTEGER 1 {} 0}
+	    {submission		INTEGER 1 {} 0}
 	    {city		INTEGER 0 {} 0}
 	    {hotel		INTEGER 0 {} 0}
 	    {facility		INTEGER 0 {} 0}
