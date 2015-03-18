@@ -284,37 +284,56 @@ CREATE TABLE tutorial_schedule (
 );
 -- ---------------------------------------------------------------
 CREATE TABLE dayhalf (	-- fixed content
-	id		INTEGER	PRIMARY KEY,	-- 1,2,3
-	text		TEXT	UNIQUE		-- morning,afternoon,evening
+	id		INTEGER	NOT NULL PRIMARY KEY,	-- 1,2,3
+	text		TEXT	NOT NULL UNIQUE		-- morning,afternoon,evening
 );
 INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
 INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
 INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
 -- ---------------------------------------------------------------
 CREATE TABLE submission (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	con		INTEGER	REFERENCES conference,
-	abstract	TEXT,
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	conference	INTEGER	NOT NULL REFERENCES conference,
+	title		TEXT	NOT NULL,
+	abstract	TEXT	NOT NULL,
 	summary		TEXT,
-	invited		INTEGER				-- keynotes are a special submission made by mgmt
+	invited		INTEGER	NOT NULL,	-- keynotes are a special submission made by mgmt
+	UNIQUE (conference, title)
+
+	-- acceptance is implied by having a talk referencing the submission.
 );
 -- ---------------------------------------------------------------
 CREATE TABLE submitter (
-	submission	INTEGER	REFERENCES submission,	-- can_register||can_book||can_talk||can_submit
-	contact		INTEGER	REFERENCES contact,
-	note		TEXT,				-- distinguish author, co-author, if wanted
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	submission	INTEGER	NOT NULL REFERENCES submission,
+	contact		INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk||can_submit
+	note		TEXT,					-- distinguish author, co-author, if wanted
 	UNIQUE (submission, contact)
 );
+-- INDEX on contact
 -- ---------------------------------------------------------------
 CREATE TABLE talk (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	con		INTEGER	REFERENCES conference,
-	type		INTEGER	REFERENCES talk_type,
-	state		INTEGER REFERENCES talk_state,
-	submission	INTEGER	REFERENCES submission,
-	isremote	INTEGER,			 -- hangout, skype, other ? => TEXT?
-	UNIQUE (con, submission)
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	conference	INTEGER	NOT NULL REFERENCES conference,
+	submission	INTEGER	NOT NULL REFERENCES submission,
+	type		INTEGER	NOT NULL REFERENCES talk_type,
+	state		INTEGER	NOT NULL REFERENCES talk_state,
+	isremote	INTEGER	NOT NULL,			 -- hangout, skype, other ? => TEXT?
+
+	-- TODO: blobs for presentation slides, paper, and other material
+	-- -> separate table to allow for many attachments.
+
+	UNIQUE (conference, submission)
 	-- constraint: con == submission->con
+);
+-- ---------------------------------------------------------------
+CREATE TABLE attachment (
+	id	INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	talk	INTEGER	NOT NULL REFERENCES talk,
+	type	TEXT	NOT NULL,	-- Readable type/label
+	mime	TEXT	NOT NULL,	-- mime type for downloads and the like?
+	data	BLOB	NOT NULL,
+	UNIQUE (talk, type)
 );
 -- ---------------------------------------------------------------
 CREATE TABLE talker (

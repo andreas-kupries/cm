@@ -49,11 +49,13 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
-	cmd_committee_ping cmd_website_make cmd_end_set \
+	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
-	select label current get insert known-sponsor cmd_rate_show \
+	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
+	cmd_submission_setsummary cmd_submission_setabstract \
+	select label current get insert known-sponsor \
 	select-sponsor select-staff-role select-staff known-staff \
-	get-role select-timeline get-timeline
+	get-role select-timeline get-timeline select-submission get-submission
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -550,6 +552,189 @@ proc ::cm::conference::cmd_committee_ping {config} {
     }
 
     puts [color good OK]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_submission_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    # submission-add - TODO - Block submissions to a past/locked conference
+    # => trigger on the conference timeline ?!
+    # => nicer workflow (grace handling) with an explicit flag.
+
+    set conference [current]
+    set invited    [$config @invited]
+    set title      [$config @title]
+    set authors    [$config @author]
+    set abstract   [read stdin]
+
+    puts -nonewline "Add submission \"[color name $title]\" to conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do transaction {
+	db do eval {
+	    INSERT INTO submission
+	    VALUES (NULL, :conference, :title, :abstract, NULL, :invited)
+	}
+	set submission [db do last_insert_rowid]
+	foreach author $authors {
+	    db do eval {
+		INSERT INTO submitter
+		VALUES (NULL, :submission, :author, NULL)
+	    }
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_submission_drop {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    set submission [$config @submission] 
+
+    puts -nonewline "Remove submission \"[color name [get-submission $submission]]\" from conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    # submission-drop TODO - prevent removal of submissions which have talks.
+
+    db do transaction {
+	db do eval {
+	    DELETE
+	    FROM  submitter
+	    WHERE submission = :submission
+	    ;
+	    DELETE
+	    FROM  submission
+	    WHERE id = :submission
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_submission_setsummary {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission] 
+    set summary    [read stdin]
+
+    puts -nonewline "Set summary of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE submission
+	SET    summary = :summary
+	WHERE  id      = :submission
+    }
+
+    puts [color good OK]
+    return
+
+}
+
+proc ::cm::conference::cmd_submission_setabstract {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission] 
+    set abstract    [read stdin]
+
+    puts -nonewline "Set abstract of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE submission
+	SET    abstract = :abstract
+	WHERE  id       = :submission
+    }
+
+    puts [color good OK]
+    return
+
+}
+
+proc ::cm::conference::cmd_submission_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission] 
+
+    set w [util tspace [expr {[string length Abstract]+7}] 72]
+
+    puts [color name [get $conference]]
+    [table t {Property Value} {
+	db do eval {
+	    SELECT title, abstract, summary, invited
+	    FROM   submission
+	    WHERE  id = :submission
+	} {
+	    set authors [join [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   submitter
+			      WHERE  submission = :id)
+		ORDER BY dname
+	    }] \n]
+
+	    $t add Title    $title
+	    $t add Invited  [expr {$invited ? "yes" : "no"}]
+	    $t add Authors  $authors
+	    $t add Abstract [util adjust $w $abstract]
+	    $t add Summary  [util adjust $w $summary]
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_submission_list {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Submissions for \"[color name [get $conference]]\""
+    [table t {Authors {} Title} {
+	db do eval {
+	    SELECT id, title, invited
+	    FROM   submission
+	    WHERE  conference = :conference
+	    ORDER BY title
+	} {
+	    # submission-list - TODO - pull and show the per-author notes
+	    # submission-list - TODO - show if a talk is associated with the submission
+	    set authors [join [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   submitter
+			      WHERE  submission = :id)
+		ORDER BY dname
+	    }] \n]
+	    set invited  [expr {$invited ? "Invited" : ""}]
+
+	    $t add $authors $invited $title
+	}
+    }] show
+    return
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -1982,6 +2167,62 @@ proc ::cm::conference::get-rate {conference location} {
     }
 }
 
+proc ::cm::conference::get-submission {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT title
+	FROM   submission
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::known-submissions {conference} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, title
+	FROM   submission
+	WHERE  conference = :conference
+    } {
+	dict set known $title $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::select-submission {p} {
+    debug.cm/conference {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # dict: label -> id
+    set submissions [known-submissions [the-current]]
+    set choices     [lsort -dict [dict keys $submissions]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $submission 1]
+	}
+    }
+
+    set choice [ask menu "" "Which submission: " $choices]
+
+    # Map back to id
+    return [dict get $submissions $choice]
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
@@ -2204,6 +2445,46 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error rate $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error submission {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    title	TEXT	NOT NULL,
+	    abstract	TEXT	NOT NULL,
+	    summary	TEXT,
+	    invited	INTEGER	NOT NULL,	-- keynotes are a special submission made by mgmt
+	    UNIQUE (conference, title)
+
+	    -- acceptance is implied by having a talk referencing the submission.
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {conference	INTEGER 1 {} 0}
+	    {title	TEXT    1 {} 0}
+	    {abstract	TEXT    1 {} 0}
+	    {summary	TEXT    0 {} 0}
+	    {invited	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error submission $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error submitter {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    submission	INTEGER	NOT NULL REFERENCES submission,
+	    contact	INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk||can_submit
+	    note	TEXT,					-- distinguish author, co-author, if wanted
+	    UNIQUE (submission, contact)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {submission	INTEGER 1 {} 0}
+	    {contact	INTEGER 1 {} 0}
+	    {note	TEXT    0 {} 0}
+	} {contact}
+    }]} {
+	db setup-error submitter $error
     }
 
     # Shortcircuit further calls
