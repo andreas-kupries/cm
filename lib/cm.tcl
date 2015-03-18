@@ -669,7 +669,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::cvt date] }
 	} [cm::call conference cmd_end_set]
 
-
 	# TODO: conference remove - if not used
 	# TODO: conference modify - change title, start, length, alignment
 
@@ -706,6 +705,72 @@ cmdr create cm::cm [file tail $::argv0] {
 
     }
     alias conferences = conference list
+
+    # # ## ### ##### ######## ############# ######################
+    ## Submission management. Own toplevel ensemble, although it could
+    ## be put under 'conference'. Less to type.
+
+    officer submission {
+	description {
+	    Manage the submissions
+	}
+
+	private add {
+	    section {Submission Management}
+	    description { Submit a paper/talk proposal. The abstract is read from stdin. }
+	    option invited {
+		Set when this is an invited talk.
+	    } { presence }
+	    input title {
+		Title of the proposed talk
+	    } { validate str }
+	    input author {
+		One or more authors of the talk
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator can-submit
+	} [cm::call conference cmd_submission_add]
+
+	private drop {
+	    section {Submission Management}
+	    description { Remove a submission }
+	    state submission {
+		The submission to drop.
+	    } { generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_drop]
+
+	private set-summary {
+	    section {Submission Management}
+	    description { Change summary of a submission }
+	    state submission {
+		The submission to change
+	    } { generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_setsummary]
+
+	private set-abstract {
+	    section {Submission Management}
+	    description { Change absract of a submission }
+	    state submission {
+		The submission to change
+	    } { generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_setabstract]
+
+	private show {
+	    section {Submission Management}
+	    description { Show the details of the specified submission }
+	    state submission {
+		The submission to show.
+	    } { generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_show]
+	alias details
+	default
+
+	private list {
+	    section {Submission Management}
+	    description { Show submissions for the current conference }
+	} [cm::call conference cmd_submission_list]
+    }
+    alias submissions = submission list
+    alias unsubmit    = submission drop
+    alias submit      = submission add
 
     # # ## ### ##### ######## ############# ######################
     ## Campaign management
