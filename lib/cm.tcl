@@ -718,6 +718,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	private add {
 	    section {Submission Management}
 	    description { Submit a paper/talk proposal. The abstract is read from stdin. }
+	    option on {
+		Date of submission. Defaults to today.
+	    } { validate [cm::cvt date]
+		generate [lambda p {clock seconds}] }
 	    option invited {
 		Set when this is an invited talk.
 	    } { presence }
@@ -726,39 +730,41 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate str }
 	    input author {
 		One or more authors of the talk
-	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator can-submit
+	    } { optional ; list ; validate [cm::vt contact] } ; # TODO validator can-submit
 	} [cm::call conference cmd_submission_add]
 
 	private drop {
 	    section {Submission Management}
-	    description { Remove a submission }
-	    state submission {
+	    description { Remove one or more specified submissions }
+	    input submission {
 		The submission to drop.
-	    } { generate [cm::call conference select-submission] }
+	    } { list ; optional ; validate [cm::vt submission] ;
+		generate [cm::call conference select-submission] }
 	} [cm::call conference cmd_submission_drop]
 
 	private set-summary {
 	    section {Submission Management}
 	    description { Change summary of a submission }
-	    state submission {
+	    input submission {
 		The submission to change
-	    } { generate [cm::call conference select-submission] }
+	    } { validate [cm::vt submission] }
 	} [cm::call conference cmd_submission_setsummary]
 
 	private set-abstract {
 	    section {Submission Management}
 	    description { Change absract of a submission }
-	    state submission {
+	    input submission {
 		The submission to change
-	    } { generate [cm::call conference select-submission] }
+	    } { validate [cm::vt submission] }
 	} [cm::call conference cmd_submission_setabstract]
 
 	private show {
 	    section {Submission Management}
 	    description { Show the details of the specified submission }
-	    state submission {
-		The submission to show.
-	    } { generate [cm::call conference select-submission] }
+	    input submission {
+		The submission to show
+	    } { optional ; validate [cm::vt submission]
+		generate [cm::call conference select-submission] }
 	} [cm::call conference cmd_submission_show]
 	alias details
 	default
