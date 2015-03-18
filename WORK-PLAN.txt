@@ -45,6 +45,7 @@ FUTURE
 * more internal timeline entries / actions
   - ping sponsors for renewal, data refresh
   - ping program committee for renewal, data refresh
+  - create isbn'd proceedings
 
 * implement copying of conference data/setup -- easier entry of new
   conference, but also of previous ones
