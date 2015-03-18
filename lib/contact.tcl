@@ -101,17 +101,23 @@ proc ::cm::contact::cmd_show {config} {
 		}]
 	    }
 	    if {$type eq "Company"} {
-		set key Liaison
+		set akey Liaison
+		set bkey Affiliations
 	    } else {
-		set key Affiliation
+		set akey Affiliation
+		set bkey {Liaises To:}
 	    }
+
+	    # Find the contacts referencing us through their
+	    # affiliation/liaison fields.
+
 
 	    set bio [util adjust $w $bio]
 
 	    $t add Tag                $tag
 	    $t add Name               $name
 	    $t add Type               $type
-	    $t add $key               $affiliation
+	    $t add $akey              $affiliation
 	    $t add {Can Receive Mail} $crecv
 	    $t add {Can Register}     $creg
 	    $t add {Can Book}         $cbook
@@ -1353,6 +1359,44 @@ proc ::cm::contact::Setup {} {
 	    INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
 	    INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
 	}
+    }
+
+
+    if {![dbutil initialize-schema ::cm::db::do error affiliation {
+	{
+	    -- Relationship between contacts.
+	    -- People may be affiliated with an organization, like their employer
+	    -- A table is used as a person may be affiliated with several orgs.
+
+	    id		INTEGER NOT NULL PRIMARY KEY,
+	    person	INTEGER NOT NULL REFERENCES contact,
+	    company	INTEGER NOT NULL REFERENCES contact,
+	    UNIQUE (person, company)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {person	INTEGER 1 {} 0}
+	    {company	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error affiliation $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error liaison {
+	{
+	    -- Relationship between contacts.
+	    -- Company/orgs have people serving as their point of contact
+	    -- A table is used as an org may have several representatives
+
+	    id		INTEGER NOT NULL PRIMARY KEY,
+	    company	INTEGER NOT NULL REFERENCES contact,
+	    person	INTEGER NOT NULL REFERENCES contact,
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {company	INTEGER 1 {} 0}
+	    {person	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error liaison $error
     }
 
     # Shortcircuit further calls

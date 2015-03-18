@@ -96,6 +96,28 @@ INSERT OR IGNORE INTO contact_type VALUES (1,'Person');
 INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
 INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
 -- ---------------------------------------------------------------
+CREATE TABLE affiliation (
+	-- Relationship between contacts.
+	-- People may be affiliated with an organization, like their employer
+	-- A table is used as a person may be affiliated with several orgs.
+
+    	id	INTEGER NOT NULL PRIMARY KEY,
+	person	INTEGER NOT NULL REFERENCES contact,
+	company	INTEGER NOT NULL REFERENCES contact,
+	UNIQUE (person, company)
+);
+-- ---------------------------------------------------------------
+CREATE TABLE liaison (
+	-- Relationship between contacts.
+	-- Company/orgs have people serving as their point of contact
+	-- A table is used as an org may have several representatives
+
+    	id	INTEGER NOT NULL PRIMARY KEY,
+	company	INTEGER NOT NULL REFERENCES contact,
+	person	INTEGER NOT NULL REFERENCES contact,
+	UNIQUE (company, person)
+);
+-- ---------------------------------------------------------------
 CREATE TABLE email (
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	email		TEXT	NOT NULL UNIQUE,
