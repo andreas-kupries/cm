@@ -55,7 +55,8 @@ namespace eval ::cm::conference {
 	cmd_submission_setsummary cmd_submission_setabstract \
 	select label current get insert known-sponsor \
 	select-sponsor select-staff-role select-staff known-staff \
-	get-role select-timeline get-timeline select-submission get-submission
+	get-role select-timeline get-timeline select-submission get-submission \
+	get-submission-handle known-submissions-vt
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -569,6 +570,7 @@ proc ::cm::conference::cmd_submission_add {config} {
     set invited    [$config @invited]
     set title      [$config @title]
     set authors    [$config @author]
+    set now        [$config @on]
     set abstract   [read stdin]
 
     puts -nonewline "Add submission \"[color name $title]\" to conference \"[color name [get $conference]]\" ... "
@@ -577,7 +579,7 @@ proc ::cm::conference::cmd_submission_add {config} {
     db do transaction {
 	db do eval {
 	    INSERT INTO submission
-	    VALUES (NULL, :conference, :title, :abstract, NULL, :invited)
+	    VALUES (NULL, :conference, :title, :abstract, NULL, :invited, :now)
 	}
 	set submission [db do last_insert_rowid]
 	foreach author $authors {
@@ -587,6 +589,9 @@ proc ::cm::conference::cmd_submission_add {config} {
 	    }
 	}
     }
+
+    puts -nonewline "Id [color name [get-submission-handle $submission]] ... "
+    flush stdout
 
     puts [color good OK]
     return
@@ -599,26 +604,28 @@ proc ::cm::conference::cmd_submission_drop {config} {
 
     set conference [current]
 
-    set submission [$config @submission] 
+    puts "Changing conference \"[color name [get $conference]]\" ... "
 
-    puts -nonewline "Remove submission \"[color name [get-submission $submission]]\" from conference \"[color name [get $conference]]\" ... "
-    flush stdout
+    foreach submission [$config @submission] {
+	puts -nonewline "Remove submission \"[color name [get-submission $submission]]\" ... "
+	flush stdout
 
-    # submission-drop TODO - prevent removal of submissions which have talks.
+	# submission-drop TODO - prevent removal of submissions which have talks.
 
-    db do transaction {
-	db do eval {
-	    DELETE
-	    FROM  submitter
-	    WHERE submission = :submission
-	    ;
-	    DELETE
-	    FROM  submission
-	    WHERE id = :submission
+	db do transaction {
+	    db do eval {
+		DELETE
+		FROM  submitter
+		WHERE submission = :submission
+		;
+		DELETE
+		FROM  submission
+		WHERE id = :submission
+	    }
 	}
-    }
 
-    puts [color good OK]
+	puts [color good OK]
+    }
     return
 }
 
@@ -652,7 +659,7 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
 
     set conference [current]
     set submission [$config @submission] 
-    set abstract    [read stdin]
+    set abstract   [read stdin]
 
     puts -nonewline "Set abstract of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
     flush stdout
@@ -681,7 +688,7 @@ proc ::cm::conference::cmd_submission_show {config} {
     puts [color name [get $conference]]
     [table t {Property Value} {
 	db do eval {
-	    SELECT title, abstract, summary, invited
+	    SELECT id, title, abstract, summary, invited, submitdate
 	    FROM   submission
 	    WHERE  id = :submission
 	} {
@@ -694,8 +701,16 @@ proc ::cm::conference::cmd_submission_show {config} {
 		ORDER BY dname
 	    }] \n]
 
-	    $t add Title    $title
-	    $t add Invited  [expr {$invited ? "yes" : "no"}]
+	    $t add Id        [get-submission-handle $id]
+	    $t add Submitted [hdate $submitdate]
+	    $t add Title     $title
+
+	    if {$invited} {
+		$t add [color note Invited] yes
+	    } else {
+		$t add Invited  no
+	    }
+
 	    $t add Authors  $authors
 	    $t add Abstract [util adjust $w $abstract]
 	    $t add Summary  [util adjust $w $summary]
@@ -712,12 +727,12 @@ proc ::cm::conference::cmd_submission_list {config} {
     set conference [current]
 
     puts "Submissions for \"[color name [get $conference]]\""
-    [table t {Authors {} Title} {
+    [table t {Id Date Authors {} Title} {
 	db do eval {
-	    SELECT id, title, invited
+	    SELECT id, title, invited, submitdate
 	    FROM   submission
 	    WHERE  conference = :conference
-	    ORDER BY title
+	    ORDER BY submitdate, id
 	} {
 	    # submission-list - TODO - pull and show the per-author notes
 	    # submission-list - TODO - show if a talk is associated with the submission
@@ -729,9 +744,10 @@ proc ::cm::conference::cmd_submission_list {config} {
 			      WHERE  submission = :id)
 		ORDER BY dname
 	    }] \n]
-	    set invited  [expr {$invited ? "Invited" : ""}]
+	    set invited    [expr {$invited ? "Invited" : ""}]
+	    set submitdate [hdate $submitdate]
 
-	    $t add $authors $invited $title
+	    $t add [get-submission-handle $id] $submitdate $authors $invited $title
 	}
     }] show
     return
@@ -2167,6 +2183,10 @@ proc ::cm::conference::get-rate {conference location} {
     }
 }
 
+proc ::cm::conference::get-submission-handle {id} {
+    return S${id}_
+}
+
 proc ::cm::conference::get-submission {id} {
     debug.cm/conference {}
     Setup
@@ -2176,6 +2196,28 @@ proc ::cm::conference::get-submission {id} {
 	FROM   submission
 	WHERE  id = :id
     }]
+}
+
+proc ::cm::conference::known-submissions-vt {} {
+    debug.cm/conference {}
+    Setup
+
+    set conference [the-current]
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, title
+	FROM   submission
+	WHERE  conference = :conference
+    } {
+	dict set known $title                        $id
+	dict set known "[get-submission-handle $id]" $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
 }
 
 proc ::cm::conference::known-submissions {conference} {
@@ -2455,6 +2497,7 @@ proc ::cm::conference::Setup {} {
 	    abstract	TEXT	NOT NULL,
 	    summary	TEXT,
 	    invited	INTEGER	NOT NULL,	-- keynotes are a special submission made by mgmt
+	    submitdate	INTEGER	NOT NULL,	-- date of submission [epoch].
 	    UNIQUE (conference, title)
 
 	    -- acceptance is implied by having a talk referencing the submission.
@@ -2465,6 +2508,7 @@ proc ::cm::conference::Setup {} {
 	    {abstract	TEXT    1 {} 0}
 	    {summary	TEXT    0 {} 0}
 	    {invited	INTEGER 1 {} 0}
+	    {submitdate	INTEGER 1 {} 0}
 	} {}
     }]} {
 	db setup-error submission $error

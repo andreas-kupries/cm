@@ -1,17 +1,19 @@
 NOW
 ===
 
+* affiliations are n:m - person can hold multiple (Ex: Ron)
+
 * -- con mgmt -- ping past sponsors for renewal, and company link info.
   /ANSWERS pending/
 * ---- con mgmt --- ready for initial cfp 1 ---
 
-* 'isprimary' attribute of emails and links for a contact ?
-  Or reverse link to the primary items from the contact ?
-
-* implement handling of submissions
-
 SOON
 ====
+
+* Need flag on timeline entries - checkmark if an action was done or not.
+
+* 'isprimary' attribute of emails and links for a contact ?
+  Or reverse link to the primary items from the contact ?
 
   -- link to previous site/conference ? -- papers --
 
@@ -21,6 +23,8 @@ SOON
 
 LATER
 =====
+
+* Need flag on conference to lock against changes
 
 * -- cgi form for the submission of a paper ?
 
@@ -37,6 +41,10 @@ LATER
 
 FUTURE
 ======
+
+* more internal timeline entries / actions
+  - ping sponsors for renewal, data refresh
+  - ping program committee for renewal, data refresh
 
 * implement copying of conference data/setup -- easier entry of new
   conference, but also of previous ones

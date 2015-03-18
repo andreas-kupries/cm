@@ -298,6 +298,7 @@ CREATE TABLE submission (
 	abstract	TEXT	NOT NULL,
 	summary		TEXT,
 	invited		INTEGER	NOT NULL,	-- keynotes are a special submission made by mgmt
+	submitdate	INTEGER	NOT NULL,	-- date of submission [epoch].
 	UNIQUE (conference, title)
 
 	-- acceptance is implied by having a talk referencing the submission.
