@@ -199,7 +199,7 @@ proc ::cm::contact::cmd_list {config} {
     set pattern  [string trim [$config @pattern]]
     set withmail [$config @with-mails]
 
-    set titles {\# Type Tag Name Mails Flags Affiliation}
+    set titles {\# Type Tag Name Mails Flags Relations}
 
     set counter 0
     [table t $titles {
@@ -835,18 +835,18 @@ proc ::cm::contact::related-formatted {contact type} {
 	if {[llength $related]} {
 	    # Hanging indent, TODO utility command
 	    set other [lassign $related primary]
-	    set    related    "Rep: $primary"
+	    set related "Rep: $primary"
 	    if {[llength $other]} {
 		append related \n [util indent [join $other \n] "   : "]
 	    }
 	}
     } else {
 	# affiliations
-	set related [affiliated $contact]
+	set related [dict values [affiliated $contact]]
 	if {[llength $related]} {
 	    # Hanging indent, TODO utility command
-	    set other [dict values [lassign $related primary]]
-	    set    related    "Of: $primary"
+	    set other [lassign $related primary]
+	    set related "Of: $primary"
 	    if {[llength $other]} {
 		append related \n [util indent [join $other \n] "  : "]
 	    }
