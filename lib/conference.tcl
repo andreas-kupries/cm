@@ -1421,7 +1421,7 @@ proc ::cm::conference::insert {id text} {
     # Basic conference information
 
     set xstart [dict get $details xstart]
-    set xend   [dict get $details xstart]
+    set xend   [dict get $details xend]
     set xmgmt  [dict get $details xmanagement]
 
     +map @c:name@            [get $id]
