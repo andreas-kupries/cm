@@ -1,8 +1,6 @@
 NOW
 ===
 
-* affiliations are n:m - person can hold multiple (Ex: Ron)
-
 * -- con mgmt -- ping past sponsors for renewal, and company link info.
   /ANSWERS pending/
 * ---- con mgmt --- ready for initial cfp 1 ---

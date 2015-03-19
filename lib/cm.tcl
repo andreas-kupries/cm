@@ -901,29 +901,58 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {Company name} {}
 	} [cm::call contact cmd_create_company]
 
-	private set-company {
+	# TODO: contact delete -- delete a superfluous contact - not referenced...
+
+	private add-company {
 	    section {Contact Management}
-	    description {Set company affiliation of the specified person}
+	    description {Add one or more companies as the affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
 	    input company {
-		Name of the company to set as affiliation
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
-	} [cm::call contact cmd_set_company]
-	alias affiliate
+		Names of the companies to add as affiliations
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	} [cm::call contact cmd_add_company]
+	alias add-affiliate
 
-	# Reverse affiliation. A personal contact into the company ... A liaison
-	private set-liaison {
+	private remove-company {
 	    section {Contact Management}
-	    description {Set liaison of the specified company}
+	    description {Remove one or more companies from the set of affiliations of the specified person}
+	    input name {
+		Name of the contact to modify
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    input company {
+		Names of the companies to remove from the set of affiliations
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	} [cm::call contact cmd_drop_company]
+	alias remove-affiliate
+
+	# Reverse affiliation. A personal contact into the company ... A liaison, point of contact, representative
+	private add-liaison {
+	    section {Contact Management}
+	    description {Add one or more liaisons to the specified company}
 	    input company {
 		Name of the company to modify
 	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
 	    input name {
-		Name of the contact to set oas liaison
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
-	} [cm::call contact cmd_set_liaison]
+		Name of the contacts to add as liaisons
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	} [cm::call contact cmd_add_liaison]
+	alias add-rep
+	alias add-poc
+
+	private remove-liaison {
+	    section {Contact Management}
+	    description {Remove one or more liaisons from the specified company}
+	    input company {
+		Name of the company to modify
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    input name {
+		Name of the contacts to remove as liaisons
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	} [cm::call contact cmd_drop_liaison]
+	alias remove-rep
+	alias remove-poc
 
 	private set-tag {
 	    section {Contact Management}
