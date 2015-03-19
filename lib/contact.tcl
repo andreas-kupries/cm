@@ -40,13 +40,12 @@ namespace eval ::cm {
 namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
-	cmd_add_mail cmd_add_link cmd_list cmd_show \
-	cmd_set_tag cmd_set_bio cmd_set_company cmd_set_liaison \
-	cmd_disable cmd_enable cmd_disable_mail \
-	cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
-	cmd_merge \
-	select label get known known-email known-type details \
-	get-name get-links get-email get-the-link
+	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge \
+	cmd_set_tag cmd_set_bio cmd_disable cmd_enable liaisons \
+	cmd_disable_mail cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
+	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
+	select label get known known-email known-type details affiliated \
+	get-name get-links get-email get-the-link related-formatted
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -87,58 +86,105 @@ proc ::cm::contact::cmd_show {config} {
 	    	   C.can_register AS creg,
 	    	   C.can_book     AS cbook,
 	    	   C.can_talk     AS ctalk,
-	    	   C.can_submit   AS csubm,
-	    	   C.affiliation  AS affiliation
+	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
 	          contact_type CT
 	    WHERE C.id   = :contact
 	    AND   C.type = CT.id
 	} {
-	    # coded left join
-	    if {$affiliation ne {}} {
-		set affiliation [db do onecolumn {
-		    SELECT dname FROM contact WHERE id = :affiliation
-		}]
-	    }
-	    if {$type eq "Company"} {
-		set akey Liaison
-		set bkey Affiliations
-	    } else {
-		set akey Affiliation
-		set bkey {Liaises To:}
-	    }
-
-	    # Find the contacts referencing us through their
-	    # affiliation/liaison fields.
-
-
-	    set bio [util adjust $w $bio]
+	    set flags {}
+	    if {$crecv} { lappend flags Receive  }
+	    if {$creg } { lappend flags Register }
+	    if {$cbook} { lappend flags Book     }
+	    if {$ctalk} { lappend flags Talk     }
+	    if {$csubm} { lappend flags Submit   }
 
 	    $t add Tag                $tag
 	    $t add Name               $name
 	    $t add Type               $type
-	    $t add $akey              $affiliation
-	    $t add {Can Receive Mail} $crecv
-	    $t add {Can Register}     $creg
-	    $t add {Can Book}         $cbook
-	    $t add {Can Talk}         $ctalk
-	    $t add {Can Submit}       $csubm
-	    $t add Biography          $bio
+	    $t add Flags              [join $flags {, }]
+	    $t add Biography          [util adjust $w $bio]
 
+	    # Coded left self-joins for various relations...
+
+	    # Emails for the contact
+	    set first 1
 	    db do eval {
 		SELECT email
 		FROM   email
 		WHERE  contact = :id
 	    } {
-		$t add Email $email
+		if {$first} { $t add Emails {} }
+		set first 0
+		$t add - $email
 	    }
 
+	    # Links for the contact
+	    set first 1
 	    db do eval {
 		SELECT link
 		FROM   link
 		WHERE  contact = :id
 	    } {
-		$t add Link $link
+		if {$first} { $t add Links {} }
+		set first 0
+		$t add - $link
+	    }
+
+	    # Affiliations. Expected for persons, to list companies, their, well, affiliations
+	    set first 1
+	    db do eval {
+		SELECT C.dname
+		FROM   contact     C,
+		       affiliation A
+		WHERE  A.person  = :contact
+		AND    A.company = C.id
+	    } {
+		if {$first} { $t add Affiliations {} }
+		set first 0
+		$t add - $dname
+	    }
+
+	    # Liaisons. Expected for companies, to list persons, their representatives
+	    set first 1
+	    db do eval {
+		SELECT C.dname
+		FROM   contact C,
+		       liaison L
+		WHERE  L.company = :contact
+		AND    L.person = C.id
+	    } {
+		if {$first} { $t add Representatives {} }
+		set first 0
+		$t add - $dname
+	    }
+
+	    # Reverse affiliations. Expected for companies, to list persons, the affiliated
+	    set first 1
+	    db do eval {
+		SELECT C.dname
+		FROM   contact     C,
+		       affiliation A
+		WHERE  A.company = :contact
+		AND    A.person  = C.id
+	    } {
+		if {$first} { $t add Affiliated {} }
+		set first 0
+		$t add - $dname
+	    }
+
+	    # Reverse liaisons. Expected for persons, to list the companies they represent
+	    set first 1
+	    db do eval {
+		SELECT C.dname
+		FROM   contact C,
+		       liaison L
+		WHERE  L.person  = :contact
+		AND    L.company = C.id
+	    } {
+		if {$first} { $t add Representing {} }
+		set first 0
+		$t add - $dname
 	    }
 	}
     }] show
@@ -161,13 +207,13 @@ proc ::cm::contact::cmd_list {config} {
 	    SELECT C.id           AS contact,
 	           C.tag          AS tag,
 	           C.dname        AS name,
+	           C.type         AS typecode,
 	           CT.text        AS type,
 	           C.can_recvmail AS crecv,
 	    	   C.can_register AS creg,
 	    	   C.can_book     AS cbook,
 	    	   C.can_talk     AS ctalk,
-	    	   C.can_submit   AS csubm,
-	    	   C.affiliation  AS affiliation
+	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
 	          contact_type CT
 	    WHERE (C.name  GLOB :pattern
@@ -177,21 +223,9 @@ proc ::cm::contact::cmd_list {config} {
 	} {
 	    incr counter
 
-	    # coded left join
-	    if {$affiliation ne {}} {
-		set affiliation [db do onecolumn {
-		    SELECT dname FROM contact WHERE id = :affiliation
-		}]
+	    set related [related-formatted $contact $typecode]
 
-		if {$type eq "Company"} {
-		    # affiliation actually is "liason"
-		    set affiliation "Liaising: $affiliation"
-		} else {
-		    set affiliation "Of: $affiliation"
-		}
-	    }
-
-	    set flags {}
+	    set    flags {}
 	    append flags [expr {$crecv ? "M" :"-"}]
 	    append flags [expr {$creg  ? "R" :"-"}]
 	    append flags [expr {$cbook ? "B" :"-"}]
@@ -209,7 +243,7 @@ proc ::cm::contact::cmd_list {config} {
 		    lappend mails "[expr {$inactive ? "-":" "}] $email"
 		}
 		set mails [join $mails \n]
-		$t add $counter $type $tag $name $mails $flags $affiliation
+		$t add $counter $type $tag $name $mails $flags $related
 	    } else {
 		set mails [db do eval {
 		    SELECT count(email)
@@ -217,7 +251,7 @@ proc ::cm::contact::cmd_list {config} {
 		    WHERE  contact = :contact
 		}]
 		if {!$mails} { set mails [color bad None] }
-		$t add $counter $type $tag $name $mails $flags $affiliation
+		$t add $counter $type $tag $name $mails $flags $related
 	    }
 	}
     }] show
@@ -568,9 +602,12 @@ proc ::cm::contact::cmd_merge {config} {
 	# Redirect all references to the secondary contact to the
 	# primary, namely:
 	#
-	# contact.affiliation
-	# email.contact
-	# link.contact
+	# - email.contact
+	# - link.contact
+	# - affiliation.person
+	# - affiliation.company
+	# - liaison.person
+	# - liaison.company
 	#
 	# Note: There is no need to update campaigns as emails are
 	# neither added/enabled nor removed/disabled.
@@ -580,10 +617,6 @@ proc ::cm::contact::cmd_merge {config} {
 
 	db do transaction {
 	    db do eval {
-		UPDATE contact
-		SET    affiliation = :primary
-		WHERE  affiliation = :secondary
-		;
 		UPDATE email
 		SET    contact = :primary
 		WHERE  contact = :secondary
@@ -591,6 +624,22 @@ proc ::cm::contact::cmd_merge {config} {
 		UPDATE link
 		SET    contact = :primary
 		WHERE  contact = :secondary
+		;
+		UPDATE affiliation
+		SET    person = :primary
+		WHERE  person = :secondary
+		;
+		UPDATE affiliation
+		SET    company = :primary
+		WHERE  company = :secondary
+		;
+		UPDATE liaison
+		SET    person = :primary
+		WHERE  person = :secondary
+		;
+		UPDATE liaison
+		SET    company = :primary
+		WHERE  company = :secondary
 		;
 		DELETE
 		FROM   contact
@@ -637,37 +686,91 @@ proc ::cm::contact::cmd_set_bio {config} {
     return
 }
 
-proc ::cm::contact::cmd_set_company {config} {
+proc ::cm::contact::cmd_add_company {config} {
     debug.cm/contact {}
     Setup
     db show-location
 
     set contact [$config @name]
-    set company [$config @company]
 
-    puts -nonewline "Affiliate \"[color name [get $contact]]\" with \"[color name [get $company]]\" ... "
-    flush stdout
+    db do transaction {
+	puts "Extend affiliations of \"[color name [get $contact]]\" ... "
 
-    update-affiliation $contact $company
+	foreach company [$config @company] {
+	    puts -nonewline "+ \"[color name [get $company]]\" ... "
+	    flush stdout
 
-    puts [color good OK]
+	    add-affiliation $contact $company
+
+	    puts [color good OK]
+	}
+    }
     return
 }
 
-proc ::cm::contact::cmd_set_liaison {config} {
+proc ::cm::contact::cmd_drop_company {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+
+    db do transaction {
+	puts "Reduce affiliations of \"[color name [get $contact]]\" ... "
+
+	foreach company [$config @company] {
+	    puts -nonewline "- \"[color name [get $company]]\" ... "
+	    flush stdout
+
+	    drop-affiliation $contact $company
+
+	    puts [color good OK]
+	}
+    }
+    return
+}
+
+proc ::cm::contact::cmd_add_liaison {config} {
     debug.cm/contact {}
     Setup
     db show-location
 
     set company [$config @company]
-    set contact [$config @name]
 
-    puts -nonewline "Set \"[color name [get $company]]\"'s liaison as \"[color name [get $contact]]\" ..."
-    flush stdout
+    db do transaction {
+	puts "Extend representatives of \"[color name [get $company]]\" ..."
 
-    update-affiliation $company $contact
+	foreach contact [$config @name] {
+	    puts -nonewline "+ \"[color name [get $contact]]\" ..."
+	    flush stdout
 
-    puts [color good OK]
+	    add-liaison $company $contact
+
+	    puts [color good OK]
+	}
+    }
+    return
+}
+
+proc ::cm::contact::cmd_drop_liaison {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set company [$config @company]
+
+    db do transaction {
+	puts "Reduce representatives of \"[color name [get $company]]\" ..."
+
+	foreach contact [$config @name] {
+	    puts -nonewline "- \"[color name [get $contact]]\" ..."
+	    flush stdout
+
+	    drop-liaison $company $contact
+
+	    puts [color good OK]
+	}
+    }
     return
 }
 
@@ -697,6 +800,63 @@ proc ::cm::contact::cmd_mail_fix {config} {
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::contact::affiliated {contact} {
+    debug.cm/contact {}
+    Setup
+    return [db do eval {
+	SELECT C.id, C.dname
+	FROM   contact     C,
+	       affiliation A
+	WHERE  A.person  = :contact
+	AND    A.company = C.id
+	ORDER BY C.dname
+    }]
+}
+
+proc ::cm::contact::liaisons {contact} {
+    debug.cm/contact {}
+    Setup
+    return [db do eval {
+	SELECT C.id, C.dname
+	FROM   contact C,
+	       liaison L
+	WHERE  L.company = :contact
+	AND    L.person = C.id
+	ORDER BY C.dname
+    }]
+}
+
+proc ::cm::contact::related-formatted {contact type} {
+    debug.cm/contact {}
+    if {$type != 1} {
+	# liaisons aka representatives
+	set related [dict values [liaisons $contact]]
+	if {[llength $related]} {
+	    # Hanging indent, TODO utility command
+	    set other [lassign $related primary]
+	    set    related    "Rep: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "   : "]
+	    }
+	}
+    } else {
+	# affiliations
+	set related [affiliated $contact]
+	if {[llength $related]} {
+	    # Hanging indent, TODO utility command
+	    set other [dict values [lassign $related primary]]
+	    set    related    "Of: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "  : "]
+	    }
+	}
+    }
+
+    return $related
+}
+
+# # ## ### ##### ######## ############# ######################
 
 proc ::cm::contact::add-mails {id config} {
     debug.cm/contact {}
@@ -822,18 +982,6 @@ proc ::cm::contact::update-tag {contact tag} {
     return
 }
 
-proc ::cm::contact::update-affiliation {contact affiliation} {
-    debug.cm/contact {}
-    Setup
-
-    db do eval {
-	UPDATE contact
-	SET    affiliation = :affiliation
-	WHERE  id          = :contact
-    }
-    return
-}
-
 proc ::cm::contact::update-bio {contact bio} {
     debug.cm/contact {}
     Setup
@@ -842,6 +990,56 @@ proc ::cm::contact::update-bio {contact bio} {
 	UPDATE contact
 	SET    biography = :bio
 	WHERE  id        = :contact
+    }
+    return
+}
+
+proc ::cm::contact::add-affiliation {contact affiliation} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	INSERT
+	INTO affiliation
+	VALUES (NULL, :contact, :affiliation)
+    }
+    return
+}
+
+proc ::cm::contact::add-liaison {contact liaison} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	INSERT
+	INTO liaison
+	VALUES (NULL, :contact, :liaison)
+    }
+    return
+}
+
+proc ::cm::contact::drop-affiliation {contact affiliation} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	DELETE
+	FROM affiliation
+	WHERE person  = :contact
+	AND   company = :affiliation
+    }
+    return
+}
+
+proc ::cm::contact::drop-liaison {contact liaison} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	DELETE
+	FROM liaison
+	WHERE company = :contact
+	AND   person  = :liaison
     }
     return
 }
@@ -1004,7 +1202,6 @@ proc ::cm::contact::details {id} {
 	       "xname",         name,
 	       "xdname",        dname,
 	       "xbiography",    biography,
-	       "xaffiliation",  affiliation,
 	       "xcan_recvmail", can_recvmail,
 	       "xcan_register", can_register,
 	       "xcan_book",     can_book,
@@ -1279,10 +1476,6 @@ proc ::cm::contact::Setup {} {
 	    dname	 TEXT	 NOT NULL,		-- display name
 	    biography	 TEXT,
 
-	    affiliation	 INTEGER REFERENCES contact,	-- person  => company they belong to
-	                                                -- company => person used as liaison
-	                                                -- mlist   => not applicable
-
 	    can_recvmail INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
@@ -1295,7 +1488,6 @@ proc ::cm::contact::Setup {} {
 	    {name		TEXT    1 {} 0}
 	    {dname		TEXT    1 {} 0}
 	    {biography		TEXT    0 {} 0}
-	    {affiliation	INTEGER 0 {} 0}
 	    {can_recvmail	INTEGER 1 {} 0}
 	    {can_register	INTEGER 1 {} 0}
 	    {can_book		INTEGER 1 {} 0}

@@ -771,12 +771,11 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
-	WHERE  contact IN (SELECT affiliation -- liaison actually
-			   FROM   contact
-			   WHERE  affiliation IS NOT NULL
-			   AND    id IN (SELECT contact
-					 FROM   sponsors
-					 WHERE  conference = :conference))
+	WHERE  contact IN (SELECT person
+			   FROM   liaison
+			   WHERE  company IN (SELECT contact
+					      FROM   sponsors
+					      WHERE  conference = :conference))
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -827,29 +826,21 @@ proc ::cm::conference::cmd_sponsor_show {config} {
     [table t {Sponsor Reference} {
 	# TODO: sponsors - mail/link/notes ?
 	db do eval {
-	    SELECT C.dname       AS name,
-	           C.type        AS type,
-	           C.affiliation AS affiliation
+	    SELECT C.id          AS contact,
+	           C.dname       AS name,
+	           C.type        AS type
 	    FROM   sponsors S,
 	           contact  C
 	    WHERE  S.conference = :conference
 	    AND    S.contact    = C.id
 	    ORDER BY C.dname
 	} {
-	    # coded left join
-	    if {$affiliation ne {}} {
-		set affiliation [db do onecolumn {
-		    SELECT dname FROM contact WHERE id = :affiliation
-		}]
-		if {$type == 2} { ;# company
-		    # affiliation actually is "liason"
-		    set affiliation "Liaising: $affiliation"
-		} else {
-		    set affiliation "Of: $affiliation"
-		}
-	    }
+	    # get liaisons of the sponsor companies.
+	    # get affiliations of sponsoring persons.
 
-	    $t add $name $affiliation
+	    set related [contact related-formatted $contact $type]
+
+	    $t add $name $related
 	}
     }] show
     return
@@ -1585,18 +1576,18 @@ proc ::cm::conference::web-committee {id} {
 
     set mdcommittee {}
     foreach cname $cnames {
-	# Get full details of person, and pull affiliation, if any.
-	# Get link for affiliatin, if any.
-	set contact [contact details [dict get $cdata $cname]]
-
-	set affiliation [dict get $contact xaffiliation]
-	if {$affiliation ne {}} {
-	    set alink       [contact get-the-link $affiliation]
-	    set affiliation [contact get-name     $affiliation]
+	# Get full details of person, and pull affiliations, if any.
+	# Get link for affiliation, if any.
+	set contact     [dict get $cdata $cname]
+	set affiliation {}
+	foreach {aid aname} [contact affiliated $contact] {
+	    set alink [contact get-the-link $aid]
 	    if {$alink ne {}} {
-		set affiliation "\[$affiliation\]($alink)"
+		set aname "\[$aname\]($alink)"
 	    }
+	    lappend affiliation $aname
 	}
+	set affiliation [join $affiliation {, }]
 
 	lappend mdcommittee |$cname|$affiliation|
     }
@@ -1620,17 +1611,27 @@ proc ::cm::conference::mail-committee {id} {
 	# names for proper tabular alignment in the generated text.
 
 	# Get full details, and pull the affiliation, if any.
-	set contact     [contact details [dict get $cdata $c]]
-	set affiliation [dict get $contact xaffiliation]
 
-	if {$affiliation ne {}} {
-	    append clabel " " [contact get-name $affiliation]
+	set contact     [dict get $cdata $c]
+	set affiliation {}
+	set prefix      "   * "
+
+	foreach {aid aname} [contact affiliated $contact] {
+	    lappend affiliation $aname
 	}
 
-	lappend committee [string trim $clabel]
+	if {![llength $affiliation]} {
+	    lappend committee $prefix[string trim $clabel]
+	} else {
+	    foreach a $affiliation {
+		lappend committee "$prefix$clabel $a"
+		set prefix "     "
+		regsub -all {[^	]} $clabel { } clabel
+	    }
+	}
     }
 
-    return [util indent [join $committee \n] "   * "]
+    return [join $committee \n]
 }
 
 proc ::cm::conference::+map {key value} {
