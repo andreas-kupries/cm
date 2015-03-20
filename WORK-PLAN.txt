@@ -8,6 +8,10 @@ NOW
 SOON
 ====
 
+* website - internal pages,
+  - status page - show submissions, issues ...
+  - full/internal timeline, and status - see below re flag/checkmark
+
 * Need flag on timeline entries - checkmark if an action was done or not.
 
 * 'isprimary' attribute of emails and links for a contact ?
