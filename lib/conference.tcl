@@ -1242,7 +1242,7 @@ proc ::cm::conference::make_callforpapers {} {
 
 proc ::cm::conference::make_location {} {
     # make-location - TODO: Move text into a configurable template
-    # make-location - TODO: insert booking information, rate information.
+    # make-location - TODO: switch to a different text block when deadline has passed.
     return [util undent {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
@@ -1263,10 +1263,99 @@ proc ::cm::conference::make_registration {} {
     # make-registration - TODO: Move text into a configurable template
     # make-registration - TODO: flag/data controlled
     # make-registration - TODO: registration opening date ?!
+
+    set rmode ... TODO retrieve setting
+    switch -exact -- $rmode {
+	pending { return [make_registration_pending] }
+	open    { return [make_registration_open] }
+	closed  { return [make_registration_closed] }
+    }
+}
+
+proc ::cm::conference::make_registration_pending {} {
     return [util undent {
 	It is planned to open registration on @c:t:regopen@.
 
 	Please check back at that time.
+    }]
+}
+
+proc ::cm::conference::make_registration_closed {} {
+    return [util undent {
+	__Registration online has closed.__
+    }]
+}
+
+proc ::cm::conference::make_registration_open {} {
+    return [util undent {
+	## How to register
+
+	You may register for the conference by
+
+	* [Online form](https://www.tcl.tk/community/tcl@c:year@)
+	* Hardcopy Mail/Fax -- TODO -- separate instruction page -- or anchor at bottom ?
+	* At the door. 
+
+	If you register in advance, You will receive a $100 discount
+	over the at-the-door conference rate.
+
+	You can register at the door when you arrive at the @h:hotel@.
+
+	Registration will be open daily from 08:30 until 17:00. 
+
+	## Pricing schedules and discounts
+
+	All prices are US$.
+
+	[Technical Sessions](schedule.html) (Wednesday to Friday) registration includes:
+
+	   * Access to all conference technical sessions
+	   * Access to the evening BOFs and community meetings
+	   * One set of proceedings on USB memory stick.
+	   * Breakfast and morning and evening snack breaks 
+
+	Each tutorial is one half-day session (3 hours instruction time + one break).
+	Tutorials have limited space. Registration is on a first-come, first-serve basis.
+	[Tutorial Sessions](tutorials.html) (Monday, Tuesday) registration includes:
+
+	   * Access to all registered tutorial sessions
+	   * Complete course handouts
+	   * Snack break during the tutorial 
+
+	|Conference Fees|Regular Price|
+	|-|-|
+	|Technical Sessions			| $395|
+	|Tutorials (see sliding scale below)	| $195-$650|
+	|Extra Proceedings (Memory sticks)	| $5 per|
+	|Extra Proceedings (Printed paper)	| $20 per|
+	|Walk-in registration			| Add $100 to your total|
+
+	### Tutorial Pricing
+
+	We are offering tutorials on a Cheaper-By-The-(one-third)Dozen schedule.
+	Rather than a flat rate, the tutorials become cheaper as you learn more.
+
+	|Number of Tutorials| 	List Price| 	Actual Cost| 	Savings| 	Percent|
+	|-|-|-|-|-|
+	|1 	|$195 	|$195 	|0 	|0%|
+	|2 	|$390 	|$350 	|$40 	|10.3%|
+	|3 	|$585 	|$500 	|$85 	|14.5%|
+	|4 	|$780 	|$650 	|$130 	|16.7%|
+
+	### Special Discounts
+
+	|||
+	|-|-|
+	|Full Time Student |Attending the Technical Sessions is free for students, with proof of status, a copy of your student ID and class schedule. Technical Sessions plus 3 Meals is $50|
+	|Presenters	   |Deduct $100 from your total fees if you are presenting a paper|
+
+	### Cancellation Policy
+
+	If for any reason you need to cancel your registration, please email
+	tclconference@googlegroups.com.
+
+	Registration fees for cancellations received before July 1st will be
+	refunded after a $100 processing charge has been deducted. 
     }]
 }
 
