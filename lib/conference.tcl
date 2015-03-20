@@ -1183,7 +1183,7 @@ proc ::cm::conference::make_page {title fname generatorcmd} {
     upvar 1 dstdir dstdir conference conference
     puts \t${title}...
 
-    set text [make_page_header]
+    set text [make_page_header $title]
 
     try {
 	append text \n [uplevel 1 $generatorcmd]
@@ -1199,13 +1199,17 @@ proc ::cm::conference::make_page {title fname generatorcmd} {
     return [list $title "\$rootDirPath/${fname}.html"]
 }
 
-proc ::cm::conference::make_page_header {} {
+proc ::cm::conference::make_page_header {title} {
     # page-header - TODO: Separate hotel and facilities.
     # page-header - TODO: Move text into a configurable template? This one is a maybe.
     # page-header - TODO: Conditional text for link, phone, and fax, any could be missing.
 
-    return [string trimleft [util undent {
-	#
+    lappend map @@ $title
+    return [string map $map [string trimleft [util undent {
+	{
+	    title {@@}
+	}
+
 	## @c:when@
 
 	[@h:hotel@](@h:booklink@)		</br>
@@ -1215,7 +1219,7 @@ proc ::cm::conference::make_page_header {} {
 	[Fax: @h:bookfax@](@h:booklink@)
 
 	---
-    }]]
+    }]]]
 }
 
 proc ::cm::conference::make_page_footer {} {
