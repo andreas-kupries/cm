@@ -1454,21 +1454,27 @@ proc ::cm::conference::make_proceedings {} {
 
 proc ::cm::conference::make_sidebar {conference} {
     append sidebar <table>
-    append sidebar <tr><td span=2><strong> "Important Information &mdash; Timeline" </strong></td></tr>
+    # -- styling makes the table too large -- append sidebar "<table class='table table-condensed'>"
+    append sidebar "\n<tr><th colspan=2>" "Important Information &mdash; Timeline" </th></tr>
     #append sidebar <tr><td> "Email contact" </td><td> "<a href='mailto:@c:contact@'>" @c:contact@</a></td></tr>
+
     append sidebar [[table t {Event When} {
 	$t style table/html
 	$t noheader
-	db do eval {
-	    SELECT T.date AS date,
-	           E.text AS text
-	    FROM   timeline      T,
-	           timeline_type E
-	    WHERE T.con  = :conference
-	    AND   T.type = E.id
-	    AND   E.ispublic
-	    ORDER BY T.date
-	} {
+
+	switch -exact -- [set m [registration-mode $conference]] {
+	    pending {
+		set sql [sidebar_reg_show]
+	    }
+	    open - closed {
+		set r Registration
+		if {$m eq "open"} { set r "<a href='register.html'>$r</a>" }
+		append sidebar "\n<tr><th colspan=2>" "Registration is $m" </th></tr>
+		set sql [sidebar_reg_excluded]
+	    }
+	}
+	#append sidebar "\n<tr><td colspan=2><hr/></strong></td></tr>"
+	db do eval $sql {
 	    $t add "$text" [hdate $date]
 	}
     }] show return]
@@ -1476,6 +1482,32 @@ proc ::cm::conference::make_sidebar {conference} {
     return [insert $conference $sidebar]
 }
 
+proc ::cm::conference::sidebar_reg_excluded {} {
+    return {
+	SELECT T.date AS date,
+	       E.text AS text
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE T.con  = :conference
+	AND   T.type = E.id
+	AND   E.ispublic
+	AND   E.key != 'regopen'
+	ORDER BY T.date
+    }
+}
+
+proc ::cm::conference::sidebar_reg_show {} {
+    return {
+	SELECT T.date AS date,
+	       E.text AS text
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE T.con  = :conference
+	AND   T.type = E.id
+	AND   E.ispublic
+	ORDER BY T.date
+    }
+}
 
 proc ::cm::conference::cdefault {attr dcmd} {
     upvar 1 config config
