@@ -1143,14 +1143,27 @@ proc ::cm::conference::cmd_website_make {config} {
     lappend navbar {*}[make_page Overview          index       make_overview]
     lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
     lappend navbar {*}[make_page Location          location    make_location]
-    lappend navbar {*}[make_page Registration      register    make_registration]
+
+    switch -exact -- [registration-mode $conference] {
+	pending {
+	    lappend navbar {*}[make_page Registration register make_registration_pending]
+	}
+	open {
+	    lappend navbar {*}[make_page Registration              register       make_registration_open]
+	    make_page                   {Registration By Mail/Fax} register_paper make_registration_paper
+	}
+	closed {
+	    lappend navbar {*}[make_page Registration register make_registration_closed]
+	}
+    }
+
     lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials]
     lappend navbar {*}[make_page Schedule          schedule    make_schedule]
-    make_page Abstracts         abstracts   make_abstracts
-    make_page Speakers          bios        make_speakers
+    make_page                    Abstracts         abstracts   make_abstracts
+    make_page                    Speakers          bios        make_speakers
     lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
     lappend navbar {*}[make_page Contact           contact     make_contact]
-    make_page Disclaimer        disclaimer  make_disclaimer
+    make_page                    Disclaimer        disclaimer  make_disclaimer
 
     # # ## ### ##### ######## #############
     # Configuration file.
@@ -1259,24 +1272,17 @@ proc ::cm::conference::make_location {} {
     }]
 }
 
-proc ::cm::conference::make_registration {} {
-    # make-registration - TODO: Move text into a configurable template
-    # make-registration - TODO: flag/data controlled
-    # make-registration - TODO: registration opening date ?!
-
-    set rmode ... TODO retrieve setting
-    switch -exact -- $rmode {
-	pending { return [make_registration_pending] }
-	open    { return [make_registration_open] }
-	closed  { return [make_registration_closed] }
-    }
+proc ::cm::conference::registration-mode {conference} {
+    # Hardwired until we have the db flag "conference.reg_status"
+    return open
 }
 
 proc ::cm::conference::make_registration_pending {} {
     return [util undent {
-	It is planned to open registration on @c:t:regopen@.
+	While it is planned to open registration on @c:t:regopen@
+	it may happen earlier.
 
-	Please check back at that time.
+	Please check back frequently, and/or nag us at the contact below.
     }]
 }
 
@@ -1286,14 +1292,30 @@ proc ::cm::conference::make_registration_closed {} {
     }]
 }
 
+proc ::cm::conference::make_registration_paper {} {
+    return [util undent {
+	Thank you for joining us.
+
+	* Please go to the [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html) and fill in the data.
+	* __Print__ the form from your browser, instead of submitting it electronically.
+	* Either fax the print to 734-449-8467, or mail it (if paying by cheque) to the address below
+
+	```
+	Tcl Community Association
+	8888 Black Pine Ln
+	Whitmore Lake, MI 48189
+	```
+    }]
+}
+
 proc ::cm::conference::make_registration_open {} {
     return [util undent {
 	## How to register
 
 	You may register for the conference by
 
-	* [Online form](https://www.tcl.tk/community/tcl@c:year@)
-	* Hardcopy Mail/Fax -- TODO -- separate instruction page -- or anchor at bottom ?
+	* [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html)
+	* [Hardcopy Mail/Fax](register_paper.html)
 	* At the door. 
 
 	If you register in advance, You will receive a $100 discount
@@ -1305,7 +1327,7 @@ proc ::cm::conference::make_registration_open {} {
 
 	## Pricing schedules and discounts
 
-	All prices are US$.
+	All prices are in US$.
 
 	[Technical Sessions](schedule.html) (Wednesday to Friday) registration includes:
 
@@ -1325,11 +1347,12 @@ proc ::cm::conference::make_registration_open {} {
 	|Conference Fees|Regular Price|
 	|-|-|
 	|Technical Sessions			| $395|
-	|Tutorials (see sliding scale below)	| $195-$650|
+	|Tutorials ([see sliding scale below](#tp))	| $195 - $650|
 	|Extra Proceedings (Memory sticks)	| $5 per|
 	|Extra Proceedings (Printed paper)	| $20 per|
-	|Walk-in registration			| Add $100 to your total|
+	|Walk-in registration			| Add $100 to your total fees|
 
+	<a name='tp'></a>
 	### Tutorial Pricing
 
 	We are offering tutorials on a Cheaper-By-The-(one-third)Dozen schedule.
@@ -1337,7 +1360,7 @@ proc ::cm::conference::make_registration_open {} {
 
 	|Number of Tutorials| 	List Price| 	Actual Cost| 	Savings| 	Percent|
 	|-|-|-|-|-|
-	|1 	|$195 	|$195 	|0 	|0%|
+	|1 	|$195 	|$195 	|$0 	|0%|
 	|2 	|$390 	|$350 	|$40 	|10.3%|
 	|3 	|$585 	|$500 	|$85 	|14.5%|
 	|4 	|$780 	|$650 	|$130 	|16.7%|
@@ -1346,13 +1369,13 @@ proc ::cm::conference::make_registration_open {} {
 
 	|||
 	|-|-|
-	|Full Time Student |Attending the Technical Sessions is free for students, with proof of status, a copy of your student ID and class schedule. Technical Sessions plus 3 Meals is $50|
+	|Full Time Student |Attending the Technical Sessions is free for students, with proof of status, a copy of your student ID and class schedule. Technical Sessions plus three Meals is $50|
 	|Presenters	   |Deduct $100 from your total fees if you are presenting a paper|
 
 	### Cancellation Policy
 
 	If for any reason you need to cancel your registration, please email
-	tclconference@googlegroups.com.
+	[@c:contact@](mailto:@c:contact@).
 
 	Registration fees for cancellations received before July 1st will be
 	refunded after a $100 processing charge has been deducted. 
