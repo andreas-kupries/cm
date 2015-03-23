@@ -52,9 +52,9 @@ namespace eval ::cm::conference {
 	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
-	cmd_submission_setsummary cmd_submission_setabstract \
+	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
 	select label current get insert known-sponsor \
-	select-sponsor select-staff-role select-staff known-staff \
+	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt
     namespace ensemble create
@@ -232,6 +232,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Year             $xyear
 	$t add Management       $xmanagement
 	$t add {Submissions To} $xsubmission
+	$t add Registrations    [get-rstatus $xrstatus] ;# TODO: colorize the status
 	$t add Start            $xstart
 	$t add End              $xend
 	$t add Aligned          $xalign
@@ -755,6 +756,29 @@ proc ::cm::conference::cmd_submission_list {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_registration {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set newstatus  [$config @status] 
+
+    puts -nonewline "Conference \"[color name [get $conference]]\" registration = [get-rstatus $newstatus] ... "
+    flush stdout
+
+    db do eval {
+	UPDATE conference
+	SET    rstatus = :newstatus
+	WHERE  id      = :conference
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_sponsor_ping {config} {
     debug.cm/conference {}
     Setup
@@ -1143,14 +1167,30 @@ proc ::cm::conference::cmd_website_make {config} {
     lappend navbar {*}[make_page Overview          index       make_overview]
     lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
     lappend navbar {*}[make_page Location          location    make_location]
-    lappend navbar {*}[make_page Registration      register    make_registration]
+
+    set rstatus [registration-mode $conference]
+    puts "Registration: $rstatus"
+    # The rstatus strings match the contents of table 'rstatus'.
+    switch -exact -- $rstatus {
+	pending {
+	    lappend navbar {*}[make_page Registration register make_registration_pending]
+	}
+	open {
+	    lappend navbar {*}[make_page Registration              register       make_registration_open]
+	    make_page                   {Registration By Mail/Fax} register_paper make_registration_paper
+	}
+	closed {
+	    lappend navbar {*}[make_page Registration register make_registration_closed]
+	}
+    }
+
     lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials]
     lappend navbar {*}[make_page Schedule          schedule    make_schedule]
-    make_page Abstracts         abstracts   make_abstracts
-    make_page Speakers          bios        make_speakers
+    make_page                    Abstracts         abstracts   make_abstracts
+    make_page                    Speakers          bios        make_speakers
     lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
     lappend navbar {*}[make_page Contact           contact     make_contact]
-    make_page Disclaimer        disclaimer  make_disclaimer
+    make_page                    Disclaimer        disclaimer  make_disclaimer
 
     # # ## ### ##### ######## #############
     # Configuration file.
@@ -1242,7 +1282,7 @@ proc ::cm::conference::make_callforpapers {} {
 
 proc ::cm::conference::make_location {} {
     # make-location - TODO: Move text into a configurable template
-    # make-location - TODO: insert booking information, rate information.
+    # make-location - TODO: switch to a different text block when deadline has passed.
     return [util undent {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
@@ -1259,14 +1299,112 @@ proc ::cm::conference::make_location {} {
     }]
 }
 
-proc ::cm::conference::make_registration {} {
-    # make-registration - TODO: Move text into a configurable template
-    # make-registration - TODO: flag/data controlled
-    # make-registration - TODO: registration opening date ?!
-    return [util undent {
-	It is planned to open registration on @c:t:regopen@.
+proc ::cm::conference::registration-mode {conference} {
+    return [get-rstatus [dict get [details $conference] xrstatus]]
+}
 
-	Please check back at that time.
+proc ::cm::conference::make_registration_pending {} {
+    return [util undent {
+	While it is planned to open registration on @c:t:regopen@
+	it may happen earlier.
+
+	Please check back frequently, and/or nag us at the contact below.
+    }]
+}
+
+proc ::cm::conference::make_registration_closed {} {
+    return [util undent {
+	__Registration online has closed.__
+    }]
+}
+
+proc ::cm::conference::make_registration_paper {} {
+    return [util undent {
+	Thank you for joining us.
+
+	* Please go to the [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html) and fill in the data.
+	* __Print__ the form from your browser, instead of submitting it electronically.
+	* Either fax the print to 734-449-8467, or mail it (if paying by cheque) to the address below
+
+	```
+	Tcl Community Association
+	8888 Black Pine Ln
+	Whitmore Lake, MI 48189
+	```
+    }]
+}
+
+proc ::cm::conference::make_registration_open {} {
+    return [util undent {
+	## How to register
+
+	You may register for the conference by
+
+	* [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html)
+	* [Hardcopy Mail/Fax](register_paper.html)
+	* At the door. 
+
+	If you register in advance, You will receive a $100 discount
+	over the at-the-door conference rate.
+
+	You can register at the door when you arrive at the @h:hotel@.
+
+	Registration will be open daily from 08:30 until 17:00. 
+
+	## Pricing schedules and discounts
+
+	All prices are in US$.
+
+	[Technical Sessions](schedule.html) (Wednesday to Friday) registration includes:
+
+	   * Access to all conference technical sessions
+	   * Access to the evening BOFs and community meetings
+	   * One set of proceedings on USB memory stick.
+	   * Breakfast and morning and evening snack breaks 
+
+	Each tutorial is one half-day session (3 hours instruction time + one break).
+	Tutorials have limited space. Registration is on a first-come, first-serve basis.
+	[Tutorial Sessions](tutorials.html) (Monday, Tuesday) registration includes:
+
+	   * Access to all registered tutorial sessions
+	   * Complete course handouts
+	   * Snack break during the tutorial 
+
+	|Conference Fees|Regular Price|
+	|-|-|
+	|Technical Sessions			| $395|
+	|Tutorials ([see sliding scale below](#tp))	| $195 - $650|
+	|Extra Proceedings (Memory sticks)	| $5 per|
+	|Extra Proceedings (Printed paper)	| $20 per|
+	|Walk-in registration			| Add $100 to your total fees|
+
+	<a name='tp'></a>
+	### Tutorial Pricing
+
+	We are offering tutorials on a Cheaper-By-The-(one-third)Dozen schedule.
+	Rather than a flat rate, the tutorials become cheaper as you learn more.
+
+	|Number of Tutorials| 	List Price| 	Actual Cost| 	Savings| 	Percent|
+	|-|-|-|-|-|
+	|1 	|$195 	|$195 	|$0 	|0%|
+	|2 	|$390 	|$350 	|$40 	|10.3%|
+	|3 	|$585 	|$500 	|$85 	|14.5%|
+	|4 	|$780 	|$650 	|$130 	|16.7%|
+
+	### Special Discounts
+
+	|||
+	|-|-|
+	|Full Time Student |Attending the Technical Sessions is free for students, with proof of status, a copy of your student ID and class schedule. Technical Sessions plus three Meals is $50|
+	|Presenters	   |Deduct $100 from your total fees if you are presenting a paper|
+
+	### Cancellation Policy
+
+	If for any reason you need to cancel your registration, please email
+	[@c:contact@](mailto:@c:contact@).
+
+	Registration fees for cancellations received before July 1st will be
+	refunded after a $100 processing charge has been deducted. 
     }]
 }
 
@@ -1342,21 +1480,27 @@ proc ::cm::conference::make_proceedings {} {
 
 proc ::cm::conference::make_sidebar {conference} {
     append sidebar <table>
-    append sidebar <tr><td span=2><strong> "Important Information &mdash; Timeline" </strong></td></tr>
+    # -- styling makes the table too large -- append sidebar "<table class='table table-condensed'>"
+    append sidebar "\n<tr><th colspan=2>" "Important Information &mdash; Timeline" </th></tr>
     #append sidebar <tr><td> "Email contact" </td><td> "<a href='mailto:@c:contact@'>" @c:contact@</a></td></tr>
+
     append sidebar [[table t {Event When} {
 	$t style table/html
 	$t noheader
-	db do eval {
-	    SELECT T.date AS date,
-	           E.text AS text
-	    FROM   timeline      T,
-	           timeline_type E
-	    WHERE T.con  = :conference
-	    AND   T.type = E.id
-	    AND   E.ispublic
-	    ORDER BY T.date
-	} {
+
+	switch -exact -- [set m [registration-mode $conference]] {
+	    pending {
+		set sql [sidebar_reg_show]
+	    }
+	    open - closed {
+		set r Registration
+		if {$m eq "open"} { set r "<a href='register.html'>$r</a>" }
+		append sidebar "\n<tr><th colspan=2>" "Registration is $m" </th></tr>
+		set sql [sidebar_reg_excluded]
+	    }
+	}
+	#append sidebar "\n<tr><td colspan=2><hr/></strong></td></tr>"
+	db do eval $sql {
 	    $t add "$text" [hdate $date]
 	}
     }] show return]
@@ -1364,6 +1508,32 @@ proc ::cm::conference::make_sidebar {conference} {
     return [insert $conference $sidebar]
 }
 
+proc ::cm::conference::sidebar_reg_excluded {} {
+    return {
+	SELECT T.date AS date,
+	       E.text AS text
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE T.con  = :conference
+	AND   T.type = E.id
+	AND   E.ispublic
+	AND   E.key != 'regopen'
+	ORDER BY T.date
+    }
+}
+
+proc ::cm::conference::sidebar_reg_show {} {
+    return {
+	SELECT T.date AS date,
+	       E.text AS text
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE T.con  = :conference
+	AND   T.type = E.id
+	AND   E.ispublic
+	ORDER BY T.date
+    }
+}
 
 proc ::cm::conference::cdefault {attr dcmd} {
     upvar 1 config config
@@ -1814,6 +1984,24 @@ proc ::cm::conference::known-staff-role {} {
     return $known
 }
 
+proc ::cm::conference::known-rstatus {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   rstatus
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
@@ -1915,7 +2103,8 @@ proc ::cm::conference::details {id} {
 	       "xalign",      alignment,
 	       "xlength",     length,
 	       "xtalklen",    talklength,
-	       "xsesslen",    sessionlen
+	       "xsesslen",    sessionlen,
+	       "xrstatus",    rstatus
 	FROM  conference
 	WHERE id = :id
     }]
@@ -1939,7 +2128,8 @@ proc ::cm::conference::write {id details} {
 	       alignment  = :xalign,
 	       length     = :xlength,
 	       talklength = :xtalklen,
-	       sessionlen = :xsesslen
+	       sessionlen = :xsesslen,
+	       rstatus    = :xrstatus
 	WHERE id = :id
     }
 }
@@ -2093,6 +2283,17 @@ proc ::cm::conference::get-role {id} {
     return [db do onecolumn {
 	SELECT text
 	FROM   staff_role
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::get-rstatus {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   rstatus
 	WHERE  id = :id
     }]
 }
@@ -2299,9 +2500,10 @@ proc ::cm::conference::Setup {} {
 	    length	INTEGER NOT NULL,	-- length in days
 
 	    talklength	INTEGER NOT NULL,	-- minutes	  here we configure
-	    sessionlen	INTEGER NOT NULL	-- in #talks max  basic scheduling parameters.
+	    sessionlen	INTEGER NOT NULL,	-- in #talks max  basic scheduling parameters.
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
+	    rstatus	INTEGER NOT NULL REFERENCES rstatus
 
 	    -- Constraints:
 	    -- * (city == facility->city) WHERE facility IS NOT NULL
@@ -2335,6 +2537,7 @@ proc ::cm::conference::Setup {} {
 	    {length		INTEGER	1 {} 0}
 	    {talklength		INTEGER	1 {} 0}
 	    {sessionlen		INTEGER	1 {} 0}
+	    {rstatus		INTEGER	1 {} 0}
 	} {}
     }]} {
 	db setup-error conference $error
@@ -2534,6 +2737,24 @@ proc ::cm::conference::Setup {} {
 	} {contact}
     }]} {
 	db setup-error submitter $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error rstatus {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    text	TEXT	NOT NULL UNIQUE
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error rstatus $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO rstatus VALUES (1,'pending');
+	    INSERT OR IGNORE INTO rstatus VALUES (2,'open');
+	    INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
+	}
     }
 
     # Shortcircuit further calls
