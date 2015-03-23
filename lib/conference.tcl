@@ -52,9 +52,9 @@ namespace eval ::cm::conference {
 	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
-	cmd_submission_setsummary cmd_submission_setabstract \
+	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
 	select label current get insert known-sponsor \
-	select-sponsor select-staff-role select-staff known-staff \
+	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt
     namespace ensemble create
@@ -232,6 +232,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Year             $xyear
 	$t add Management       $xmanagement
 	$t add {Submissions To} $xsubmission
+	$t add Registrations    [get-rstatus $xrstatus] ;# TODO: colorize the status
 	$t add Start            $xstart
 	$t add End              $xend
 	$t add Aligned          $xalign
@@ -755,6 +756,29 @@ proc ::cm::conference::cmd_submission_list {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_registration {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set newstatus  [$config @status] 
+
+    puts -nonewline "Conference \"[color name [get $conference]]\" registration = [get-rstatus $newstatus] ... "
+    flush stdout
+
+    db do eval {
+	UPDATE conference
+	SET    rstatus = :newstatus
+	WHERE  id      = :conference
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_sponsor_ping {config} {
     debug.cm/conference {}
     Setup
@@ -1144,7 +1168,10 @@ proc ::cm::conference::cmd_website_make {config} {
     lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
     lappend navbar {*}[make_page Location          location    make_location]
 
-    switch -exact -- [registration-mode $conference] {
+    set rstatus [registration-mode $conference]
+    puts "Registration: $rstatus"
+    # The rstatus strings match the contents of table 'rstatus'.
+    switch -exact -- $rstatus {
 	pending {
 	    lappend navbar {*}[make_page Registration register make_registration_pending]
 	}
@@ -1273,8 +1300,7 @@ proc ::cm::conference::make_location {} {
 }
 
 proc ::cm::conference::registration-mode {conference} {
-    # Hardwired until we have the db flag "conference.reg_status"
-    return open
+    return [get-rstatus [dict get [details $conference] xrstatus]]
 }
 
 proc ::cm::conference::make_registration_pending {} {
@@ -1958,6 +1984,24 @@ proc ::cm::conference::known-staff-role {} {
     return $known
 }
 
+proc ::cm::conference::known-rstatus {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   rstatus
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
@@ -2059,7 +2103,8 @@ proc ::cm::conference::details {id} {
 	       "xalign",      alignment,
 	       "xlength",     length,
 	       "xtalklen",    talklength,
-	       "xsesslen",    sessionlen
+	       "xsesslen",    sessionlen,
+	       "xrstatus",    rstatus
 	FROM  conference
 	WHERE id = :id
     }]
@@ -2083,7 +2128,8 @@ proc ::cm::conference::write {id details} {
 	       alignment  = :xalign,
 	       length     = :xlength,
 	       talklength = :xtalklen,
-	       sessionlen = :xsesslen
+	       sessionlen = :xsesslen,
+	       rstatus    = :xrstatus
 	WHERE id = :id
     }
 }
@@ -2237,6 +2283,17 @@ proc ::cm::conference::get-role {id} {
     return [db do onecolumn {
 	SELECT text
 	FROM   staff_role
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::get-rstatus {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   rstatus
 	WHERE  id = :id
     }]
 }
@@ -2443,9 +2500,10 @@ proc ::cm::conference::Setup {} {
 	    length	INTEGER NOT NULL,	-- length in days
 
 	    talklength	INTEGER NOT NULL,	-- minutes	  here we configure
-	    sessionlen	INTEGER NOT NULL	-- in #talks max  basic scheduling parameters.
+	    sessionlen	INTEGER NOT NULL,	-- in #talks max  basic scheduling parameters.
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
+	    rstatus	INTEGER NOT NULL REFERENCES rstatus
 
 	    -- Constraints:
 	    -- * (city == facility->city) WHERE facility IS NOT NULL
@@ -2479,6 +2537,7 @@ proc ::cm::conference::Setup {} {
 	    {length		INTEGER	1 {} 0}
 	    {talklength		INTEGER	1 {} 0}
 	    {sessionlen		INTEGER	1 {} 0}
+	    {rstatus		INTEGER	1 {} 0}
 	} {}
     }]} {
 	db setup-error conference $error
@@ -2678,6 +2737,24 @@ proc ::cm::conference::Setup {} {
 	} {contact}
     }]} {
 	db setup-error submitter $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error rstatus {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    text	TEXT	NOT NULL UNIQUE
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error rstatus $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO rstatus VALUES (1,'pending');
+	    INSERT OR IGNORE INTO rstatus VALUES (2,'open');
+	    INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
+	}
     }
 
     # Shortcircuit further calls
