@@ -215,6 +215,7 @@ CREATE TABLE conference (
 	sessionlen	INTEGER,		-- in #talks max  basic scheduling parameters.
 				 		-- 		  shorter talks => longer sessions.
 				 		-- 		  standard: 30 min x3
+	rstatus		INTEGER NOT NULL REFERENCES rstatus
 
 	-- Constraints:
 	-- * (city == facility->city) WHERE facility IS NOT NULL
@@ -234,6 +235,14 @@ CREATE TABLE conference (
 	--
 	-->	Google Calendar of the Conference, Mgmt + Public
 );
+-- ---------------------------------------------------------------
+CREATE TABLE rstatus (	-- fixed content
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	text		TEXT	NOT NULL UNIQUE
+);
+INSERT OR IGNORE INTO rstatus VALUES (1,'pending');
+INSERT OR IGNORE INTO rstatus VALUES (2,'open');
+INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
 -- ---------------------------------------------------------------
 CREATE TABLE conference_staff (
 	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
