@@ -703,6 +703,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call conference cmd_website_make]
 
+	private registration {
+	    section {Conference Management}
+	    description { Set the registration status of the conference. }
+	    input status {
+		The new registration status.
+	    } { validate [cm::vt rstatus] }
+	} [cm::call conference cmd_registration]
+
     }
     alias conferences = conference list
 
