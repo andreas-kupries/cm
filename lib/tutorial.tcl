@@ -65,10 +65,11 @@ proc ::cm::tutorial::cmd_list {config} {
 
     [table t {Speaker Tag Note Title} {
 	db do eval {
-	    SELECT C.dname AS speaker,
-	           C.tag   AS stag,
-	           T.tag   AS tag,
-	           T.title AS title
+	    SELECT C.dname     AS speaker,
+	           C.tag       AS stag,
+	           C.biography AS sbio,
+	           T.tag       AS tag,
+	           T.title     AS title
 	    FROM   tutorial T,
 	           contact  C
 	    WHERE  C.id = T.speaker
@@ -76,6 +77,7 @@ proc ::cm::tutorial::cmd_list {config} {
 	} {
 	    set notes {}
 	    if {$stag eq {}} { lappend notes [color bad {No speaker tag}] }
+	    if {$sbio eq {}} { lappend notes [color bad {No speaker biography}] }
 
 	    $t add $speaker @${stag}_$tag [join $notes \n] $title
 	}
@@ -95,7 +97,7 @@ proc ::cm::tutorial::cmd_create {config} {
     set tag         [$config @tag]
     set title       [$config @title]
 
-    puts -nonewline "Creating \"[color name [contact label {} $speaker]]\" tutorial \"[color name $title]\" ... "
+    puts -nonewline "Creating \"[color name [contact get $speaker]]\" tutorial \"[color name $title]\" ... "
 
     try {
 	db do transaction {
@@ -124,7 +126,7 @@ proc ::cm::tutorial::cmd_show {config} {
 
     dict with details {}
 
-    set w [util tspace [expr {[string length Description]+7}]]
+    set w [util tspace [expr {[string length Description]+7}] 60]
     set xspeaker [contact get $xspeaker]
 
     puts "Details of [color name $xspeaker]'s tutorial \"[color name [get $tutorial]]\":"
@@ -151,9 +153,11 @@ proc ::cm::tutorial::issues {details} {
     debug.cm/tutorial {}
     dict with details {}
 
+    set sdetails [contact details $xspeaker]
+
     set issues {}
-    set stag [dict get [contact details $xspeaker] xtag]
-    if {$stag eq {}} { +issue "Speaker tag missing" }
+    if {[dict get $sdetails xtag]       eq {}} { +issue "Speaker tag missing" }
+    if {[dict get $sdetails xbiography] eq {}} { +issue "Speaker biography missing" }
 
     if {[llength $issues]} {
 	set issues [join $issues \n]
@@ -230,7 +234,7 @@ proc ::cm::tutorial::known-tag {speaker} {
 	FROM   tutorial
 	WHERE  speaker = :speaker
     } {
-	dict set $tag $id
+	dict set known $tag $id
     }
 
     debug.cm/tutorial {==> ($known)}
@@ -248,7 +252,7 @@ proc ::cm::tutorial::known-title {speaker} {
 	FROM   tutorial
 	WHERE  speaker = :speaker
     } {
-	dict set $title $id
+	dict set known $title $id
     }
 
     debug.cm/tutorial {==> ($known)}
