@@ -73,7 +73,7 @@ proc ::cm::contact::cmd_show {config} {
 
     set contact [string trim [$config @name]]
 
-    set w [util tspace [expr {[string length {Can Receive Mail}]+7}]]
+    set w [util tspace [expr {[string length {Can Receive Mail}]+7}] 60]
 
     [table t {Property Value} {
 	db do eval {
@@ -144,7 +144,7 @@ proc ::cm::contact::cmd_show {config} {
 	    } {
 		if {$first} { $t add Affiliations {} }
 		set first 0
-		$t add - $dname
+		$t add - [color name $dname]
 	    }
 
 	    # Liaisons. Expected for companies, to list persons, their representatives
@@ -158,7 +158,7 @@ proc ::cm::contact::cmd_show {config} {
 	    } {
 		if {$first} { $t add Representatives {} }
 		set first 0
-		$t add - $dname
+		$t add - [color name $dname]
 	    }
 
 	    # Reverse affiliations. Expected for companies, to list persons, the affiliated
@@ -172,7 +172,7 @@ proc ::cm::contact::cmd_show {config} {
 	    } {
 		if {$first} { $t add Affiliated {} }
 		set first 0
-		$t add - $dname
+		$t add - [color name $dname]
 	    }
 
 	    # Reverse liaisons. Expected for persons, to list the companies they represent
@@ -186,7 +186,7 @@ proc ::cm::contact::cmd_show {config} {
 	    } {
 		if {$first} { $t add Representing {} }
 		set first 0
-		$t add - $dname
+		$t add - [color name $dname]
 	    }
 	}
     }] show
