@@ -184,12 +184,12 @@ CREATE TABLE template (
 );
 -- ---------------------------------------------------------------
 CREATE TABLE tutorial (
-	id		INTEGER PRIMARY KEY AUTOINCREMENT,
-	speaker		INTEGER	REFERENCES contact,	-- can_register||can_book||can_talk
-	tag		TEXT,				-- for html anchors
-	title		TEXT,
+	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	speaker		INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk
+	tag		TEXT	NOT NULL,			-- for html anchors
+	title		TEXT	NOT NULL,
 	prereq		TEXT,
-	description	TEXT,
+	description	TEXT	NOT NULL,
 	UNIQUE (speaker, tag),
 	UNIQUE (speaker, title)
 );
