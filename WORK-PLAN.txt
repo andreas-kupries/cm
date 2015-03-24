@@ -1,8 +1,6 @@
 NOW
 ===
 
-* -- con mgmt -- ping past sponsors for renewal, and company link info.
-  /ANSWERS pending/
 * ---- con mgmt --- ready for initial cfp 1 ---
 
 SOON
@@ -20,7 +18,7 @@ SOON
   -- link to previous site/conference ? -- papers --
 
 * implement handling of talks, schedule
-* implement handling of tutorial setup and schedule
+* implement handling of tutorial schedule
 
 
 LATER
