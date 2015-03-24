@@ -2091,20 +2091,20 @@ proc ::cm::conference::details {id} {
     Setup
 
     return [db do eval {
-	SELECT "xconference", id,
-	       "xyear",       year,
-	       "xmanagement", management,
-	       "xsubmission", submission,
-	       "xcity",       city,
-	       "xhotel",      hotel,
-	       "xfacility",   facility,
-	       "xstart",      startdate,
-	       "xend",        enddate,
-	       "xalign",      alignment,
-	       "xlength",     length,
-	       "xtalklen",    talklength,
-	       "xsesslen",    sessionlen,
-	       "xrstatus",    rstatus
+	SELECT 'xconference', id,
+	       'xyear',       year,
+	       'xmanagement', management,
+	       'xsubmission', submission,
+	       'xcity',       city,
+	       'xhotel',      hotel,
+	       'xfacility',   facility,
+	       'xstart',      startdate,
+	       'xend',        enddate,
+	       'xalign',      alignment,
+	       'xlength',     length,
+	       'xtalklen',    talklength,
+	       'xsesslen',    sessionlen,
+	       'xrstatus',    rstatus
 	FROM  conference
 	WHERE id = :id
     }]

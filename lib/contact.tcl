@@ -92,6 +92,8 @@ proc ::cm::contact::cmd_show {config} {
 	    WHERE C.id   = :contact
 	    AND   C.type = CT.id
 	} {
+	    # show TODO note missing bio, tag as issues if tutorials reference this contact.
+
 	    set flags {}
 	    if {$crecv} { lappend flags Receive  }
 	    if {$creg } { lappend flags Register }
@@ -100,7 +102,7 @@ proc ::cm::contact::cmd_show {config} {
 	    if {$csubm} { lappend flags Submit   }
 
 	    $t add Tag                $tag
-	    $t add Name               $name
+	    $t add Name               [color name $name]
 	    $t add Type               $type
 	    $t add Flags              [join $flags {, }]
 	    $t add Biography          [util adjust $w $bio]
@@ -1196,17 +1198,17 @@ proc ::cm::contact::details {id} {
     Setup
 
     return [db do eval {
-	SELECT "xid",           id,
-               "xtag",          tag,
-               "xtype",         type,
-	       "xname",         name,
-	       "xdname",        dname,
-	       "xbiography",    biography,
-	       "xcan_recvmail", can_recvmail,
-	       "xcan_register", can_register,
-	       "xcan_book",     can_book,
-	       "xcan_talk",     can_talk,
-	       "xcan_submit",   can_submit
+	SELECT 'xid',           id,
+               'xtag',          tag,
+               'xtype',         type,
+	       'xname',         name,
+	       'xdname',        dname,
+	       'xbiography',    biography,
+	       'xcan_recvmail', can_recvmail,
+	       'xcan_register', can_register,
+	       'xcan_book',     can_book,
+	       'xcan_talk',     can_talk,
+	       'xcan_submit',   can_submit
 	FROM  contact
 	WHERE id = :id
     }]
