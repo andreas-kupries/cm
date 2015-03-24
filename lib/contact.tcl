@@ -1215,7 +1215,7 @@ proc ::cm::contact::details {id} {
 proc ::cm::contact::label {tag name} {
     debug.cm/contact {}
 
-    if {$tag ne {}} { append label "(\#" $tag ") " }
+    if {$tag ne {}} { append label "(@" $tag ") " }
     append label $name
     return $label
 }
@@ -1331,7 +1331,7 @@ proc ::cm::contact::KnownLimited {limit} {
     }
     db do eval $sql {
 	if {$tag ne {}} {
-	    dict lappend map $id $tag \#$tag
+	    dict lappend map $id $tag @$tag
 	}
 	set in [Initials $name]
 	set il [string tolower $in]
