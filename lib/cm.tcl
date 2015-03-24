@@ -315,7 +315,7 @@ cmdr create cm::cm [file tail $::argv0] {
     alias templates = template list
 
     # # ## ### ##### ######## ############# ######################
-    ## Manage cities
+    ## Manage cities (for locations)
 
     officer city {
 	description {
@@ -461,6 +461,57 @@ cmdr create cm::cm [file tail $::argv0] {
     alias hotels     = location list
     alias locations  = location list
     alias facilities = location list
+
+    # # ## ### ##### ######## ############# ######################
+    ## Manage tutorials (shared among conferences)
+
+    officer tutorial {
+	description {
+	    Manage the tutorials we can or have offered in conferences.
+	}
+
+	private list {
+	    section {Tutorial Management}
+	    description { Show a table of all known tutorials }
+	} [cm::call tutorial cmd_list]
+
+	private show {
+	    section {Tutorial Management}
+	    description { Show the text of the specified tutorial }
+	    input name {
+		Identifier of the tutorial to show (handle, tag, unambigous part of the title)
+	    } { optional ; generate [cm::call tutorial select] ; validate [cm::vt tutorial] }
+	} [cm::call tutorial cmd_show]
+
+	private create {
+	    section {Tutorial Management}
+	    description { Create a new tutorial to offer. }
+	    option requisites {
+		Knowledge needed to take the course.
+	    } { alias prereq ; alias R ; validate str }
+	    input description {
+		The description of the course.
+	    } { validate str }
+	    input speaker {
+		The speaker/lecturer offering the tutorial.
+	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator person
+	    # Note: tag and title are unique only within the context
+	    # of the speaker. I.e. the speaker must be known for the
+	    # validations below to work. Reason for why the speaker is
+	    # first.
+	    input tag {
+		Short tag for the tutorial, must be usable in an html anchor.
+	    } { optional ; interact ; validate [cm::vt nottutorialtag] }
+	    input title {
+		Title of the new tutorial
+	    } { optional ; interact ; validate [cm::vt nottutorial] }
+	} [cm::call tutorial cmd_create]
+	alias add
+	alias new
+
+	# TODO tutorial operations: remove (if not used), rename, retag, re-describe, re-requisite
+    }
+    alias tutorials = tutorial list
 
     # # ## ### ##### ######## ############# ######################
     ## Manage conferences
