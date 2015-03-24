@@ -51,25 +51,39 @@ proc ::cm::debug::thelevels {} {
     # all possible debug levels are declared and known.
 
     #package require cm::
+    package require cm::atexit
     package require cm::campaign
     package require cm::city
     package require cm::conference
+    package require cm::config
+    package require cm::config-core
     package require cm::contact
+    package require cm::db
     package require cm::enum
-    package require cm::hotel
+    package require cm::location
     package require cm::mailer
+    package require cm::mailgen
     package require cm::table
+    package require cm::template
+    package require cm::tutorial
     package require cm::util
     package require cm::validate::colormode
+    package require cm::validate::conference-staff
     package require cm::validate::config
     package require cm::validate::contact
     package require cm::validate::contact-type
     package require cm::validate::debug
     package require cm::validate::email
+    package require cm::validate::location-staff
     package require cm::validate::mail-address
     package require cm::validate::nottemplate
+    package require cm::validate::nottutorial
+    package require cm::validate::nottutorialtag
+    package require cm::validate::rstatus
     package require cm::validate::sponsor
+    package require cm::validate::submission
     package require cm::validate::template
+    package require cm::validate::tutorial
 
     package require cmdr::ask
     package require cmdr::color
