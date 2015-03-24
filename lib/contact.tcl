@@ -92,7 +92,11 @@ proc ::cm::contact::cmd_show {config} {
 	    WHERE C.id   = :contact
 	    AND   C.type = CT.id
 	} {
-	    # show TODO note missing bio, tag as issues if tutorials reference this contact.
+	    set issues [issues  [details $id]]
+	    if {$issues ne {}} {
+		$t add [color bad Issues] $issues
+		$t add {} {}
+	    }
 
 	    set flags {}
 	    if {$crecv} { lappend flags Receive  }
@@ -802,6 +806,38 @@ proc ::cm::contact::cmd_mail_fix {config} {
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
+
+proc ::cm::contact::issues {details} {
+    debug.cm/contact {}
+    dict with details {}
+
+    set issues {}
+
+    set tutorials [db do eval {
+	SELECT count(*)
+	FROM   tutorial
+	WHERE  speaker = :xid
+    }]
+
+    if {$tutorials} {
+	if {$xbiography eq {}} {
+	    +issue "Biography missing, used by tutorials"
+	}
+	if {$xtag eq {}} {
+	    +issue "Tag missing, used by tutorials"
+	}
+    }
+
+    if {![llength $issues]} return
+    return [join $issues \n]
+}
+
+proc ::cm::contact::+issue {text} {
+    debug.cm/contact {}
+    upvar 1 issues issues
+    lappend issues "- [color bad $text]"
+    return
+}
 
 proc ::cm::contact::affiliated {contact} {
     debug.cm/contact {}
