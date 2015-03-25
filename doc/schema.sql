@@ -217,6 +217,11 @@ CREATE TABLE conference (
 				 		-- 		  standard: 30 min x3
 	rstatus		INTEGER NOT NULL REFERENCES rstatus
 
+	-- future expansion columns:
+	-- -- max day|range for tutorials
+	-- -- max number of tracks for tutorials
+	-- -- max number of tracks for sessions
+
 	-- Constraints:
 	-- * (city == facility->city) WHERE facility IS NOT NULL
 	-- * (city == hotel->city)    WHERE facility IS NULL AND hotel IS NOT NULL
@@ -306,10 +311,10 @@ INSERT OR IGNORE INTO timeline_type VALUES (11,1,   2,'begin-s',   'Session Star
 CREATE TABLE tutorial_schedule (
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	conference	INTEGER	NOT NULL REFERENCES conference,
-	day		INTEGER,				-- 0,1,... (offset from start of conference, 0-based)
+	day		INTEGER	NOT NULL,			-- 0,1,... (offset from start of conference, 0-based)
 	half		INTEGER	NOT NULL REFERENCES dayhalf,
-	track		INTEGER,				-- 1,2,... (future expansion)
-	tutorial	INTEGER	NOT NULL REFERENCES tutorial,	-- While setting up the conference
+	track		INTEGER	NOT NULL,				-- 1,2,... (future expansion)
+	tutorial	INTEGER	NOT NULL REFERENCES tutorial,
 	UNIQUE (conference, day, half, track),
 	UNIQUE (conference, tutorial)
 );

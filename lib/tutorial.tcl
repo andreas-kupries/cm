@@ -24,6 +24,8 @@ package require dbutil
 package require try
 package require struct::list
 
+package provide cm::tutorial 0 ;# circular through contact, campaign, conference
+
 package require cm::contact
 package require cm::db
 package require cm::table
@@ -38,7 +40,8 @@ namespace eval ::cm {
 namespace eval ::cm::tutorial {
     namespace export \
 	cmd_create cmd_list cmd_show \
-	known known-tag known-title get details select
+	known known-tag known-title get details select \
+	known-half get-half
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -79,7 +82,7 @@ proc ::cm::tutorial::cmd_list {config} {
 	    if {$stag eq {}} { lappend notes [color bad {No speaker tag}] }
 	    if {$sbio eq {}} { lappend notes [color bad {No speaker biography}] }
 
-	    $t add $speaker @${stag}_$tag [join $notes \n] $title
+	    $t add $speaker @${stag}:$tag [join $notes \n] $title
 	}
     }] show
     return
@@ -215,7 +218,7 @@ proc ::cm::tutorial::known-select {} {
 	           contact  C
 	    WHERE  C.id = T.speaker
     } {
-	set key "(@${stag}_$tag) $speaker: $title"
+	set key "(@${stag}:$tag) $speaker: $title"
 	dict set known $key $id
     }
 
@@ -279,7 +282,7 @@ proc ::cm::tutorial::known {} {
 	      contact  C
 	WHERE C.id = T.speaker
     } {
-	dict lappend map $id @${stag}_$tag
+	dict lappend map $id @${stag}:$tag
 	dict lappend map $id $title
     }
 
@@ -339,8 +342,8 @@ proc ::cm::tutorial::get {id} {
 
     return [db do eval {
 	SELECT title
-	FROM  tutorial
-	WHERE id = :id
+	FROM   tutorial
+	WHERE  id = :id
     }]
 }
 
@@ -354,8 +357,8 @@ proc ::cm::tutorial::details {id} {
 	       'xtitle',       title,
 	       'xprereq',      prereq,
 	       'xdescription', description
-	FROM  tutorial
-	WHERE id = :id
+	FROM   tutorial
+	WHERE  id = :id
     }]
 
     return $details
@@ -376,6 +379,34 @@ proc ::cm::tutorial::write {id details} {
 	       description = :xdescription
 	WHERE id = :id
     }
+}
+
+proc ::cm::tutorial::known-half {} {
+    debug.cm/tutorial {}
+    Setup
+
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   dayhalf
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/tutorial {==> ($known)}
+    return $known
+}
+
+proc ::cm::tutorial::get-half {id} {
+    debug.cm/tutorial {}
+    Setup
+
+    return [db do eval {
+	SELECT text
+	FROM   dayhalf
+	WHERE  id = :id
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -411,10 +442,10 @@ proc ::cm::tutorial::Setup {} {
 	{
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    conference	INTEGER	NOT NULL REFERENCES conference,
-	    day		INTEGER,				-- 0,1,... (offset from start of conference, 0-based)
+	    day		INTEGER	NOT NULL,			-- 0,1,... (offset from start of conference, 0-based)
 	    half	INTEGER	NOT NULL REFERENCES dayhalf,
-	    track	INTEGER,				-- 1,2,... (future expansion)
-	    tutorial	INTEGER	NOT NULL REFERENCES tutorial,	-- While setting up the conference
+	    track	INTEGER	NOT NULL,			-- 1,2,... (future expansion)
+	    tutorial	INTEGER	NOT NULL REFERENCES tutorial,
 	    UNIQUE (conference, day, half, track),
 	    UNIQUE (conference, tutorial)
 	} {

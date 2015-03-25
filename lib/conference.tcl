@@ -32,11 +32,12 @@ package require cm::config::core
 package require cm::contact
 package require cm::db
 package require cm::location
+package require cm::mailer
+package require cm::mailgen
 package require cm::table
 package require cm::template
+package require cm::tutorial
 package require cm::util
-package require cm::mailgen
-package require cm::mailer
 
 # # ## ### ##### ######## ############# ######################
 
@@ -50,9 +51,10 @@ namespace eval ::cm::conference {
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
 	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
-	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
+	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
+	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
 	select label current get insert known-sponsor \
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
@@ -70,6 +72,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
     namespace import ::cm::template
+    namespace import ::cm::tutorial
     namespace import ::cm::util
 
     namespace import ::cm::config::core
@@ -1000,6 +1003,151 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 	WHERE conference = :conference
 	AND   contact    = :contact
 	AND   role       = :role
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_tutorial_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set start [dict get [details $conference] xstart]
+
+    puts "Tutorial lineup of \"[color name [get $conference]]\":"
+    # Similar code will be needed for the website ... Maybe same, with
+    # a different style for the table and elements
+
+    # Day   Track  Morning     Afternoon Evening
+    # 0     1      Tag + Title ...
+    # 0     ...
+    # ...
+
+    # Day range
+    lassign [db do eval {
+	SELECT MIN(day), MAX (day)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] daymin daymax
+    if {$daymin eq {}} { set daymin  0 }
+    if {$daymax eq {}} { set daymax -1 } else { incr daymax }
+    set daylast $daymax ; incr daylast -1
+
+    # Track range (across all days)
+    lassign [db do eval {
+	SELECT MIN(track), MAX (track)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] trackmin trackmax
+    if {$trackmin eq {}} { set trackmin  0 }
+    if {$trackmax eq {}} { set trackmax -1 } else { incr trackmax }
+    set tracklast $trackmax ; incr tracklast -1
+
+    # Build table, by day, by track in day, by half in the day.
+    # TODO: See if we can do loops and the range extraction above in a single sql SELECT.
+    # Main issue might be filling in the holes
+
+    [table t {Date Day Track Half Tag Title} {
+	for {set day $daymin} {$day < $daymax} {incr day} {
+	    set  date [hdate [clock add $start $day days]]
+	    set  dlabel $day
+	    incr dlabel ;# Display is 1-based.
+
+	    for {set track $trackmin} {$track < $trackmax} {incr track} {
+		set dtrack $track
+		db do eval {
+		    SELECT id   AS half,
+		           text AS dhalf
+		    FROM   dayhalf
+		    ORDER  BY id
+		} {
+		    # Get data from the exactly addressed cell in the schedule.
+		    set tutorial [db do eval {
+			SELECT tutorial
+			FROM   tutorial_schedule
+			WHERE  conference = :conference
+			AND    day        = :day
+			AND    half       = :half
+			AND    track      = :track
+		    }]
+
+		    if {$tutorial ne {}} {
+			set    tdetails [tutorial details $tutorial]
+			set    title    [dict get $tdetails xtitle]
+			set    tag      @
+			append tag      [dict get [contact details [dict get $tdetails xspeaker]] xtag] :
+			append tag      [dict get $tdetails xtag]
+		    } else {
+			set tag   [color bad None]
+			set title [color bad None]
+		    }
+
+		    $t add $date $dlabel $dtrack $dhalf $tag $title
+		    set dlabel {}
+		    set dtrack {}
+		    set date {}
+		}
+		if {($day == $daylast) && ($track == $tracklast)} continue
+		$t add {} {} {} {} {} {}
+	    }
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_tutorial_link {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set day      [$config @day]      ;# 1-based, limit to conference length.
+    set half     [$config @half]
+    set track    [$config @track]    ;# future - constrain|limit to a max number of tracks
+    set tutorial [$config @tutorial]
+
+    puts "Adding \"[color name [cm::tutorial get $tutorial]]\" to conference \"[color name [get $conference]]\" ... "
+    set details [details $conference]
+    set clen    [dict get $details xlength]
+
+    if {$day > $clen} {
+	util user-error "Bad day $day, conference is only $clen days long" DAY-OUT-OF-RANGE $day $clen
+    }
+
+    puts "@ day $day [cm::tutorial get-half $half], track $track"
+    flush stdout
+
+    incr day -1 ;# convert to the internal 0-based storage
+    db do eval {
+	INSERT INTO tutorial_schedule
+	VALUES (NULL, :conference, :day, :half, :track, :tutorial)
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_tutorial_unlink {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set tutorial [$config @tutorial]
+
+    puts -nonewline "Removing \"[color name [cm::tutorial get $tutorial]]\" from conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do eval {
+	DELETE
+	FROM  tutorial_schedule
+	WHERE conference = :conference
+	AND   tutorial   = :tutorial
     }
 
     puts [color good OK]
@@ -2504,6 +2652,11 @@ proc ::cm::conference::Setup {} {
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
 	    rstatus	INTEGER NOT NULL REFERENCES rstatus
+
+	    -- future expansion columns:
+	    -- -- max day|range for tutorials
+	    -- -- max number of tracks for tutorials
+	    -- -- max number of tracks for sessions
 
 	    -- Constraints:
 	    -- * (city == facility->city) WHERE facility IS NOT NULL
