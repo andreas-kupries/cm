@@ -48,24 +48,6 @@ debug prefix cm/enum {[debug caller] | }
 proc ::cm::enum::Setup {} {
     debug.cm/enum {}
 
-    if {![dbutil initialize-schema ::cm::db::do error dayhalf {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error dayhalf $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
-	    INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
-	    INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
-	}
-    }
-
     if {![dbutil initialize-schema ::cm::db::do error talk_type {
 	{
 	    id	 INTEGER NOT NULL PRIMARY KEY,

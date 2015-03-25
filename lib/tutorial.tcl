@@ -407,6 +407,46 @@ proc ::cm::tutorial::Setup {} {
 	db setup-error tutorial $error
     }
 
+    if {![dbutil initialize-schema ::cm::db::do error tutorial_schedule {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    day		INTEGER,				-- 0,1,... (offset from start of conference, 0-based)
+	    half	INTEGER	NOT NULL REFERENCES dayhalf,
+	    track	INTEGER,				-- 1,2,... (future expansion)
+	    tutorial	INTEGER	NOT NULL REFERENCES tutorial,	-- While setting up the conference
+	    UNIQUE (conference, day, half, track),
+	    UNIQUE (conference, tutorial)
+	} {
+	    {id			INTEGER 1 {} 1}
+	    {conference		INTEGER 1 {} 0}
+	    {day		INTEGER 1 {} 0}
+	    {half		INTEGER 1 {} 0}
+	    {track		INTEGER 1 {} 0}
+	    {tutorial		INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error tutorial_schedule $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error dayhalf {
+	{
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    text TEXT    NOT NULL UNIQUE
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {text TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error dayhalf $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
+	    INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
+	    INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
+	}
+    }
+
     # Shortcircuit further calls
     proc ::cm::tutorial::Setup {args} {}
     return
