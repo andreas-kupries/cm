@@ -524,6 +524,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	# title, year, start, end, talk-length, session-length
 	# alignment (specific weekday, or none), length in days
 
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private create {
 	    section {Conference Management}
 	    description { Create a new conference }
@@ -576,6 +578,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the details of the current conference }
 	} [cm::call conference cmd_show]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private timeline-init {
 	    section {Conference Management}
 	    description { Generate a basic timeline for the conference }
@@ -603,6 +607,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the timeline for the conference }
 	} [cm::call conference cmd_timeline_show]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private facility {
 	    section {Conference Management}
 	    description { Select the location for presentations }
@@ -620,6 +626,8 @@ cmdr create cm::cm [file tail $::argv0] {
 		optional ; generate [cm::call location select]
 	    }
 	} [cm::call conference cmd_hotel]
+
+	# - -- --- ----  -------- ------------- ----------------------
 
 	private add-sponsor {
 	    section {Conference Management}
@@ -645,6 +653,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the sponsors of the conference }
 	} [cm::call conference cmd_sponsor_show]
+
+	# - -- --- ----  -------- ------------- ----------------------
 
 	private add-staff {
 	    section {Conference Management}
@@ -676,6 +686,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
+
+	# - -- --- ----  -------- ------------- ----------------------
 
 	private rate {
 	    section {Conference Management}
@@ -712,6 +724,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the conference rates }
 	} [cm::call conference cmd_rate_show]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private set-end {
 	    section {Conference Management} Advanced
 	    description { Set/fix the conference end-date }
@@ -720,6 +734,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::cvt date] }
 	} [cm::call conference cmd_end_set]
 
+	# - -- --- ----  -------- ------------- ----------------------
 	# TODO: conference remove - if not used
 	# TODO: conference modify - change title, start, length, alignment
 
@@ -743,6 +758,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::vt template] }
 	} [cm::call conference cmd_committee_ping]
 
+	# - -- --- ----  -------- ------------- ----------------------
 
 	private make-website {
 	    section {Conference Management}
@@ -762,6 +778,46 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt rstatus] }
 	} [cm::call conference cmd_registration]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
+	private add-tutorial {
+	    section {Conference Management}
+	    description { Add a tutorial to the lineup }
+
+	    input day {
+		Day of the tutorial as integer - 1 <=> 1st day of conference, etc.
+	    } { validate [cm::cvt posint] }
+	    input half {
+		Overall part of the day for the tutorial (morning, afternoon, evening)
+	    } { validate [cm::vt dayhalf] }
+	    input track {
+		On days with multiple tutorials in parallel, the id of the track.
+	    } { validate [cm::cvt posint] }
+	    input tutorial {
+		The tutorial to add
+	    } { optional
+		validate [cm::vt tutorial]
+		generate [cm::call tutorial select] }
+	} [cm::call conference cmd_tutorial_link]
+
+	private drop-tutorial {
+	    section {Conference Management}
+	    description { Remove one or more tutorials from the lineup }
+	    input tutorial {
+		Identifier of the tutorial to remove
+	    } { 
+		optional
+		generate [cm::call tutorial select]
+		validate [cm::vt tutorial]
+	    }
+	} [cm::call conference cmd_tutorial_unlink]
+
+	private tutorials {
+	    section {Conference Management}
+	    description { Show the tutorial lineup for the conference }
+	} [cm::call conference cmd_tutorial_show]
+
+	# - -- --- ----  -------- ------------- ----------------------
     }
     alias conferences = conference list
 
