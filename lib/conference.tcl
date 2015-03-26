@@ -1289,7 +1289,8 @@ proc ::cm::conference::cmd_website_make {config} {
 
     # # ## ### ##### ######## #############
     puts "Filling in..."
-    lappend navbar {*}[make_page Overview          index       make_overview]
+    make_page Overview          index       make_overview
+
     lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
     lappend navbar {*}[make_page Location          location    make_location]
 
@@ -1322,7 +1323,7 @@ proc ::cm::conference::cmd_website_make {config} {
     make_page                    Abstracts         abstracts   make_abstracts
     make_page                    Speakers          bios        make_speakers
     lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
-    lappend navbar {*}[make_page Contact           contact     make_contact]
+    #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
 
     # # ## ### ##### ######## #############
@@ -1453,111 +1454,22 @@ proc ::cm::conference::registration-mode {conference} {
 
 proc ::cm::conference::make_registration_pending {} {
     debug.cm/conference {}
-    return [util undent {
-	While it is planned to open registration on @c:t:regopen@
-	it may happen earlier.
-
-	Please check back frequently, and/or nag us at the contact below.
-    }]
+    return [template use www-regpending]
 }
 
 proc ::cm::conference::make_registration_closed {} {
     debug.cm/conference {}
-    return [util undent {
-	__Registration online has closed.__
-    }]
+    return [template use www-regclosed]
 }
 
 proc ::cm::conference::make_registration_paper {} {
     debug.cm/conference {}
-    return [util undent {
-	Thank you for joining us.
-
-	* Please go to the [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html) and fill in the data.
-	* __Print__ the form from your browser, instead of submitting it electronically.
-	* Either fax the print to 734-449-8467, or mail it (if paying by cheque) to the address below
-
-	```
-	Tcl Community Association
-	8888 Black Pine Ln
-	Whitmore Lake, MI 48189
-	```
-    }]
+    return [template use www-regpaper]
 }
 
 proc ::cm::conference::make_registration_open {} {
     debug.cm/conference {}
-    return [util undent {
-	## How to register
-
-	You may register for the conference by
-
-	* [Online form](https://www.tcl.tk/community/tcl@c:year@/regForm.html)
-	* [Hardcopy Mail/Fax](register_paper.html)
-	* At the door. 
-
-	If you register in advance, You will receive a $100 discount
-	over the at-the-door conference rate.
-
-	You can register at the door when you arrive at the @h:hotel@.
-
-	Registration will be open daily from 08:30 until 17:00. 
-
-	## Pricing schedules and discounts
-
-	All prices are in US$.
-
-	[Technical Sessions](schedule.html) (Wednesday to Friday) registration includes:
-
-	   * Access to all conference technical sessions
-	   * Access to the evening BOFs and community meetings
-	   * One set of proceedings on USB memory stick.
-	   * Breakfast and morning and evening snack breaks 
-
-	Each tutorial is one half-day session (3 hours instruction time + one break).
-	Tutorials have limited space. Registration is on a first-come, first-serve basis.
-	[Tutorial Sessions](tutorials.html) (Monday, Tuesday) registration includes:
-
-	   * Access to all registered tutorial sessions
-	   * Complete course handouts
-	   * Snack break during the tutorial 
-
-	|Conference Fees|Regular Price|
-	|-|-|
-	|Technical Sessions			| $395|
-	|Tutorials ([see sliding scale below](#tp))	| $195 - $650|
-	|Extra Proceedings (Memory sticks)	| $5 per|
-	|Extra Proceedings (Printed paper)	| $20 per|
-	|Walk-in registration			| Add $100 to your total fees|
-
-	<a name='tp'></a>
-	### Tutorial Pricing
-
-	We are offering tutorials on a Cheaper-By-The-(one-third)Dozen schedule.
-	Rather than a flat rate, the tutorials become cheaper as you learn more.
-
-	|Number of Tutorials| 	List Price| 	Actual Cost| 	Savings| 	Percent|
-	|-|-|-|-|-|
-	|1 	|$195 	|$195 	|$0 	|0%|
-	|2 	|$390 	|$350 	|$40 	|10.3%|
-	|3 	|$585 	|$500 	|$85 	|14.5%|
-	|4 	|$780 	|$650 	|$130 	|16.7%|
-
-	### Special Discounts
-
-	|||
-	|-|-|
-	|Full Time Student |Attending the Technical Sessions is free for students, with proof of status, a copy of your student ID and class schedule. Technical Sessions plus three Meals is $50|
-	|Presenters	   |Deduct $100 from your total fees if you are presenting a paper|
-
-	### Cancellation Policy
-
-	If for any reason you need to cancel your registration, please email
-	[@c:contact@](mailto:@c:contact@).
-
-	Registration fees for cancellations received before July 1st will be
-	refunded after a $100 processing charge has been deducted. 
-    }]
+    return [template use www-regopen]
 }
 
 proc ::cm::conference::make_tutorials_none {} {
