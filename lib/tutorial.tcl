@@ -41,7 +41,8 @@ namespace eval ::cm::tutorial {
     namespace export \
 	cmd_create cmd_list cmd_show \
 	known known-tag known-title get details select \
-	known-half get-half
+	known-half get-half have-some dayrange trackrange \
+	cell
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -406,6 +407,71 @@ proc ::cm::tutorial::get-half {id} {
 	SELECT text
 	FROM   dayhalf
 	WHERE  id = :id
+    }]
+}
+
+proc ::cm::tutorial::have-some {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    return [db do exists {
+	SELECT id
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }]
+}
+
+proc ::cm::tutorial::dayrange {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    lassign [db do eval {
+	SELECT MIN(day), MAX (day)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] daymin daymax
+
+    if {$daymin eq {}} { set daymin  0 }
+    if {$daymax eq {}} { set daymax -1 } else { incr daymax }
+
+    set  daylast $daymax
+    incr daylast -1
+
+    return [list $daymin $daymax $daylast]
+}
+
+proc ::cm::tutorial::trackrange {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Track range (across all days)
+    lassign [db do eval {
+	SELECT MIN(track), MAX (track)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] trackmin trackmax
+
+    if {$trackmin eq {}} { set trackmin  0 }
+    if {$trackmax eq {}} { set trackmax -1 } else { incr trackmax }
+
+    set  tracklast $trackmax
+    incr tracklast -1
+
+    return [list $trackmin $trackmax $tracklast]
+}
+
+proc ::cm::tutorial::cell {conference day half track} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Get data from the exactly addressed cell in the schedule.
+    return [db do eval {
+	SELECT tutorial
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+	AND    day        = :day
+	AND    half       = :half
+	AND    track      = :track
     }]
 }
 
