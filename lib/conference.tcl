@@ -250,6 +250,7 @@ proc ::cm::conference::cmd_show {config} {
 
 	$t add {} {}
 
+	# - -- --- ----  -------- ------------- rate info
 	if {[db do exists {
 	    SELECT *
 	    FROM   rate
@@ -261,6 +262,7 @@ proc ::cm::conference::cmd_show {config} {
 	    $t add [color note Rate]     "[color note ok]\n(=> conference rates)"
 	}
 
+	# - -- --- ----  -------- ------------- timeline
 	set tcount [db do eval {
 	    SELECT count (id)
 	    FROM   timeline
@@ -276,6 +278,7 @@ proc ::cm::conference::cmd_show {config} {
 	}
 	$t add [color $color Timeline] [color $color $tcount]$suffix
 
+	# - -- --- ----  -------- ------------- sponsors
 	# And the sponsors, if any.
 	set scount [db do eval {
 	    SELECT count (id)
@@ -283,7 +286,7 @@ proc ::cm::conference::cmd_show {config} {
 	    WHERE  conference = :id
 	}]
 	if {!$scount} {
-	    set tcount None
+	    set scount None
 	    set color  bad
 	    set suffix "\n(=> conference add-sponsor)"
 	} else {
@@ -292,14 +295,14 @@ proc ::cm::conference::cmd_show {config} {
 	}
 	$t add [color $color Sponsors] [color $color $scount]$suffix
 
-	# Do not forget the staff
+	# - -- --- ----  -------- ------------- staff
 	set scount [db do eval {
 	    SELECT count (id)
 	    FROM   conference_staff
 	    WHERE  conference = :id
 	}]
 	if {!$scount} {
-	    set tcount None
+	    set scount None
 	    set color  bad
 	    set suffix "\n(=> conference add-staff)"
 	} else {
@@ -308,6 +311,39 @@ proc ::cm::conference::cmd_show {config} {
 	}
 	$t add [color $color Staff] [color $color $scount]$suffix
 
+	# - -- --- ----  -------- ------------- tutorial summary
+	set tcount [db do eval {
+	    SELECT count (id)
+	    FROM   tutorial_schedule
+	    WHERE  conference = :id
+	}]
+	if {!$tcount} {
+	    set tcount None
+	    set color  bad
+	    set suffix "\n(=> conference add-tutorial)"
+	} else {
+	    set color  note
+	    set suffix "\n(=> conference tutorials)"
+	}
+	$t add [color $color Tutorials] [color $color $tcount]$suffix
+
+	# - -- --- ----  -------- ------------- submission summary
+	set scount [db do eval {
+	    SELECT count (id)
+	    FROM   submission
+	    WHERE  conference = :id
+	}]
+	if {!$scount} {
+	    set scount None
+	    set color  bad
+	    set suffix "\n(=> submit)"
+	} else {
+	    set color  note
+	    set suffix "\n(=> submissions)"
+	}
+	$t add [color $color Submissions] [color $color $scount]$suffix
+
+	# - -- --- ----  -------- ------------- talk summary /TODO
     }] show
     return
 }
@@ -1312,16 +1348,24 @@ proc ::cm::conference::cmd_website_make {config} {
 
     if {[cm::tutorial have-some $conference]} {
 	puts "Tutorials: [color good Yes]"
-	lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials $conference]
+	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
     } else {
 	puts "Tutorials: [color bad None]"
-	lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials_none]
+	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
     }
 
 
     lappend navbar {*}[make_page Schedule          schedule    make_schedule]
     make_page                    Abstracts         abstracts   make_abstracts
-    make_page                    Speakers          bios        make_speakers
+
+    if {[have-speakers $conference]} {
+	puts "Speakers: [color good Yes]"
+	make_page  Speakers  bios  make_speakers $conference
+    } else {
+	puts "Speakers: [color bad None]"
+	make_page  Speakers  bios  make_speakers_none
+    }
+
     lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
@@ -1574,7 +1618,7 @@ proc ::cm::conference::make_tutorials {conference} {
 	lassign [dict get $map $tutorial] title tag speaker stag desc req
 
 	# Anchor for table above to link to
-	append text "<a name='" $tag "'></a>\n"
+	append text [anchor $tag] \n
 
 	# Section header for tutorial, title and speaker link
 	append text "\#\# " $title " &mdash; \[" $speaker "\](bios.html#" $stag ")\n\n"
@@ -1618,20 +1662,55 @@ proc ::cm::conference::make_abstracts {} {
     }]
 }
 
-proc ::cm::conference::make_speakers {} {
-    # make-speakers - TODO: Move text into a configurable template
-    # make-speakers - TODO: data driven on schedule data
+proc ::cm::conference::have-speakers {conference} {
+    debug.cm/conference {}
+    # have-speakers TODO keynotes & presenters
+    return [db do exists {
+	SELECT T.speaker
+	FROM tutorial_schedule S,
+	     tutorial          T
+	WHERE S.conference = :conference
+	AND   S.tutorial   = T.id
+    }]
+}
 
+proc ::cm::conference::make_speakers_none {} {
+    debug.cm/conference {}
+    return [template use www-speakers.none]
+}
+
+proc ::cm::conference::make_speakers {conference} {
     # tutorials, keynotes, general presenters.
 
+    set text [template use www-speakers]
 
-    return [util undent {
-	The list of speakers and their biographies will be finalized
-	and put up after all the notifications to authors have been
-	sent out on @c:t:authornote@, as part of creating the schedule.
+    # make-speakers - TODO - keynotes
+    # make-speakers - TODO - general presenters
 
-	Please check back after.
-    }]
+    set map  {} ; # name -> (tag, bio)
+    set type {} ; # name -> list(types), type in T, K, P
+
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$bio eq {}} { set bio "__No biography known__" }
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname [list $tag $bio]
+	dict lappend type $dname T
+    }
+    # general presenters extend the map.
+
+    # make-speaker TODO : iterate map per type
+    # make-speaker TODO : alt: simply show readable type info
+    #                          in the data for each contact.
+
+    foreach dname [lsort -dict [dict keys $map]] {
+	lassign [dict get $map $dname] tag bio
+
+	append text [anchor $tag] \n
+	append text "## " $dname \n\n
+	append text $bio \n\n
+    }
+
+    return $text
 }
 
 proc ::cm::conference::make_contact {} {
@@ -1685,6 +1764,10 @@ proc ::cm::conference::make_sidebar {conference} {
     }] show return]
     append sidebar </table>
     return [insert $conference $sidebar]
+}
+
+proc ::cm::conference::anchor {key} {
+    return "<a name='$key'></a>"
 }
 
 proc ::cm::conference::sidebar_reg_excluded {} {
@@ -2212,7 +2295,7 @@ proc ::cm::conference::issues {details} {
     if {![db do exists {
 	SELECT id
 	FROM   timeline
-	WHERE con = :xconference
+	WHERE  con = :xconference
     }]} {
 	+issue "Undefined timeline"
     }
@@ -2252,6 +2335,22 @@ proc ::cm::conference::issues {details} {
 
 	if {$nstaff} continue
 	+issue "Staff trouble: No one is \"$text\""
+    }
+
+    if {![db do exists {
+	SELECT id
+	FROM   tutorial_schedule
+	WHERE  conference = :xconference
+    }]} {
+	+issue "No tutorials lined up"
+    }
+
+    if {![db do exists {
+	SELECT id
+	FROM   submission
+	WHERE  conference = :xconference
+    }]} {
+	+issue "No submissions"
     }
 
     if {![llength $issues]} return

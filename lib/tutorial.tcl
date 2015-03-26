@@ -42,7 +42,7 @@ namespace eval ::cm::tutorial {
 	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
 	cmd_settag known known-tag known-title get details select \
 	known-half get-half have-some dayrange trackrange \
-	cell
+	cell speakers
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -556,6 +556,22 @@ proc ::cm::tutorial::cell {conference day half track} {
 	AND    day        = :day
 	AND    half       = :half
 	AND    track      = :track
+    }]
+}
+
+proc ::cm::tutorial::speakers {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Get data from the exactly addressed cell in the schedule.
+    return [db do eval {
+	SELECT dname, tag, biography
+	FROM contact
+	WHERE id IN (SELECT DISTINCT T.speaker
+		     FROM  tutorial_schedule S,
+		           tutorial          T
+		     WHERE S.conference = :conference
+		     AND   S.tutorial   = T.id)
     }]
 }
 
