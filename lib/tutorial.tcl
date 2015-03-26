@@ -101,7 +101,7 @@ proc ::cm::tutorial::cmd_create {config} {
     set tag         [$config @tag]
     set title       [$config @title]
 
-    puts -nonewline "Creating \"[color name [contact get $speaker]]\" tutorial \"[color name $title]\" ... "
+    puts -nonewline "Creating \"[color name [cm::contact get $speaker]]\" tutorial \"[color name $title]\" ... "
 
     try {
 	db do transaction {
