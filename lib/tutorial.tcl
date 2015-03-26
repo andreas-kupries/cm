@@ -24,6 +24,8 @@ package require dbutil
 package require try
 package require struct::list
 
+package provide cm::tutorial 0 ;# circular through contact, campaign, conference
+
 package require cm::contact
 package require cm::db
 package require cm::table
@@ -37,8 +39,10 @@ namespace eval ::cm {
 }
 namespace eval ::cm::tutorial {
     namespace export \
-	cmd_create cmd_list cmd_show \
-	known known-tag known-title get details select
+	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
+	cmd_settag known known-tag known-title get details select \
+	known-half get-half have-some dayrange trackrange \
+	cell
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -79,7 +83,7 @@ proc ::cm::tutorial::cmd_list {config} {
 	    if {$stag eq {}} { lappend notes [color bad {No speaker tag}] }
 	    if {$sbio eq {}} { lappend notes [color bad {No speaker biography}] }
 
-	    $t add $speaker @${stag}_$tag [join $notes \n] $title
+	    $t add $speaker @${stag}:$tag [join $notes \n] $title
 	}
     }] show
     return
@@ -143,6 +147,90 @@ proc ::cm::tutorial::cmd_show {config} {
 	$t add Requisites   [util adjust $w $xprereq]
 	$t add Description  [util adjust $w $xdescription]
     }] show
+    return
+}
+
+proc ::cm::tutorial::cmd_settitle {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set title of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    title = :text
+	WHERE  id    = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_setdesc {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set description of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    description = :text
+	WHERE  id          = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_setreq {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set requisites of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    prereq = :text
+	WHERE  id     = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_settag {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set tag of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    tag = :text
+	WHERE  id  = :tutorial
+    }
+
+    puts [color good OK]
     return
 }
 
@@ -215,7 +303,7 @@ proc ::cm::tutorial::known-select {} {
 	           contact  C
 	    WHERE  C.id = T.speaker
     } {
-	set key "(@${stag}_$tag) $speaker: $title"
+	set key "(@${stag}:$tag) $speaker: $title"
 	dict set known $key $id
     }
 
@@ -279,7 +367,7 @@ proc ::cm::tutorial::known {} {
 	      contact  C
 	WHERE C.id = T.speaker
     } {
-	dict lappend map $id @${stag}_$tag
+	dict lappend map $id @${stag}:$tag
 	dict lappend map $id $title
     }
 
@@ -337,10 +425,10 @@ proc ::cm::tutorial::get {id} {
     debug.cm/tutorial {}
     Setup
 
-    return [db do eval {
+    return [db do onecolumn {
 	SELECT title
-	FROM  tutorial
-	WHERE id = :id
+	FROM   tutorial
+	WHERE  id = :id
     }]
 }
 
@@ -354,8 +442,8 @@ proc ::cm::tutorial::details {id} {
 	       'xtitle',       title,
 	       'xprereq',      prereq,
 	       'xdescription', description
-	FROM  tutorial
-	WHERE id = :id
+	FROM   tutorial
+	WHERE  id = :id
     }]
 
     return $details
@@ -376,6 +464,99 @@ proc ::cm::tutorial::write {id details} {
 	       description = :xdescription
 	WHERE id = :id
     }
+}
+
+proc ::cm::tutorial::known-half {} {
+    debug.cm/tutorial {}
+    Setup
+
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   dayhalf
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/tutorial {==> ($known)}
+    return $known
+}
+
+proc ::cm::tutorial::get-half {id} {
+    debug.cm/tutorial {}
+    Setup
+
+    return [db do eval {
+	SELECT text
+	FROM   dayhalf
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::tutorial::have-some {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    return [db do exists {
+	SELECT id
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }]
+}
+
+proc ::cm::tutorial::dayrange {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    lassign [db do eval {
+	SELECT MIN(day), MAX (day)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] daymin daymax
+
+    if {$daymin eq {}} { set daymin  0 }
+    if {$daymax eq {}} { set daymax -1 } else { incr daymax }
+
+    set  daylast $daymax
+    incr daylast -1
+
+    return [list $daymin $daymax $daylast]
+}
+
+proc ::cm::tutorial::trackrange {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Track range (across all days)
+    lassign [db do eval {
+	SELECT MIN(track), MAX (track)
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }] trackmin trackmax
+
+    if {$trackmin eq {}} { set trackmin  0 }
+    if {$trackmax eq {}} { set trackmax -1 } else { incr trackmax }
+
+    set  tracklast $trackmax
+    incr tracklast -1
+
+    return [list $trackmin $trackmax $tracklast]
+}
+
+proc ::cm::tutorial::cell {conference day half track} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Get data from the exactly addressed cell in the schedule.
+    return [db do eval {
+	SELECT tutorial
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+	AND    day        = :day
+	AND    half       = :half
+	AND    track      = :track
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -405,6 +586,46 @@ proc ::cm::tutorial::Setup {} {
 	} {}
     }]} {
 	db setup-error tutorial $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error tutorial_schedule {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    day		INTEGER	NOT NULL,			-- 0,1,... (offset from start of conference, 0-based)
+	    half	INTEGER	NOT NULL REFERENCES dayhalf,
+	    track	INTEGER	NOT NULL,			-- 1,2,... (future expansion)
+	    tutorial	INTEGER	NOT NULL REFERENCES tutorial,
+	    UNIQUE (conference, day, half, track),
+	    UNIQUE (conference, tutorial)
+	} {
+	    {id			INTEGER 1 {} 1}
+	    {conference		INTEGER 1 {} 0}
+	    {day		INTEGER 1 {} 0}
+	    {half		INTEGER 1 {} 0}
+	    {track		INTEGER 1 {} 0}
+	    {tutorial		INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error tutorial_schedule $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error dayhalf {
+	{
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    text TEXT    NOT NULL UNIQUE
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {text TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error dayhalf $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
+	    INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
+	    INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
+	}
     }
 
     # Shortcircuit further calls

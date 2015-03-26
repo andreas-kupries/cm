@@ -32,11 +32,12 @@ package require cm::config::core
 package require cm::contact
 package require cm::db
 package require cm::location
+package require cm::mailer
+package require cm::mailgen
 package require cm::table
 package require cm::template
+package require cm::tutorial
 package require cm::util
-package require cm::mailgen
-package require cm::mailer
 
 # # ## ### ##### ######## ############# ######################
 
@@ -50,9 +51,10 @@ namespace eval ::cm::conference {
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
 	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
-	cmd_staff_show cmd_staff_link cmd_staff_unlink cmd_rate_set \
+	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
+	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
 	select label current get insert known-sponsor \
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
@@ -70,6 +72,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
     namespace import ::cm::template
+    namespace import ::cm::tutorial
     namespace import ::cm::util
 
     namespace import ::cm::config::core
@@ -650,7 +653,6 @@ proc ::cm::conference::cmd_submission_setsummary {config} {
 
     puts [color good OK]
     return
-
 }
 
 proc ::cm::conference::cmd_submission_setabstract {config} {
@@ -673,7 +675,6 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
 
     puts [color good OK]
     return
-
 }
 
 proc ::cm::conference::cmd_submission_show {config} {
@@ -1008,6 +1009,129 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_tutorial_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set start [dict get [details $conference] xstart]
+
+    puts "Tutorial lineup of \"[color name [get $conference]]\":"
+    # Similar code will be needed for the website ... Maybe same, with
+    # a different style for the table and elements
+
+    # Day   Track  Morning     Afternoon Evening
+    # 0     1      Tag + Title ...
+    # 0     ...
+    # ...
+
+    lassign [cm::tutorial dayrange   $conference] daymin   daymax   daylast
+    lassign [cm::tutorial trackrange $conference] trackmin trackmax tracklast
+
+    # Build table, by day, by track in day, by half in the day.
+    # TODO: See if we can do loops and the range extraction above in a single sql SELECT.
+    # Main issue might be filling in the holes
+
+    [table t {Date Day Track Half Tag Title} {
+	for {set day $daymin} {$day < $daymax} {incr day} {
+	    set  date [hdate [clock add $start $day days]]
+	    set  dlabel $day
+	    incr dlabel ;# Display is 1-based.
+
+	    for {set track $trackmin} {$track < $trackmax} {incr track} {
+		set dtrack $track
+		db do eval {
+		    SELECT id   AS half,
+		           text AS dhalf
+		    FROM   dayhalf
+		    ORDER  BY id
+		} {
+		    set tutorial [cm::tutorial cell $conference $day $half $track]
+
+		    if {$tutorial ne {}} {
+			set    tdetails [tutorial details $tutorial]
+			set    title    [dict get $tdetails xtitle]
+			set    tag      @
+			append tag      [dict get [contact details [dict get $tdetails xspeaker]] xtag] :
+			append tag      [dict get $tdetails xtag]
+		    } else {
+			set tag   [color bad None]
+			set title [color bad None]
+		    }
+
+		    $t add $date $dlabel $dtrack $dhalf $tag $title
+		    set dlabel {}
+		    set dtrack {}
+		    set date {}
+		}
+		if {($day == $daylast) && ($track == $tracklast)} continue
+		$t add {} {} {} {} {} {}
+	    }
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_tutorial_link {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set day      [$config @day]      ;# 1-based, limit to conference length.
+    set half     [$config @half]
+    set track    [$config @track]    ;# future - constrain|limit to a max number of tracks
+    set tutorial [$config @tutorial]
+
+    puts "Adding \"[color name [cm::tutorial get $tutorial]]\" to conference \"[color name [get $conference]]\" ... "
+    set details [details $conference]
+    set clen    [dict get $details xlength]
+
+    if {$day > $clen} {
+	util user-error "Bad day $day, conference is only $clen days long" DAY-OUT-OF-RANGE $day $clen
+    }
+
+    puts "@ day $day [cm::tutorial get-half $half], track $track"
+    flush stdout
+
+    incr day -1 ;# convert to the internal 0-based storage
+    db do eval {
+	INSERT INTO tutorial_schedule
+	VALUES (NULL, :conference, :day, :half, :track, :tutorial)
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_tutorial_unlink {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Removing tutorials from conference \"[color name [get $conference]]\" ... "
+
+    foreach tutorial [$config @tutorial] {
+	puts -nonewline "- \"[color name [cm::tutorial get $tutorial]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM  tutorial_schedule
+	    WHERE conference = :conference
+	    AND   tutorial   = :tutorial
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_rate_show {config} {
     debug.cm/conference {}
     Setup
@@ -1152,14 +1276,15 @@ proc ::cm::conference::cmd_website_make {config} {
     set conference [current]
     set dstdir     [$config @destination]
 
+    # TODO Fix issues with using a relative destination path moving outside of the CWD.
+
     # # ## ### ##### ######## #############
     puts "Remove old..."
     file delete -force  $dstdir ${dstdir}_out
 
     # # ## ### ##### ######## #############
     puts "Initialization..."
-    exec >@stdout 2>@stderr <@stdin \
-	ssg init $dstdir ${dstdir}_out ;# TODO Use a tmp dir for this
+    ssg init $dstdir ${dstdir}_out ;# TODO Use a tmp dir for this
     file delete -force $dstdir/pages/blog
 
     # # ## ### ##### ######## #############
@@ -1184,7 +1309,15 @@ proc ::cm::conference::cmd_website_make {config} {
 	}
     }
 
-    lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials]
+    if {[cm::tutorial have-some $conference]} {
+	puts "Tutorials: [color good Yes]"
+	lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials $conference]
+    } else {
+	puts "Tutorials: [color bad None]"
+	lappend navbar {*}[make_page Tutorials         tutorials   make_tutorials_none]
+    }
+
+
     lappend navbar {*}[make_page Schedule          schedule    make_schedule]
     make_page                    Abstracts         abstracts   make_abstracts
     make_page                    Speakers          bios        make_speakers
@@ -1195,31 +1328,42 @@ proc ::cm::conference::cmd_website_make {config} {
     # # ## ### ##### ######## #############
     # Configuration file.
     puts "\tWebsite configuration"
+
+    # NOTE: website.conf TODO - treat template as the semi-dict it is, prog access.
+    #       Do programmatic access, instead of text manipulation.
+
     set text [template use www-wconf]
     set text [insert $conference $text]
     lappend map @wc:nav@     $navbar
     lappend map @wc:sidebar@ [make_sidebar $conference]
-    set text [string map $map $text]
+    set    text [string map $map $text]
     unset map
     fileutil::writeFile $dstdir/website.conf $text
+
     # # ## ### ##### ######## #############
-
     puts "Generation..."
-    exec >@stdout 2>@stderr <@stdin \
-	ssg build $dstdir ${dstdir}_out ;# TODO from tmp dir, use actual destination => implied deployment
-
+    ssg build $dstdir ${dstdir}_out ;# TODO from tmp dir, use actual destination => implied deployment
 
     return
     puts "Deploy..."
-    exec >@stdout 2>@stderr <@stdin \
-	ssg deploy-copy $dstdir
+    ssg deploy-copy $dstdir
     # custom - use rsync - or directory swap
+}
+
+proc ::cm::conference::ssg {args} {
+    # option to switch verbosity
+    #exec >@stdout 2>@stderr <@stdin ssg {*}$args
+    exec 2>@stderr <@stdin ssg {*}$args
+    return
 }
 
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
-proc ::cm::conference::make_page {title fname generatorcmd} {
+proc ::cm::conference::make_page {title fname args} {
+    debug.cm/conference {}
+
+    set generatorcmd $args
     upvar 1 dstdir dstdir conference conference
     puts \t${title}...
 
@@ -1228,8 +1372,8 @@ proc ::cm::conference::make_page {title fname generatorcmd} {
     try {
 	append text \n [uplevel 1 $generatorcmd]
     } on error {e o} {
-	puts [color bad TODO:]\t${title}
-	append text "\nNOT YET IMPLEMENTED\n" $::errorInfo
+	puts "\t\t[color bad ERROR:] [color bad $e]"
+	append text "\n__ERROR__\n\n" <pre>$::errorInfo</pre> \n\n
     }
 
     append text [make_page_footer]
@@ -1240,6 +1384,7 @@ proc ::cm::conference::make_page {title fname generatorcmd} {
 }
 
 proc ::cm::conference::make_page_header {title} {
+    debug.cm/conference {}
     # page-header - TODO: Separate hotel and facilities.
     # page-header - TODO: Move text into a configurable template? This one is a maybe.
     # page-header - TODO: Conditional text for link, phone, and fax, any could be missing.
@@ -1263,6 +1408,7 @@ proc ::cm::conference::make_page_header {title} {
 }
 
 proc ::cm::conference::make_page_footer {} {
+    debug.cm/conference {}
     # page-footer - TODO: Move text into a configurable template
     return [util undent {
 	# Contact information
@@ -1272,7 +1418,7 @@ proc ::cm::conference::make_page_footer {} {
 }
 
 proc ::cm::conference::make_overview {} {
-    # make-overview - TODO: Move text into a configurable template
+    debug.cm/conference {}
     return [template use www-main]
 }
 
@@ -1281,6 +1427,7 @@ proc ::cm::conference::make_callforpapers {} {
 }
 
 proc ::cm::conference::make_location {} {
+    debug.cm/conference {}
     # make-location - TODO: Move text into a configurable template
     # make-location - TODO: switch to a different text block when deadline has passed.
     return [util undent {
@@ -1300,10 +1447,12 @@ proc ::cm::conference::make_location {} {
 }
 
 proc ::cm::conference::registration-mode {conference} {
+    debug.cm/conference {}
     return [get-rstatus [dict get [details $conference] xrstatus]]
 }
 
 proc ::cm::conference::make_registration_pending {} {
+    debug.cm/conference {}
     return [util undent {
 	While it is planned to open registration on @c:t:regopen@
 	it may happen earlier.
@@ -1313,12 +1462,14 @@ proc ::cm::conference::make_registration_pending {} {
 }
 
 proc ::cm::conference::make_registration_closed {} {
+    debug.cm/conference {}
     return [util undent {
 	__Registration online has closed.__
     }]
 }
 
 proc ::cm::conference::make_registration_paper {} {
+    debug.cm/conference {}
     return [util undent {
 	Thank you for joining us.
 
@@ -1335,6 +1486,7 @@ proc ::cm::conference::make_registration_paper {} {
 }
 
 proc ::cm::conference::make_registration_open {} {
+    debug.cm/conference {}
     return [util undent {
 	## How to register
 
@@ -1408,20 +1560,131 @@ proc ::cm::conference::make_registration_open {} {
     }]
 }
 
-proc ::cm::conference::make_tutorials {} {
-    # make-tutorials - TODO: Move text into a configurable template
-    # make-tutorials - TODO: flag/data controlled
-    return [util undent {
-	Tutorials have not been set yet.
-	We are working on this.
+proc ::cm::conference::make_tutorials_none {} {
+    debug.cm/conference {}
+    return [template use www-tutorials.none]
+}
 
-	Please check back in the future.
-    }]
+proc ::cm::conference::make_tutorials {conference} {
+    debug.cm/conference {}
+
+    set    text [template use www-tutorials]
+    append text \n "# Tutorial schedule" \n\n
+
+    lassign [cm::tutorial dayrange   $conference] daymin   daymax   daylast
+    lassign [cm::tutorial trackrange $conference] trackmin trackmax tracklast
+
+    set start [dict get [details $conference] xstart]
+
+    # Table header
+    # 
+    # - | morning | afternoon | evening |
+    # 
+    append text |  ;# empty header cell, top left corner
+    append sep  |- ;# empty header cell, top left corner
+    db do eval {
+	SELECT id   AS half,
+	text AS dhalf
+	FROM   dayhalf
+	ORDER  BY id
+    } {
+	append text |[string totitle $dhalf]
+	append sep |-
+    }
+    append text |\n $sep |\n
+
+    # tutorial - TODO - future opt: drop empty columns from output -
+    # determine which above, during header generation, and skip below,
+    # during content assembly.
+
+    # Table content.
+    # One row per day and track.
+    # Day only named for the first track.
+
+    # Iterate days
+    for {set day $daymin} {$day < $daymax} {incr day} {
+	set date  [clock add $start $day days]
+	set wday  [hwday $date]
+
+	# Iterate tracks
+	for {set track $trackmin} {$track < $trackmax} {incr track} {
+	    append text |$wday
+
+	    # Iterate day-halfs, append to current row.
+	    db do eval {
+		SELECT id   AS half,
+		       text AS dhalf
+		FROM   dayhalf
+		ORDER  BY id
+	    } {
+		set tutorial [cm::tutorial cell $conference $day $half $track]
+
+		if {$tutorial eq {}} {
+		    append text |
+		    continue
+		}
+
+		set tdetails [tutorial details $tutorial]
+		set title    [dict get $tdetails xtitle]
+		set desc     [dict get $tdetails xdescription]
+		set req      [dict get $tdetails xprereq]
+
+		set speaker  [dict get $tdetails xspeaker]
+		set sdetails [contact details $speaker]
+		set speaker  [dict get $sdetails xdname]
+		set stag     [dict get $sdetails xtag]
+		set tag      ${stag}:[dict get $tdetails xtag]
+
+		append text "|\[$title\](\#$tag)"
+
+		# Keep information to make assembly of the next
+		# section easier, no need to query the databse again.
+		dict set map $tutorial [list $title $tag $speaker $stag $desc $req]
+	    }	    
+	    append text |\n ;# close row of current track
+	    set wday ""     ;# clear prefix following tracks
+	}
+    }
+    append text \n\n
+
+    append text "# Tutorial Information" \n\n
+
+    db do eval {
+	SELECT tutorial
+	FROM   tutorial_schedule S,
+	       tutorial T,
+	       contact  C
+	WHERE  S.conference = :conference
+	AND    T.id         = S.tutorial
+	AND    C.id         = T.speaker
+	ORDER BY C.dname, T.title
+    } {
+	lassign [dict get $map $tutorial] title tag speaker stag desc req
+
+	# Anchor for table above to link to
+	append text "<a name='" $tag "'></a>\n"
+
+	# Section header for tutorial, title and speaker link
+	append text "\#\# " $title " &mdash; \[" $speaker "\](bios.html#" $stag ")\n\n"
+
+	# Requirements, if any.
+	if {$req ne {}} {
+	    append text "__Required__: " $req \n\n
+	}
+
+	# Block holding the tutorial's description.
+	append text $desc \n\n
+
+    }
+    #append text </table>
+
+    return $text
 }
 
 proc ::cm::conference::make_schedule {} {
     # make-schedule - TODO: Move text into a configurable template
     # make-schedule - TODO: data driven on schedule data
+
     return [util undent {
 	The schedule will be finalized and put up after
 	all the notifications to authors have been sent
@@ -1446,6 +1709,10 @@ proc ::cm::conference::make_abstracts {} {
 proc ::cm::conference::make_speakers {} {
     # make-speakers - TODO: Move text into a configurable template
     # make-speakers - TODO: data driven on schedule data
+
+    # tutorials, keynotes, general presenters.
+
+
     return [util undent {
 	The list of speakers and their biographies will be finalized
 	and put up after all the notifications to authors have been
@@ -1533,6 +1800,17 @@ proc ::cm::conference::sidebar_reg_show {} {
 	AND   E.ispublic
 	ORDER BY T.date
     }
+}
+
+proc ::cm::conference::have-tutorials {conference} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do exists {
+	SELECT id
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+    }]
 }
 
 proc ::cm::conference::cdefault {attr dcmd} {
@@ -2504,6 +2782,11 @@ proc ::cm::conference::Setup {} {
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
 	    rstatus	INTEGER NOT NULL REFERENCES rstatus
+
+	    -- future expansion columns:
+	    -- -- max day|range for tutorials
+	    -- -- max number of tracks for tutorials
+	    -- -- max number of tracks for sessions
 
 	    -- Constraints:
 	    -- * (city == facility->city) WHERE facility IS NOT NULL
