@@ -3,6 +3,9 @@ NOW
 
 * ---- con mgmt --- ready for initial cfp 1 ---
 
+* website, more pages
+  -- speakers (tutorials)
+
 SOON
 ====
 
@@ -18,8 +21,6 @@ SOON
   -- link to previous site/conference ? -- papers --
 
 * implement handling of talks, schedule
-* implement handling of tutorial schedule
-
 
 LATER
 =====
@@ -29,10 +30,9 @@ LATER
 * -- cgi form for the submission of a paper ?
 
 * website, more pages
-  -- tutorials
+  -- speakers (tutorials, keynotes, general)
   -- registration
   -- schedule
-  -- speakers
   -- abstracts
   -- full papers online -- past conferences --
 
