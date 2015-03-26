@@ -653,7 +653,6 @@ proc ::cm::conference::cmd_submission_setsummary {config} {
 
     puts [color good OK]
     return
-
 }
 
 proc ::cm::conference::cmd_submission_setabstract {config} {
@@ -676,7 +675,6 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
 
     puts [color good OK]
     return
-
 }
 
 proc ::cm::conference::cmd_submission_show {config} {
@@ -1113,19 +1111,22 @@ proc ::cm::conference::cmd_tutorial_unlink {config} {
     db show-location
 
     set conference [current]
-    set tutorial [$config @tutorial]
 
-    puts -nonewline "Removing \"[color name [cm::tutorial get $tutorial]]\" from conference \"[color name [get $conference]]\" ... "
-    flush stdout
+    puts "Removing tutorials from conference \"[color name [get $conference]]\" ... "
 
-    db do eval {
-	DELETE
-	FROM  tutorial_schedule
-	WHERE conference = :conference
-	AND   tutorial   = :tutorial
+    foreach tutorial [$config @tutorial] {
+	puts -nonewline "- \"[color name [cm::tutorial get $tutorial]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM  tutorial_schedule
+	    WHERE conference = :conference
+	    AND   tutorial   = :tutorial
+	}
+
+	puts [color good OK]
     }
-
-    puts [color good OK]
     return
 }
 
@@ -1275,6 +1276,8 @@ proc ::cm::conference::cmd_website_make {config} {
     set conference [current]
     set dstdir     [$config @destination]
 
+    # TODO Fix issues with using a relative destination path moving outside of the CWD.
+
     # # ## ### ##### ######## #############
     puts "Remove old..."
     file delete -force  $dstdir ${dstdir}_out
@@ -1331,24 +1334,11 @@ proc ::cm::conference::cmd_website_make {config} {
 
     set text [template use www-wconf]
     set text [insert $conference $text]
-    #lappend map @wc:prelude@ {} ;# { <% interp-source shortcuts.tcl %> } ;# <%%%>
     lappend map @wc:nav@     $navbar
     lappend map @wc:sidebar@ [make_sidebar $conference]
     set    text [string map $map $text]
-    #append text "\nenableMacrosInPages 1"
     unset map
     fileutil::writeFile $dstdir/website.conf $text
-
-    # # ## ### ##### ######## #############
-    # Helper macros, see <%%%>, pagePrelude of the config.
-    if 0 {puts "\tWebsite Helper Macros"
-    set text {
-	proc md {text} {
-	    #set text [string map [list \\t \t \\r \r \\n \n \\s { } \\\\ \\] $text]
-	    return <p>[markdown-to-html $text]</p>
-	}
-    }
-	fileutil::writeFile $dstdir/templates/shortcuts.tcl $text}
 
     # # ## ### ##### ######## #############
     puts "Generation..."
@@ -1360,14 +1350,8 @@ proc ::cm::conference::cmd_website_make {config} {
     # custom - use rsync - or directory swap
 }
 
-proc ::cm::conference::encode {text} {
-    #set text [string map [list \t \\t \r \\r \n \\n { } \\s \\ \\\\] $text]
-    set text [list $text]
-    return $text
-}
-
 proc ::cm::conference::ssg {args} {
-    # option to switch vebosity
+    # option to switch verbosity
     #exec >@stdout 2>@stderr <@stdin ssg {*}$args
     exec 2>@stderr <@stdin ssg {*}$args
     return
@@ -1388,7 +1372,7 @@ proc ::cm::conference::make_page {title fname args} {
     try {
 	append text \n [uplevel 1 $generatorcmd]
     } on error {e o} {
-	puts [color bad ERROR:]\t${title}\t([color bad $e])
+	puts "\t\t[color bad ERROR:] [color bad $e]"
 	append text "\n__ERROR__\n\n" <pre>$::errorInfo</pre> \n\n
     }
 
@@ -1609,7 +1593,9 @@ proc ::cm::conference::make_tutorials {conference} {
     }
     append text |\n $sep |\n
 
-    # tutorial - TODO - future optimization: drop empty columns from the output - determine above during header generation, and skip below, on content generation.
+    # tutorial - TODO - future opt: drop empty columns from output -
+    # determine which above, during header generation, and skip below,
+    # during content assembly.
 
     # Table content.
     # One row per day and track.
@@ -1619,7 +1605,6 @@ proc ::cm::conference::make_tutorials {conference} {
     for {set day $daymin} {$day < $daymax} {incr day} {
 	set date  [clock add $start $day days]
 	set wday  [hwday $date]
-	#set date  [hdate $date]
 
 	# Iterate tracks
 	for {set track $trackmin} {$track < $trackmax} {incr track} {
@@ -1664,14 +1649,6 @@ proc ::cm::conference::make_tutorials {conference} {
 
     append text "# Tutorial Information" \n\n
 
-    # --- Trouble with table and full-blown md in cells.
-    # --- Using basic sections instead.
-    # We use inlined html here to allow for markdown inside
-    # NOTE: We need a macro for that. (templates/shortcuts.tcl)
-    #   See <%%%>, and pagePrelude (www-wconf template)
-    #append text <table>\n
-
-    #append text "\#\# "
     db do eval {
 	SELECT tutorial
 	FROM   tutorial_schedule S,
@@ -1684,14 +1661,18 @@ proc ::cm::conference::make_tutorials {conference} {
     } {
 	lassign [dict get $map $tutorial] title tag speaker stag desc req
 
-	#append text "<tr><th>" "<a name='" $tag "'></a>" $title " (<a href='bios.html#" $stag "'>" $speaker "</a>)"
-	append text "<a name='" $tag "'></a>\n\#\# " $title " &mdash; \[" $speaker "\](bios.html#" $stag ")\n\n"
+	# Anchor for table above to link to
+	append text "<a name='" $tag "'></a>\n"
+
+	# Section header for tutorial, title and speaker link
+	append text "\#\# " $title " &mdash; \[" $speaker "\](bios.html#" $stag ")\n\n"
+
+	# Requirements, if any.
 	if {$req ne {}} {
-	    #append text " &mdash; " $req
 	    append text "__Required__: " $req \n\n
 	}
-	#append text "</th></tr>\n"
-	#append text "<tr><td><%!md " [encode $desc] "%></td></tr>\n"
+
+	# Block holding the tutorial's description.
 	append text $desc \n\n
 
     }

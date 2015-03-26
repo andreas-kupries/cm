@@ -39,8 +39,8 @@ namespace eval ::cm {
 }
 namespace eval ::cm::tutorial {
     namespace export \
-	cmd_create cmd_list cmd_show \
-	known known-tag known-title get details select \
+	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
+	cmd_settag known known-tag known-title get details select \
 	known-half get-half have-some dayrange trackrange \
 	cell
     namespace ensemble create
@@ -147,6 +147,90 @@ proc ::cm::tutorial::cmd_show {config} {
 	$t add Requisites   [util adjust $w $xprereq]
 	$t add Description  [util adjust $w $xdescription]
     }] show
+    return
+}
+
+proc ::cm::tutorial::cmd_settitle {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set title of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    title = :text
+	WHERE  id    = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_setdesc {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set description of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    description = :text
+	WHERE  id          = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_setreq {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set requisites of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    prereq = :text
+	WHERE  id     = :tutorial
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::tutorial::cmd_settag {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set tutorial [$config @tutorial] 
+    set text     [$config @text]
+
+    puts -nonewline "Set tag of \"[color name [get $tutorial]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE tutorial
+	SET    tag = :text
+	WHERE  id  = :tutorial
+    }
+
+    puts [color good OK]
     return
 }
 
@@ -341,7 +425,7 @@ proc ::cm::tutorial::get {id} {
     debug.cm/tutorial {}
     Setup
 
-    return [db do eval {
+    return [db do onecolumn {
 	SELECT title
 	FROM   tutorial
 	WHERE  id = :id

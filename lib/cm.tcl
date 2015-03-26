@@ -509,7 +509,48 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias add
 	alias new
 
-	# TODO tutorial operations: remove (if not used), rename, retag, re-describe, re-requisite
+	private set-title {
+	    section {Tutorial Management}
+	    description { Change title of the named tutorial }
+	    input tutorial {
+		The tutorial to change
+	    } { validate [cm::vt tutorial] }
+	    input text { The new text to set }
+	} [cm::call tutorial cmd_settitle]
+	alias change-title
+
+	private set-description {
+	    section {Tutorial Management}
+	    description { Change description of the named tutorial }
+	    input tutorial {
+		The tutorial to change
+	    } { validate [cm::vt tutorial] }
+	    # TODO: This would be useful to have a mode taking either a path to a file, or reading stdin.
+	    input text { The new text to set }
+	} [cm::call tutorial cmd_setdesc]
+	alias change-description
+
+	private set-prereq {
+	    section {Tutorial Management}
+	    description { Change description of the named tutorial }
+	    input tutorial {
+		The tutorial to change
+	    } { validate [cm::vt tutorial] }
+	    input text { The new text to set }
+	} [cm::call tutorial cmd_setreq]
+	alias change-prereq
+
+	private set-tag {
+	    section {Tutorial Management}
+	    description { Change tag of the named tutorial }
+	    input tutorial {
+		The tutorial to change
+	    } { validate [cm::vt tutorial] }
+	    input text { The new text to set }
+	} [cm::call tutorial cmd_settag]
+	alias change-tag
+
+	# TODO tutorial operations: remove (if not used), retag,
     }
     alias tutorials = tutorial list
 
@@ -804,9 +845,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Remove one or more tutorials from the lineup }
 	    input tutorial {
-		Identifier of the tutorial to remove
+		Identifiers of the tutorials to remove
 	    } { 
-		optional
+		optional ; list
 		generate [cm::call tutorial select]
 		validate [cm::vt tutorial]
 	    }
