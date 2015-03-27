@@ -1,0 +1,13 @@
+{
+    title {@@}
+}
+
+## @c:when@
+
+[@h:hotel@](@h:booklink@)		</br>
+[@h:city@](@h:booklink@)		</br>
+[@h:street@](@h:booklink@)		</br>
+[Phone: @h:bookphone@](@h:booklink@)	</br>
+[Fax: @h:bookfax@](@h:booklink@)
+
+---
