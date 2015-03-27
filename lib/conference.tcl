@@ -1608,7 +1608,7 @@ proc ::cm::conference::make_tutorials {conference} {
 		set stag     [dict get $sdetails xtag]
 		set tag      ${stag}:[dict get $tdetails xtag]
 
-		append text "|\[$title\](\#$tag)"
+		append text | [link $title {} $tag]
 
 		# Keep information to make assembly of the next
 		# section easier, no need to query the databse again.
@@ -1638,7 +1638,7 @@ proc ::cm::conference::make_tutorials {conference} {
 	append text [anchor $tag] \n
 
 	# Section header for tutorial, title and speaker link
-	append text "\#\# " $title " &mdash; \[" $speaker "\](bios.html#" $stag ")\n\n"
+	append text "\#\# " $title " &mdash; " [link $speaker bios.html $stag] \n\n
 
 	# Requirements, if any.
 	if {$req ne {}} {
@@ -1647,7 +1647,6 @@ proc ::cm::conference::make_tutorials {conference} {
 
 	# Block holding the tutorial's description.
 	append text $desc \n\n
-
     }
     #append text </table>
 
@@ -1697,6 +1696,7 @@ proc ::cm::conference::make_speakers_none {} {
 }
 
 proc ::cm::conference::make_speakers {conference} {
+    debug.cm/conference {}
     # tutorials, keynotes, general presenters.
 
     set text [template use www-speakers]
@@ -1731,11 +1731,13 @@ proc ::cm::conference::make_speakers {conference} {
 }
 
 proc ::cm::conference::make_contact {} {
+    debug.cm/conference {}
     # No content, the information is in the footer.
     return
 }
 
 proc ::cm::conference::make_disclaimer {} {
+    debug.cm/conference {}
     # make-abstracts - TODO: Move text into a configurable template
     return [util undent {
 	This is the disclaimer and copyright.
@@ -1743,6 +1745,7 @@ proc ::cm::conference::make_disclaimer {} {
 }
 
 proc ::cm::conference::make_proceedings {} {
+    debug.cm/conference {}
     # make-proceedings - TODO: Move text into a configurable template
     # make-proceedings - TODO: flag/data controlled
     return [util undent {
@@ -1753,17 +1756,124 @@ proc ::cm::conference::make_proceedings {} {
     }]
 }
 
-
-
 proc ::cm::conference::make_admin {conference} {
-    # admin TODO - generation of system info
-    # - full timeline
-    # - table of submissions
-    return
+    debug.cm/conference {}
+    upvar 1 dstdir dstdir
+
+    append text "* " [link Events      {} events] \n
+    append text "* " [link Submissions {} submissions] \n
+    append text \n
+
+    # Full timeline, including the non-public events.
+
+    set now [clock seconds]
+    set pastnow 0
+
+    append text \n
+    append text [anchor events] \n
+    append text "# Events\n\n"
+    append text |What|When|\n|-|-|\n
+    db do eval {
+	SELECT T.date     AS date,
+               E.ispublic AS ispublic,
+	       E.text     AS what
+	FROM   timeline      T,
+	       timeline_type E
+	WHERE T.con  = :conference
+	AND   T.type = E.id
+	ORDER BY T.date
+    } {
+
+	if {!$pastnow && ($date > $now)} {
+	    set pastnow yes
+	    append text |||\n|__Today__| [hdate $now] |\n|||\n
+	}
+
+	if {$ispublic} {
+	    #append text |__ $what __|__ [hdate $date] __|\n
+	    append text |__ [hdate $date] __|__ $what __|\n
+	} else {
+	    #append text | $what | [hdate $date] |\n
+	    append text | [hdate $date] | $what |\n
+	}
+    }
+    append text \n
+
+    # Table of submissions received so far, plus one side page per to
+    # hold the larger associated texts.
+
+    append text \n
+    append text [anchor submissions] \n
+    append text "# Submissions\n\n"
+    append text |When|Invited|By|Title|\n|-|-|-|-|\n
+
+    db do eval {
+	SELECT id, submitdate, invited, abstract, summary, title
+	FROM   submission
+	WHERE  conference = :conference
+
+    } {
+	set submitters [db do eval {
+	    SELECT C.dname, S.note
+	    FROM   submitter S,
+	           contact   C
+	    WHERE  S.submission = :id
+	    AND    C.id = S.contact
+	    ORDER BY C.dname
+	}]
+
+	# Side page per submission, holding the entire data.
+	make_internal_page $title __s$id \
+	    make_submission $submitters $submitdate $invited $abstract $summary
+
+	set invited    [expr {$invited ? "__yes__" : ""}]
+	set submitters [join [dict keys $submitters] {, }]
+
+	append text | [hdate $submitdate] | $invited | $submitters | [link $title __s${id}.html] |\n
+    }
+    append text \n
+
+    # What else ...
+    return $text
 }
 
+proc ::cm::conference::make_submission {submitters date invited abstract summary} {
+    debug.cm/conference {}
+
+    append text "\# Submitted\n\n"
+
+    if {$invited} { set invited " (by invitation)" } else { set invited {} }
+
+    append text |||\n|-|-|\n
+    append text |On| [hdate $date] $invited |\n
+    set prefix By
+    foreach {name note} $submitters {
+	append text | $prefix | $name
+	if {$note ne {}} {
+	    append text " &mdash; " $note
+	}
+	append text |\n
+	set prefix {}
+    }
+    append text \n
+
+    if {$abstract eq {}} { set abstract "__No abstract__" }
+    if {$summary  eq {}} { set summary  "__No summary__"  }
+
+    append text "\# Abstract\n\n"
+    append text $abstract
+    append text \n
+
+    append text "\# Summary\n\n"
+    append text $summary
+    append text \n
+
+    return $text
+}
 
 proc ::cm::conference::make_sidebar {conference} {
+    debug.cm/conference {}
+
     append sidebar <table>
     # -- styling makes the table too large -- append sidebar "<table class='table table-condensed'>"
     append sidebar "\n<tr><th colspan=2>" "Important Information &mdash; Timeline" </th></tr>
@@ -1793,11 +1903,21 @@ proc ::cm::conference::make_sidebar {conference} {
     return [insert $conference $sidebar]
 }
 
+proc ::cm::conference::link {name page {tag {}}} {
+    debug.cm/conference {}
+    append link \[ $name \]( $page
+    if {$tag ne {}} { append link \# $tag }
+    append link )
+    return $link
+}
+
 proc ::cm::conference::anchor {key} {
+    debug.cm/conference {}
     return "<a name='$key'></a>"
 }
 
 proc ::cm::conference::sidebar_reg_excluded {} {
+    debug.cm/conference {}
     return {
 	SELECT T.date AS date,
 	       E.text AS text
@@ -1812,6 +1932,7 @@ proc ::cm::conference::sidebar_reg_excluded {} {
 }
 
 proc ::cm::conference::sidebar_reg_show {} {
+    debug.cm/conference {}
     return {
 	SELECT T.date AS date,
 	       E.text AS text
@@ -1996,7 +2117,7 @@ proc ::cm::conference::web-sponsors-inline {id mgmt} {
 
 	set link [contact get-the-link $sponsor]
 	if {$link ne {}} {
-	    set label "\[$label\]($link)"
+	    set label [link $label $link]
 	}
 	lappend sponsors $label
     }
@@ -2021,7 +2142,7 @@ proc ::cm::conference::web-sponsors-bullet {id mgmt} {
 
 	set link [contact get-the-link $sponsor]
 	if {$link ne {}} {
-	    set label "\[$label\]($link)"
+	    set label [link $label $link]
 	}
 	lappend sponsors $label
     }
@@ -2057,7 +2178,7 @@ proc ::cm::conference::web-committee {id} {
 	foreach {aid aname} [contact affiliated $contact] {
 	    set alink [contact get-the-link $aid]
 	    if {$alink ne {}} {
-		set aname "\[$aname\]($alink)"
+		set aname [link $aname $alink]
 	    }
 	    lappend affiliation $aname
 	}
