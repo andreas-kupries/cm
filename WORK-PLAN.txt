@@ -4,14 +4,13 @@ NOW
 * ---- con mgmt --- ready for initial cfp 1 ---
 
 * website, more pages
-  -- speakers (tutorials)
 
 SOON
 ====
 
 * website - internal pages,
-  - status page - show submissions, issues ...
-  - full/internal timeline, and status - see below re flag/checkmark
+  - status page - show conference issues
+  - show status of timeline - see below re flag/checkmark
 
 * Need flag on timeline entries - checkmark if an action was done or not.
 
@@ -30,8 +29,7 @@ LATER
 * -- cgi form for the submission of a paper ?
 
 * website, more pages
-  -- speakers (tutorials, keynotes, general)
-  -- registration
+  -- speakers (keynotes, general)
   -- schedule
   -- abstracts
   -- full papers online -- past conferences --
