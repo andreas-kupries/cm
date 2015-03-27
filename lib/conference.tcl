@@ -1370,6 +1370,8 @@ proc ::cm::conference::cmd_website_make {config} {
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
 
+    make_internal_page Administrivia __dwarf make_admin $conference
+
     # # ## ### ##### ######## #############
     # Configuration file.
     puts "\tWebsite configuration"
@@ -1428,38 +1430,53 @@ proc ::cm::conference::make_page {title fname args} {
     return [list $title "\$rootDirPath/${fname}.html"]
 }
 
+proc ::cm::conference::make_internal_page {title fname args} {
+    debug.cm/conference {}
+
+    set generatorcmd $args
+    upvar 1 dstdir dstdir conference conference
+    puts "\t${title}... ([color note Internal])"
+
+    set text [make_internal_page_header $title]
+
+    try {
+	append text \n [uplevel 1 $generatorcmd]
+    } on error {e o} {
+	puts "\t\t[color bad ERROR:] [color bad $e]"
+	append text "\n__ERROR__\n\n" <pre>$::errorInfo</pre> \n\n
+    }
+
+    append text [make_page_footer]
+    set    text [insert $conference $text]
+
+    fileutil::writeFile $dstdir/pages/${fname}.md $text
+    return
+}
+
 proc ::cm::conference::make_page_header {title} {
     debug.cm/conference {}
-    # page-header - TODO: Separate hotel and facilities.
-    # page-header - TODO: Move text into a configurable template? This one is a maybe.
+    # page-header - TODO: Separate hotel and facilities. - header2
     # page-header - TODO: Conditional text for link, phone, and fax, any could be missing.
 
     lappend map @@ $title
-    return [string map $map [string trimleft [util undent {
-	{
-	    title {@@}
-	}
+    return [string map $map [template use www-header1]]
+}
 
-	## @c:when@
+proc ::cm::conference::make_internal_page_header {title} {
+    debug.cm/conference {}
 
-	[@h:hotel@](@h:booklink@)		</br>
-	[@h:city@](@h:booklink@)		</br>
-	[@h:street@](@h:booklink@)		</br>
-	[Phone: @h:bookphone@](@h:booklink@)	</br>
-	[Fax: @h:bookfax@](@h:booklink@)
-
-	---
-    }]]]
+    lappend map @@ $title
+    return [string map $map [template use www-headeri]]
 }
 
 proc ::cm::conference::make_page_footer {} {
     debug.cm/conference {}
-    # page-footer - TODO: Move text into a configurable template
-    return [util undent {
-	# Contact information
+    return [template use www-footer]
+}
 
-	[@c:contact@](mailto:@c:contact@)
-    }]
+proc ::cm::conference::make_internal_page_footer {} {
+    debug.cm/conference {}
+    return [template use www-footeri]
 }
 
 proc ::cm::conference::make_overview {} {
@@ -1735,6 +1752,16 @@ proc ::cm::conference::make_proceedings {} {
 	Please check back.
     }]
 }
+
+
+
+proc ::cm::conference::make_admin {conference} {
+    # admin TODO - generation of system info
+    # - full timeline
+    # - table of submissions
+    return
+}
+
 
 proc ::cm::conference::make_sidebar {conference} {
     append sidebar <table>

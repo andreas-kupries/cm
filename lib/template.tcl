@@ -163,6 +163,7 @@ proc ::cm::template::cmd_set {config} {
 ## Internal import support commands.
 
 proc ::cm::template::use {name} {
+    # use - TODO: could do with caching ?!
     return [details [find-by-name $name]]
 }
 
