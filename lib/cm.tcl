@@ -571,6 +571,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Create a new conference }
 
+	    option current {
+		Make new conference current
+	    } { default yes }
+
 	    input title {
 		Name of the conference
 	    } { optional ; interact }
@@ -590,6 +594,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input length {
 		Length in days
 	    } { optional ; interact ; validate [cm::cvt posint] }
+
+	    input manager {
+		Person or organization managing the conference
+	    } { optional ; interact ; validate [cm::vt contact] }
+
+	    input submission {
+		Email address for submissions to be sent to.
+	    } { optional ; interact ; validate [cm::vt email] }
 
 	    # Set later: hotel, facility, city
 

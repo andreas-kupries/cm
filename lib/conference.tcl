@@ -132,24 +132,36 @@ proc ::cm::conference::cmd_create {config} {
     db show-location
     # try to insert, report failure as user error
 
-    set title  [$config @title]
-    set year   [$config @year]
-    set align  [$config @alignment]
-    set start  [$config @start]
-    set length [$config @length]
+    set ascurr  [$config @current]    ; debug.cm/conference {ascurr  = $ascurr}
+    set title   [$config @title]      ; debug.cm/conference {title   = $title}
+    set year    [$config @year]       ; debug.cm/conference {year    = $year}
+    set align   [$config @alignment]  ; debug.cm/conference {align   = $align}
+    set start   [$config @start]      ; debug.cm/conference {start   = $start}
+    set length  [$config @length]     ; debug.cm/conference {length  = $length}
+    set manager [$config @manager]    ; debug.cm/conference {manager = $manager}
+    set subrecv [$config @submission] ; debug.cm/conference {subrecv = $subrecv}
 
     puts -nonewline "Creating conference \"[color name $title]\" ... "
+    flush stdout
 
     # move start-date into alignment
     if {$align > 0} {
+	set old $start
 	while {[clock format $start -format %u] != $align} {
 	    set start [clock add $start -1 days]
+	}
+	if {$start != $old} {
+	    puts -nonewline "Realigned to [hdate $start] ..."
+	    flush stdout
 	}
     }
 
     # check year-of start-date vs year
-    if {[clock format $start -format %Y] != $year} {
-	util user-error "Start date does not match conference year" YEAR MISMATCH
+    set syear [clock format $start -format %Y]
+    if {$syear != $year} {
+	util user-error \
+	    "Start date in $syear does not match conference year $year" \
+	    YEAR MISMATCH $syear $year
     }
 
     # calculate end-date (= start + (length - 1))
@@ -161,9 +173,22 @@ proc ::cm::conference::cmd_create {config} {
 	db do transaction {
 	    db do eval {
 		INSERT INTO conference
-		VALUES (NULL, :title, :year, NULL, NULL, NULL,
-			:start, :end, :align, :length, 30, 3)
-		-- 30 minutes per talk, at 3 talks per session - defaults
+		VALUES (NULL,     -- id, auto-assigned
+			:title,
+			:year,
+			:manager,
+			:subrecv,
+			NULL,     -- city
+			NULL,     -- hotel
+			NULL,     -- facility
+			:start,
+			:end,
+			:align,
+			:length,
+			30,       -- minutes per talk
+			3,        -- talks per session
+			1         -- registration pending
+	        )
 	    }
 	}
 	set id [db do last_insert_rowid]
@@ -177,11 +202,15 @@ proc ::cm::conference::cmd_create {config} {
 
     puts [color good OK]
 
-    puts -nonewline "Setting as current conference ... "
-    config assign @current-conference $id
-    puts [color good OK]
+    if {$ascurr} {
+	puts -nonewline "Setting as current conference ... "
+	flush stdout
+	config assign @current-conference $id
+	puts [color good OK]
+    }
 
     puts [color warning {Please remember to set the location information}]
+    # TODO conference create - Extend to ask for the locations of hotel and facility.
     return
 }
 
