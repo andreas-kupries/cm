@@ -384,7 +384,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Location to operate on in the future - The "current" location
 	    } {
 		optional
-		# TODO: validator <=> location identification (name + city)
+		validate [cm::vt location]
 		generate [cm::call location select]
 	    }
 	} [cm::call location cmd_select]
@@ -666,17 +666,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Select the location for presentations }
 	    input location { Conference facility } {
-		# TODO: validator <=> location identification (name + city)
-		optional ; generate [cm::call location select]
+		optional
+		validate [cm::vt location]
+		generate [cm::call location select]
 	    }
 	} [cm::call conference cmd_facility]
 
 	private hotel {
 	    section {Conference Management}
 	    description { Select the conference hotel }
-	    input locatation { Conference hotel } {
-		# TODO: validator <=> location identification (name + city)
-		optional ; generate [cm::call location select]
+	    input location { Conference hotel } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call location select]
 	    }
 	} [cm::call conference cmd_hotel]
 

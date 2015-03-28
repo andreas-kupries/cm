@@ -38,8 +38,8 @@ namespace eval ::cm {
 namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	 cmd_map cmd_staff_show cmd_map_get \
-	cmd_staff_link cmd_staff_unlink \
+	cmd_map cmd_staff_show cmd_map_get \
+	cmd_staff_link cmd_staff_unlink known-validation \
 	select label get details known-staff select-staff
     namespace ensemble create
 
@@ -348,6 +348,47 @@ proc ::cm::location::cmd_staff_unlink {config} {
 proc ::cm::location::label {name city} {
     debug.cm/location {}
     return "$name ($city)"
+}
+
+proc ::cm::location::known-validation {} {
+    debug.cm/location {}
+    Setup
+
+    # dict: id -> list (label)
+    set map {}
+
+    db do eval {
+	SELECT L.id     AS id,
+	       L.name   AS name,
+	       C.name   AS city,
+	       C.state  AS state,
+	       C.nation AS nation
+	FROM  location L,
+	      city     C
+	WHERE C.id = L.city
+    } {
+	if {$state ne {}} {
+	    set label "$name $city $state $nation"
+	} else {
+	    set label "$name $city $nation"
+	}
+	set initials  [util initials $label]
+	set llabel    [string tolower $label]
+	set linitials [string tolower $initials]
+
+	dict lappend map $id $label  "$initials $label"
+	dict lappend map $id $llabel "$linitials $llabel"
+    }
+
+    # Rekey by names, then extend with key permutations which do not
+    # clash, lastly drop all keys with multiple outcomes.
+    set map   [util dict-invert         $map]
+    # Long names for hotels, longer with location ... Too slow at the moment.
+    #set map   [util dict-fill-permute   $map]
+    set known [util dict-drop-ambiguous $map]
+
+    debug.cm/location {==> ($known)}
+    return $known
 }
 
 proc ::cm::location::known {} {
