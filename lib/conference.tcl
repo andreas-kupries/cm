@@ -115,8 +115,8 @@ proc ::cm::conference::cmd_list {config} {
 
 	    set city    [city label $city $state $nation]
 	    set issues  [issues [details $id]]
-	    if {$issues ne {}} {
-		append title \n $issues
+	    if {[llength $issues]} {
+		append title \n [fmt-issues-cli $issues]
 	    }
 
 	    util highlight-current cid $id current title start end city
@@ -209,8 +209,8 @@ proc ::cm::conference::cmd_show {config} {
     puts "Details of \"[color name [get $id]]\":"
     [table t {Property Value} {
 	set issues [issues $details]
-	if {$issues ne {}} {
-	    $t add [color bad Issues] $issues
+	if {[llength $issues]} {
+	    $t add [color bad Issues] [fmt-issues-cli $issues]
 	    $t add {} {}
 	}
 
@@ -1760,9 +1760,22 @@ proc ::cm::conference::make_admin {conference} {
     debug.cm/conference {}
     upvar 1 dstdir dstdir
 
+    set issues [issues [details $conference]]
+
+    if {[llength $issues]} {
+	append text "* " [link Issues      {} issues] \n
+    }
     append text "* " [link Events      {} events] \n
     append text "* " [link Submissions {} submissions] \n
     append text \n
+
+    if {[llength $issues]} {
+	append text \n
+	append text [anchor issues] \n
+	append text "# Issues\n\n"
+	append text [fmt-issues-web $issues]
+	append text \n
+    }
 
     # Full timeline, including the non-public events.
 
@@ -2423,6 +2436,24 @@ proc ::cm::conference::known-rstatus {} {
     return $known
 }
 
+proc ::cm::conference::fmt-issues-web {issues} {
+    debug.cm/conference {}
+    set result {}
+    foreach issue $issues {
+	lappend result "* $issue"
+    }
+    return [join $result \n]
+}
+
+proc ::cm::conference::fmt-issues-cli {issues} {
+    debug.cm/conference {}
+    set result {}
+    foreach issue $issues {
+	lappend result "- [color bad $issue]"
+    }
+    return [join $result \n]
+}
+
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
@@ -2502,13 +2533,13 @@ proc ::cm::conference::issues {details} {
     }
 
     if {![llength $issues]} return
-    return [join $issues \n]
+    return $issues
 }
 
 proc ::cm::conference::+issue {text} {
     debug.cm/conference {}
     upvar 1 issues issues
-    lappend issues "- [color bad $text]"
+    lappend issues $text
     return
 }
 
