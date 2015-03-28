@@ -254,6 +254,7 @@ proc ::cm::conference::cmd_show {config} {
 	    set xalign <<none>>
 	}
 
+	set xhotelid $xhotel
 	if {$xcity     ne {}} { set xcity     [city     get $xcity] }
 	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
 	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
@@ -280,15 +281,15 @@ proc ::cm::conference::cmd_show {config} {
 	$t add {} {}
 
 	# - -- --- ----  -------- ------------- rate info
-	if {[db do exists {
+	if {![db do exists {
 	    SELECT *
 	    FROM   rate
-	    WHERE  conference = :conference
-	    AND    location   = :xhotel
+	    WHERE  conference = :id
+	    AND    location   = :xhotelid
 	}]} {
-	    $t add [color note bad Rate] "[color bad Undefined]\n(=> conference rate)"
+	    $t add [color bad Rate]  "[color bad Undefined]\n(=> conference rate)"
 	} else {
-	    $t add [color note Rate]     "[color note ok]\n(=> conference rates)"
+	    $t add [color note Rate] "[color note ok]\n(=> conference rates)"
 	}
 
 	# - -- --- ----  -------- ------------- timeline
@@ -2076,23 +2077,42 @@ proc ::cm::conference::insert {id text} {
 
     +map @c:city@ [city get [dict get $details xcity]]
 
-    # Hotel information.
+    # Hotel information, if available.
     # insert - TODO: Facility information, and hotel != facility.
 
-    set xhotel   [dict get $details xhotel]
-    set hdetails [location details $xhotel]
+    set xhotel [dict get $details xhotel]
+    if {$xhotel ne {}} {
+	set hdetails [location details $xhotel]
 
-    set xlocalphone [dict get $hdetails xlocalphone]
-    set xlocalfax   [dict get $hdetails xlocalfax]
-    set xlocallink  [dict get $hdetails xlocallink]
-    set xbookphone  [dict get $hdetails xbookphone]
-    set xbookfax    [dict get $hdetails xbookfax]
-    set xbooklink   [dict get $hdetails xbooklink]
+	set xlocalphone [dict get $hdetails xlocalphone]
+	set xlocalfax   [dict get $hdetails xlocalfax]
+	set xlocallink  [dict get $hdetails xlocallink]
+	set xbookphone  [dict get $hdetails xbookphone]
+	set xbookfax    [dict get $hdetails xbookfax]
+	set xbooklink   [dict get $hdetails xbooklink]
+	set xhname      [dict get $hdetails xname]
+	set xhstreet    [dict get $hdetails xstreet]
+	set xhzipcode   [dict get $hdetails xzipcode]
+	set xhtransport [dict get $hdetails xtransport]
+	set xhcity      [city get [dict get $hdetails xcity]]
+    } else {
+	set xlocalphone __Missing__
+	set xlocalfax   __Missing__
+	set xlocallink  __Missing__
+	set xbookphone  __Missing__
+	set xbookfax    __Missing__
+	set xbooklink   __Missing__
+	set xhname      __Missing__
+	set xhstreet    __Missing__
+	set xhzipcode   __Missing__
+	set xhtransport __Missing__
+	set xhcity      __Missing__
+    }
 
-    +map @h:hotel@      [dict get $hdetails xname]
-    +map @h:city@       [city get [dict get $hdetails xcity]]
-    +map @h:street@     "[dict get $hdetails xstreet], [dict get $hdetails xzipcode]"
-    +map @h:transport@  [dict get $hdetails xtransport]
+    +map @h:hotel@      $xhname
+    +map @h:city@       $xhcity
+    +map @h:street@     "$xhstreet, $xhzipcode"
+    +map @h:transport@  $xhtransport
     +map @h:bookphone@  [ifempty $xbookphone $xlocalphone]
     +map @h:bookfax@    [ifempty $xbookfax   $xlocalfax]
     +map @h:booklink@   [ifempty $xbooklink  $xlocallink]
@@ -2100,9 +2120,30 @@ proc ::cm::conference::insert {id text} {
     +map @h:localfax@   $xlocalfax
     +map @h:locallink@  $xlocallink
 
-    # Room rate information
+    # Room rate information, if available
 
-    set rdetails [get-rate $id $xhotel]
+    if {$xhotel ne {}} {
+	set rdetails [get-rate $id $xhotel]
+	if {![dict size $rdetails]} {
+	    set rdetails {
+		rate      __Missing__
+		currency  __Missing__
+		begin     __Missing__
+		end       __Missing__
+		pdeadline __Missing__
+		group     __Missing__
+	    }
+	}
+    } else {
+	set rdetails {
+	    rate      __Missing__
+	    currency  __Missing__
+	    begin     __Missing__
+	    end       __Missing__
+	    pdeadline __Missing__
+	    group     __Missing__
+	}
+    }
 
     +map @r:rate@     [dict get $rdetails rate]
     +map @r:currency@ [dict get $rdetails currency]
@@ -2506,6 +2547,15 @@ proc ::cm::conference::issues {details} {
 	WHERE  con = :xconference
     }]} {
 	+issue "Undefined timeline"
+    }
+
+    if {![db do exists {
+	SELECT id
+	FROM   rate
+	WHERE  conference = :xconference
+	AND    location   = :xhotel
+    }]} {
+	+issue "No rate information"
     }
 
     if {![db do exists {
