@@ -9,8 +9,7 @@ SOON
 ====
 
 * website - internal pages,
-  - status page - show conference issues
-  - show status of timeline - see below re flag/checkmark
+  - status page - show status of timeline - see below re flag/checkmark
 
 * Need flag on timeline entries - checkmark if an action was done or not.
 
