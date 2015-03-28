@@ -23,11 +23,12 @@
 ## Requisites
 
 package require Tcl 8.5
+package require cmdr::color
 package require debug
 package require debug::caller
-package require cmdr::color
-package require textutil::adjust
 package require linenoise
+package require struct::list
+package require textutil::adjust
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -40,7 +41,8 @@ namespace eval ::cm {
 namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
-	tspace adjust
+	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
+	initials
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -55,6 +57,7 @@ debug prefix cm/util {[debug caller] | }
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::util::tspace {sub {tmax -1}} {
+    debug.cm/util {}
     set max [linenoise columns]
     incr max -$sub
     if {$max < 0} {
@@ -70,6 +73,7 @@ proc ::cm::util::tspace {sub {tmax -1}} {
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::util::highlight-current {xvar id args} {
+    debug.cm/util {}
     upvar 1 $xvar cid [lindex $args 0] current
     if {$cid != $id} {
 	set current {}
@@ -86,7 +90,67 @@ proc ::cm::util::highlight-current {xvar id args} {
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::util::user-error {msg args} {
+    debug.cm/util {}
     return -code error -errorcode [list CM USER {*}$args] $msg
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::dict-invert {dict} {
+    debug.cm/util {}
+
+    set r {}
+    # Invert
+    dict for {k vlist} $dict {
+	foreach v $vlist {
+	    dict lappend r $v $k
+	}
+    }
+    # Drop duplicates
+    dict for {k list} $r {
+	dict set r $k [lsort -unique $list]
+    }
+    return $r
+}
+
+proc ::cm::util::dict-drop-ambiguous {dict} {
+    debug.cm/util {}
+
+    dict for {k vlist} $dict {
+	if {[llength $vlist] == 1} {
+	    dict set dict $k [lindex $vlist 0]
+	    continue
+	}
+	dict unset dict $k
+    }
+    return $dict
+}
+
+proc ::cm::util::dict-fill-permute {dict} {
+    debug.cm/util {}
+
+    # Extend with key permutations which do not clash
+    dict for {k vlist} $dict {
+	foreach p [struct::list permutations [split $k]] {
+	    set p [join $p]
+	    if {[dict exists $dict $p]} continue
+	    dict set dict $p $vlist
+	}
+    }
+
+    return $dict
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::initials {text} {
+    debug.cm/util {}
+
+    set r {}
+    foreach w [split $text] {
+	append r [string toupper [string index $w 0]]
+    }
+    return $r
 }
 
 # # ## ### ##### ######## ############# #####################
