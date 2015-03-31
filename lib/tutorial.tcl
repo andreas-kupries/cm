@@ -22,7 +22,6 @@ package require debug
 package require debug::caller
 package require dbutil
 package require try
-package require struct::list
 
 package provide cm::tutorial 0 ;# circular through contact, campaign, conference
 
@@ -378,38 +377,6 @@ proc ::cm::tutorial::known {} {
 
     debug.cm/tutorial {==> ($known)}
     return $known
-}
-
-proc ::cm::tutorial::Invert {dict} {
-    # invert TODO - coalesce with code in contact
-    debug.cm/tutorial {}
-
-    set r {}
-    # Invert
-    dict for {k vlist} $dict {
-	foreach v $vlist {
-	    dict lappend r $v $k
-	}
-    }
-    # Drop duplicates
-    dict for {k list} $r {
-	dict set r $k [lsort -unique $list]
-    }
-    return $r
-}
-
-proc ::cm::tutorial::DropAmbiguous {dict} {
-    # drop-ambiguous TODO - coalesce with code in contact
-    debug.cm/tutorial {}
-
-    dict for {k vlist} $dict {
-	if {[llength $vlist] == 1} {
-	    dict set dict $k [lindex $vlist 0]
-	    continue
-	}
-	dict unset dict $k
-    }
-    return $dict
 }
 
 proc ::cm::tutorial::get {id} {
