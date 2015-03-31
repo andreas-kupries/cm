@@ -955,7 +955,7 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private set-summary {
 	    section {Submission Management}
-	    description { Change summary of a submission }
+	    description { Change summary of a submission. Read from stdin. }
 	    input submission {
 		The submission to change
 	    } { validate [cm::vt submission] }
@@ -963,7 +963,7 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private set-abstract {
 	    section {Submission Management}
-	    description { Change absract of a submission }
+	    description { Change abstract of a submission. Read from stdin. }
 	    input submission {
 		The submission to change
 	    } { validate [cm::vt submission] }
@@ -984,6 +984,75 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Submission Management}
 	    description { Show submissions for the current conference }
 	} [cm::call conference cmd_submission_list]
+
+	private accept {
+	    section {Submission Management}
+	    description { Accept the specified submission }
+	    option type {
+		Type of talk. Default is based on the invited
+		state of the chosen submission.
+	    } { validate [cm::vt talk-type] }
+	    input submission {
+		The submission to accept.
+	    } { optional
+		validate [cm::vt submission]
+		generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_accept]
+
+	private reject {
+	    section {Submission Management}
+	    description { Reject the specified submissions }
+	    input submission {
+		The submissions to reject.
+	    } { list ; optional ; validate [cm::vt submission] ;
+		generate [cm::call conference select-submission] }
+	} [cm::call conference cmd_submission_reject]
+	alias unaccept
+
+	private add-speaker {
+	    section {Submission Management}
+	    description { Add one or more speakers to an accepted submission. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input speaker {
+		The speakers to add
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator person (can_talk)
+	} [cm::call conference cmd_submission_addspeaker]
+
+	private drop-speaker {
+	    section {Submission Management}
+	    description { Remove one or more speakers from an accepted submission. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input speaker {
+		The speakers to remove
+	    } { optional ; list ; interact ; validate [cm::vt speaker] }
+	} [cm::call conference cmd_submission_dropspeaker]
+
+	private attach {
+	    section {Submission Management}
+	    description { Add an attachment to an accepted submission. Read from stdin. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input type {
+	    } {}
+	    input mimetype {
+	    } {}
+	} [cm::call conference cmd_submission_attach]
+
+	private detach {
+	    section {Submission Management}
+	    description { Remove one or more attachment from an accepted submission. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input type {
+		The type of attachment to remove
+	    } { optional ; list ; interact ; validate [cm::vt attachment] }
+	} [cm::call conference cmd_submission_detach]
     }
     alias submissions = submission list
     alias unsubmit    = submission drop

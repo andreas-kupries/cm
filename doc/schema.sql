@@ -351,17 +351,14 @@ CREATE TABLE submitter (
 -- ---------------------------------------------------------------
 CREATE TABLE talk (
 	id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
-	conference	INTEGER	NOT NULL REFERENCES conference,
-	submission	INTEGER	NOT NULL REFERENCES submission,
+	submission	INTEGER	NOT NULL REFERENCES submission,	-- implies conference
 	type		INTEGER	NOT NULL REFERENCES talk_type,
 	state		INTEGER	NOT NULL REFERENCES talk_state,
-	isremote	INTEGER	NOT NULL,			 -- hangout, skype, other ? => TEXT?
+	isremote	INTEGER	NOT NULL,			-- hangout, skype, other ? => TEXT?
 
-	-- TODO: blobs for presentation slides, paper, and other material
-	-- -> separate table to allow for many attachments.
+	UNIQUE (submission) -- Not allowed to have the same submission in multiple conferences.
 
-	UNIQUE (conference, submission)
-	-- constraint: con == submission->con
+	-- constraint: talk.conference == talk.submission.conference
 );
 -- ---------------------------------------------------------------
 CREATE TABLE attachment (
@@ -376,7 +373,9 @@ CREATE TABLE attachment (
 CREATE TABLE talker (
 	talk		INTEGER	REFERENCES talk,
 	contact		INTEGER	REFERENCES contact,	-- can_talk
+
 	UNIQUE (talk, contact)
+
 	-- We allow multiple speakers => panels, co-presentation
 	-- Note: Presenter is not necessarily any of the submitters of the submission behind the talk
 );
