@@ -22,7 +22,6 @@ package require debug
 package require debug::caller
 package require dbutil
 package require try
-package require struct::list
 
 package provide cm::contact 0 ; # campaign and contact are circular
 
@@ -1292,46 +1291,6 @@ proc ::cm::contact::KnownSelectLimited {limit} {
     return $known
 }
 
-proc ::cm::contact::Initials {text} {
-    debug.cm/contact {}
-
-    set r {}
-    foreach w [split $text] {
-	append r [string toupper [string index $w 0]]
-    }
-    return $r
-}
-
-proc ::cm::contact::Invert {dict} {
-    debug.cm/contact {}
-
-    set r {}
-    # Invert
-    dict for {k vlist} $dict {
-	foreach v $vlist {
-	    dict lappend r $v $k
-	}
-    }
-    # Drop duplicates
-    dict for {k list} $r {
-	dict set r $k [lsort -unique $list]
-    }
-    return $r
-}
-
-proc ::cm::contact::DropAmbiguous {dict} {
-    debug.cm/contact {}
-
-    dict for {k vlist} $dict {
-	if {[llength $vlist] == 1} {
-	    dict set dict $k [lindex $vlist 0]
-	    continue
-	}
-	dict unset dict $k
-    }
-    return $dict
-}
-
 proc ::cm::contact::KnownValidate {} {
     debug.cm/contact {}
 
@@ -1371,7 +1330,7 @@ proc ::cm::contact::KnownLimited {limit} {
 	if {$tag ne {}} {
 	    dict lappend map $id $tag @$tag
 	}
-	set in [Initials $name]
+	set in [util initials $name]
 	set il [string tolower $in]
 
 	#puts "|$id -- $tag|$name|$dname|$in|"
@@ -1403,18 +1362,10 @@ proc ::cm::contact::KnownLimited {limit} {
     }
 
     # Rekey by names
-    set map [Invert $map]
+    set map [util dict-invert $map]
+    set map [util dict-fill-permute $map]
 
-    # Extend with key permutations which do not clash
-    dict for {k vlist} $map {
-	foreach p [struct::list permutations [split $k]] {
-	    set p [join $p]
-	    if {[dict exists $map $p]} continue
-	    dict set map $p $vlist
-	}
-    }
-
-    set known [DropAmbiguous $map]
+    set known [util dict-drop-ambiguous $map]
 
     #array set _ $known
     #parray _
