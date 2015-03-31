@@ -40,7 +40,7 @@ namespace eval ::cm::location {
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
 	cmd_map cmd_staff_show cmd_map_get \
 	cmd_staff_link cmd_staff_unlink known-validation \
-	select label get details known-staff select-staff
+	select label get details known-staff select-staff get-name
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -239,17 +239,26 @@ proc ::cm::location::cmd_contact {config} {
     set details [details $id]
 
     puts "Working with location \"[color name [get $id]]\" ..."
+    # NOTE: Could move the interaction into the cli spec, at the
+    # NOTE: expense of either not showing the non-interactive pieces,
+    # NOTE: or showing them after the interaction, i.e. out of the
+    # NOTE: chosen order.
     foreach {key label} {
-	xbookphone  {Booking Phone}
-	xbookfax    {Booking FAX  }
-	xbooklink   {Booking Url  }
-	xlocalphone {Local   Phone}
-	xlocalfax   {Local   FAX  }
-	xlocallink  {Local   Url  }
+	bookphone  {Booking Phone}
+	bookfax    {Booking FAX  }
+	booklink   {Booking Url  }
+	localphone {Local   Phone}
+	localfax   {Local   FAX  }
+	locallink  {Local   Url  }
     } {
-	set v [dict get $details $key]
-	set new [ask string $label $v]
-	dict set details $key $new
+	if {[$config @$key set?]} {
+	    set new [$config @$key set?]
+	    puts "${label}: $new"
+	} else {
+	    set v [dict get $details $key]
+	    set new [ask string $label $v]
+	}
+	dict set details x$key $new
     }
 
     puts -nonewline "Saving ... "
@@ -461,6 +470,28 @@ proc ::cm::location::get {id} {
     }] name city state nation
 
     return [label $name [city label $city $state $nation]]
+}
+
+proc ::cm::location::get-name {id} {
+    debug.cm/location {}
+    Setup
+
+    lassign [db do eval {
+	SELECT L.name   AS name,
+	       C.name   AS city,
+	       C.state  AS state,
+	       C.nation AS nation
+	FROM  location L,
+	      city     C
+	WHERE C.id = L.city
+	AND   L.id = :id
+    }] name city state nation
+
+    if {$state ne {}} {
+	return "$name $city $state $nation"
+    } else {
+	return "$name $city $nation"
+    }
 }
 
 proc ::cm::location::details {id} {
@@ -719,6 +750,45 @@ proc ::cm::location::Setup {} {
 
     # Shortcircuit further calls
     proc ::cm::location::Setup {args} {}
+    return
+}
+
+proc ::cm::location::Dump {chan} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/location {}
+
+    db do eval {
+	SELECT id, name, city, streetaddress, zipcode,
+	       book_fax, book_link, book_phone,
+	       local_fax, local_link, local_phone,
+	       transportation
+	FROM   location
+	ORDER BY name
+    } {
+	set city [city get $city]
+
+	cm dump save $chan \
+	    location create $name $streetaddress $zipcode $city
+	# create auto-selects new location as current.
+	cm dump save $chan \
+	    location contact $book_phone $book_fax $book_link $local_phone $local_fax $local_link
+
+	db do eval {
+	    SELECT position, name, phone, email
+	    FROM   location_staff
+	    WHERE  location = :id
+	    ORDER BY name, position
+	} {	
+	    cm dump save $chan \
+		location add-staff $position $name $phone $email
+	}
+
+	if {$transportation ne {}} {
+	    cm dump save $chan location map-set << $transportation
+	}
+
+	cm dump step $chan
+    }
     return
 }
 

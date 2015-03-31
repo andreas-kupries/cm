@@ -36,7 +36,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::city {
     namespace export cmd_create cmd_list \
-	select label get
+	select label get known-validation
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -128,6 +128,39 @@ proc ::cm::city::label {name state nation} {
     return $label
 }
 
+proc ::cm::city::known-validation {} {
+    set map {}
+
+    db do eval {
+	SELECT city, state, nation
+	FROM   city
+    } {
+	dict lappend map $id [label $city $state $nation]
+
+	if {$state ne {}} {
+	    set label "$city $state $nation"
+	} else {
+	    set label "$city $nation"
+	}
+	set initials  [util initials $label]
+	set llabel    [string tolower $label]
+	set linitials [string tolower $initials]
+
+	dict lappend map $id $label  "$initials $label"
+	dict lappend map $id $llabel "$linitials $llabel"
+    }
+
+    # Rekey by names, then extend with key permutations which do not
+    # clash, lastly drop all keys with multiple outcomes.
+    set map   [util dict-invert         $map]
+    # Long names for hotels, longer with location ... Too slow at the moment.
+    set map   [util dict-fill-permute   $map]
+    set known [util dict-drop-ambiguous $map]
+
+    debug.cm/city {==> ($known)}
+    return $known
+}
+
 proc ::cm::city::known {} {
     debug.cm/city {}
     Setup
@@ -196,6 +229,21 @@ proc ::cm::city::Setup {} {
 
     # Shortcircuit further calls
     proc ::cm::city::Setup {args} {}
+    return
+}
+
+proc ::cm::city::Dump {chan} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/city {}
+
+    db do eval {
+	SELECT name, state, nation
+	FROM   city
+	ORDER BY nation, state, name
+    } {
+	cm dump save $chan \
+	    city create $name $state $nation
+    }
     return
 }
 

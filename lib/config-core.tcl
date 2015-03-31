@@ -140,6 +140,7 @@ proc ::cm::config::core::get* {key default} {
 }
 
 proc ::cm::config::core::has {key} {
+    debug.cm/config/core {}
     return [db do exists {
 	SELECT value
 	FROM   config
@@ -148,6 +149,7 @@ proc ::cm::config::core::has {key} {
 }
 
 proc ::cm::config::core::has-glob {pattern} {
+    debug.cm/config/core {}
     return [db do exists {
 	SELECT value
 	FROM   config
@@ -156,6 +158,7 @@ proc ::cm::config::core::has-glob {pattern} {
 }
 
 proc ::cm::config::core::names {pattern} {
+    debug.cm/config/core {}
     return [db do eval {
 	SELECT name
 	FROM   config
@@ -183,6 +186,24 @@ proc ::cm::config::core::Setup {} {
 
     # Shortcircuit further calls
     proc ::cm::config::core::Setup {args} {}
+    return
+}
+
+proc ::cm::config::core::Dump {chan} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/config/core {}
+
+    db do eval {
+	SELECT key, value
+	FROM   config
+	ORDER BY key
+    } {
+	# Ignore internal state recorded as config
+	if {[string match @* $key]} continue
+
+	cm dump save $chan \
+	    config set $key $value
+    }
     return
 }
 
