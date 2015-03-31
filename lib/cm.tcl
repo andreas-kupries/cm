@@ -1038,8 +1038,10 @@ cmdr create cm::cm [file tail $::argv0] {
 		The submission to modify
 	    } { validate [cm::vt submission] }
 	    input type {
+		Type of the attachment.
 	    } {}
 	    input mimetype {
+		MIME type of the attachment.
 	    } {}
 	} [cm::call conference cmd_submission_attach]
 

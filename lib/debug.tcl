@@ -68,6 +68,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::template
     package require cm::tutorial
     package require cm::util
+    package require cm::validate::attachment
     package require cm::validate::colormode
     package require cm::validate::conference-staff
     package require cm::validate::config
