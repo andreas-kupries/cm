@@ -59,6 +59,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::config::core
     package require cm::contact
     package require cm::db
+    package require cm::debug
     package require cm::enum
     package require cm::location
     package require cm::mailer
@@ -67,6 +68,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::template
     package require cm::tutorial
     package require cm::util
+    package require cm::validate::attachment
     package require cm::validate::colormode
     package require cm::validate::conference-staff
     package require cm::validate::config
@@ -81,9 +83,13 @@ proc ::cm::debug::thelevels {} {
     package require cm::validate::nottutorial
     package require cm::validate::nottutorialtag
     package require cm::validate::rstatus
+    package require cm::validate::speaker
     package require cm::validate::sponsor
     package require cm::validate::submission
+    package require cm::validate::talkstate
+    package require cm::validate::talktype
     package require cm::validate::template
+    package require cm::validate::timeline
     package require cm::validate::tutorial
 
     package require cmdr::ask
