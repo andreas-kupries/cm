@@ -24,6 +24,7 @@ package require debug
 package require debug::caller
 package require cm::atexit
 package require cmdr::color
+package require sqlite3
 
 # # ## ### ##### ######## ############# #####################
 ## Definition

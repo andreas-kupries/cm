@@ -226,6 +226,20 @@ cmdr create cm::cm [file tail $::argv0] {
     }]
 
     # # ## ### ##### ######## ############# ######################
+    ## Backups and content transfer.
+
+    private save {
+	section Backup
+	description {Save database as readable and executable Tcl script}
+	# By generating a Tcl script which directly executes cm commands
+	# an explicit restore command is superfluous.
+	input destination {
+	    Path to the file to save the databae to.
+	    Note that an existing file will be overwritten.
+	} { validate wfile }
+    } [cm::call dump cmd]
+
+    # # ## ### ##### ######## ############# ######################
     ## Manage configuration
 
     officer config {
@@ -363,7 +377,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name          { Name of the location }              { optional ; interact {Name:    } }
 	    input streetaddress { Where the location is in the city } { optional ; interact {Street:  } }
 	    input zipcode       { Postal code of the location }       { optional ; interact {Zipcode: } }
-	    state city          { City the location is in }           { generate [cm::call city select] }
+	    input city          { City the location is in }           {
+		optional
+		validate [cm::vt city]
+		generate [cm::call city select]
+	    }
 
 	    # Contact details, and staff information to be set after
 	    # the fact (of creation).
@@ -397,6 +415,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	private contact {
 	    section {Location Management}
 	    description { Set the contact information of the current location }
+	    input bookphone  {Phone number for booking rooms} { optional }
+	    input bookfax    {Fax number for booking rooms}   { optional }
+	    input booklink   {Website for booking rooms}      { optional }
+	    input localphone {Direct phone to the hotel}      { optional }
+	    input localfax   {Direct fax to the hotel}        { optional }
+	    input locallink  {Direct website of the hotel}    { optional }
 	} [cm::call location cmd_contact]
 
 	private map-set {

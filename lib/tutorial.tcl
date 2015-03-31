@@ -649,6 +649,30 @@ proc ::cm::tutorial::Setup {} {
     return
 }
 
+proc ::cm::tutorial::Dump {chan} {
+    debug.cm/tutorial {}
+
+    db do eval {
+	SELECT C.dname       AS nspeaker,
+	       T.tag         AS tag,
+	       T.title       AS title,
+	       T.prereq      AS req,
+	       T.description AS desc
+	FROM   tutorial T,
+	       contact  C
+	WHERE  C.id = T.speaker
+	ORDER BY nspeaker, title
+    } {
+	if {$req ne {}} {
+	    cm dump save $chan tutorial add -R $req $desc $nspeaker $tag $title
+	} else {
+	    cm dump save $chan tutorial add $desc $nspeaker $tag $title
+	}
+	cm dump step $chan
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 package provide cm::tutorial 0
 return

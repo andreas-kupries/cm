@@ -3314,6 +3314,65 @@ proc ::cm::conference::Setup {} {
     return
 }
 
+
+proc ::cm::conference::Dump {chan} {
+    debug.cm/conference {}
+
+    db do eval {
+	SELECT id, title, year, management, submission,
+	       city, hotel, facility,
+	       startdate, enddate, alignment, length,
+	       talklength, sessionlen, rstatus
+	FROM   conference
+	ORDER BY title
+    } {
+
+	set management [cm contact get-name  $management]
+	set submission [cm contact get-email $submission]
+	set startdate  [clock format $startdate -format %Y-%m-%d]
+	if {$alignment > 0} {
+	    set alignment  [weekday 2external $alignment]
+	} else {
+	    # TODO: extended weekday validator, allow empty string for -1
+	    set alignment {}
+	}
+	# enddate - implied (start+length)
+	# talklength, sessionlen - fixed, currently
+
+	cm dump save $chan  conference create $title $year $alignment $startdate $length $management $submission
+	# auto-select conference as current
+
+	if {$hotel ne {}} {
+	    set hotel [cm location get-name $hotel]
+	    cm dump save $chan  conference hotel $hotel
+	}
+	if {$facility ne {}} {
+	    set facility [cm location get-name $facility]
+	    cm dump save $chan  conference facility $facility
+	}
+	# city is implied by the facility/hotel
+
+	cm dump save $chan conference registration [get-rstatus $rstatus]
+	cm dump save $chan conference timeline-init
+
+cm dump step $chan
+cm dump comment $chan conference timeline-set ...
+cm dump comment $chan conference set-rate ...
+cm dump comment $chan conference add-sponsor ...
+cm dump comment $chan conference add-staff ... 
+cm dump comment $chan conference submit ...
+
+# TODO: timeline-set (+timeline-init)
+# TODO: rate information
+# TODO: conference sponsors
+# TODO: conference staff
+# TODO: submissions
+
+	cm dump step $chan
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 package provide cm::conference 0
 return

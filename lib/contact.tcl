@@ -1634,6 +1634,93 @@ proc ::cm::contact::Setup {} {
     return
 }
 
+proc ::cm::contact::Dump {chan} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/contact {}
+
+    # Step I. Core contact information.
+    db do eval {
+	SELECT id, tag, type, dname, biography, can_recvmail
+	FROM   contact
+	ORDER BY dname
+    } {
+	set links [db do eval {
+	    SELECT link
+	    FROM   link
+	    WHERE contact = :id
+	    ORDER BY link
+	}]
+	set mail [db do eval {
+	    SELECT email, inactive
+	    FROM   email
+	    WHERE contact = :id
+	    ORDER BY email
+	}]
+
+	switch $type {
+	    1 {	cm dump save $chan  contact create-person  $dname }
+	    2 {	cm dump save $chan  contact create-company $dname }
+	    3 {	cm dump save $chan  contact create-list    $dname [lindex $mail 0] }
+	}
+
+	if {!$can_recvmail} {
+	    cm dump save $chan  contact disable $dname
+	}
+	if {$tag ne {}} {
+	    cm dump save $chan  contact set-tag $dname $tag
+	}
+
+	if {$type != 3} {
+	    foreach {mail inactive} $mail {
+		cm dump save $chan	contact add-mail $dname -E $mail
+		if {!$inactive} continue
+		cm dump save $chan	contact disable-mail $mail
+	    }
+	}
+
+	foreach link $links {
+	    cm dump save $chan \
+		contact add-link $dname -L $link
+	}
+
+	if {$biography ne {}} {
+	    cm dump save $chan  contact set-bio $dname << $biography
+	}
+
+	cm dump step $chan
+    }
+
+    # Step II. Relationships (Affiliations & Liaisons)
+    db do eval {
+	SELECT C.dname AS ncompany,
+	       P.dname AS nperson
+	FROM   affiliation A,
+	       contact     C,
+	       contact     P
+	WHERE  A.company = C.id
+	AND    A.person  = P.id
+	ORDER BY nperson, ncompany
+    } {
+	cm dump save $chan  contact affiliate $nperson $ncompany
+    }
+
+    cm dump step $chan
+
+    db do eval {
+	SELECT C.dname AS ncompany,
+	       P.dname AS nperson
+	FROM   liaison L,
+	       contact C,
+	       contact P
+	WHERE  L.company = C.id
+	AND    L.person  = P.id
+	ORDER BY ncompany, nperson
+    } {
+	cm dump save $chan  contact add-liaison $ncompany $nperson
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 package provide cm::contact 0
 return
