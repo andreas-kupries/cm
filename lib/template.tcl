@@ -274,6 +274,22 @@ proc ::cm::template::Setup {} {
     return
 }
 
+proc ::cm::template::Dump {chan} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/template {}
+
+    db do eval {
+	SELECT name, value
+	FROM   template
+	ORDER BY name
+    } {
+	cm dump save $chan \
+	    template create $name << $value
+	cm dump step $chan
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 package provide cm::template 0
 return
