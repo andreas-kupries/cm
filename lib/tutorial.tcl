@@ -22,7 +22,6 @@ package require debug
 package require debug::caller
 package require dbutil
 package require try
-package require struct::list
 
 package provide cm::tutorial 0 ;# circular through contact, campaign, conference
 
@@ -368,57 +367,16 @@ proc ::cm::tutorial::known {} {
 	WHERE C.id = T.speaker
     } {
 	dict lappend map $id @${stag}:$tag
-	dict lappend map $id $title
+	dict lappend map $id "${speaker}/$title"
     }
 
     # Rekey by names
-    set map [Invert $map]
-
-    # Extend with key permutations which do not clash
-    dict for {k vlist} $map {
-	foreach p [struct::list permutations [split $k]] {
-	    set p [join $p]
-	    if {[dict exists $map $p]} continue
-	    dict set map $p $vlist
-	}
-    }
-
-    set known [DropAmbiguous $map]
+    set map [util dict-invert       $map]
+    #set map [util dict-fill-permute $map] - Not good for the speaker/title cominbation
+    set known [util dict-drop-ambiguous $map]
 
     debug.cm/tutorial {==> ($known)}
     return $known
-}
-
-proc ::cm::tutorial::Invert {dict} {
-    # invert TODO - coalesce with code in contact
-    debug.cm/tutorial {}
-
-    set r {}
-    # Invert
-    dict for {k vlist} $dict {
-	foreach v $vlist {
-	    dict lappend r $v $k
-	}
-    }
-    # Drop duplicates
-    dict for {k list} $r {
-	dict set r $k [lsort -unique $list]
-    }
-    return $r
-}
-
-proc ::cm::tutorial::DropAmbiguous {dict} {
-    # drop-ambiguous TODO - coalesce with code in contact
-    debug.cm/tutorial {}
-
-    dict for {k vlist} $dict {
-	if {[llength $vlist] == 1} {
-	    dict set dict $k [lindex $vlist 0]
-	    continue
-	}
-	dict unset dict $k
-    }
-    return $dict
 }
 
 proc ::cm::tutorial::get {id} {

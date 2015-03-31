@@ -3509,6 +3509,30 @@ proc ::cm::conference::Dump {chan} {
 		    --on [isodate $submitdate] $title {*}$authors
 	    }
 	}
+
+	set first 1
+	db do eval {
+	    SELECT S.day   AS day,
+	           H.text  AS half,
+	           S.track AS track,
+	           T.title AS tutorial,
+	           C.dname AS speaker
+	    FROM   tutorial_schedule S,
+	           tutorial          T,
+	           dayhalf           H,
+	           contact           C
+	    WHERE  S.conference = :id
+	    AND    S.tutorial   = T.id
+	    AND    S.half       = H.id
+	    AND    T.speaker    = C.id
+	    ORDER BY day, half, track
+	} {
+	    if {$first} { cm dump step $chan ; set first 0 }
+	    incr day ;# move to the external 1-based day offset.
+	    cm dump save $chan conference tutorial $day $half $track $speaker/$tutorial
+	}
+
+	cm dump step $chan
     }
     return
 }
