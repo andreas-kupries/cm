@@ -368,22 +368,13 @@ proc ::cm::tutorial::known {} {
 	WHERE C.id = T.speaker
     } {
 	dict lappend map $id @${stag}:$tag
-	dict lappend map $id $title
+	dict lappend map $id "${speaker}/$title"
     }
 
     # Rekey by names
-    set map [Invert $map]
-
-    # Extend with key permutations which do not clash
-    dict for {k vlist} $map {
-	foreach p [struct::list permutations [split $k]] {
-	    set p [join $p]
-	    if {[dict exists $map $p]} continue
-	    dict set map $p $vlist
-	}
-    }
-
-    set known [DropAmbiguous $map]
+    set map [util dict-invert       $map]
+    #set map [util dict-fill-permute $map] - Not good for the speaker/title cominbation
+    set known [util dict-drop-ambiguous $map]
 
     debug.cm/tutorial {==> ($known)}
     return $known
