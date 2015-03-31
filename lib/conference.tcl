@@ -61,7 +61,7 @@ namespace eval ::cm::conference {
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
-	get-talk-type get-talk-state known-talk-types known-talk-stati
+	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -1025,7 +1025,34 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
     debug.cm/conference {}
     Setup
     db show-location
-NYI
+
+    set conference [current]
+    set submission [$config @submission]
+
+    puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to add speakers for a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    foreach speaker [$config @speaker] {
+	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO talker
+	    VALUES (NULL, :talk, :speaker)
+	}
+
+	puts [color good OK]
+    }
     return
 }
 
@@ -1033,7 +1060,36 @@ proc ::cm::conference::cmd_submission_dropspeaker {config} {
     debug.cm/conference {}
     Setup
     db show-location
-NYI
+
+    set conference [current]
+    set submission [$config @submission]
+
+    puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to remove speakers from a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    foreach speaker [$config @speaker] {
+	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM   talker
+	    WHERE  talk    = :talk
+	    AND    contact = :speaker
+	}
+
+	puts [color good OK]
+    }
     return
 }
 
@@ -2608,11 +2664,37 @@ proc ::cm::conference::known-sponsor {} {
     if {$conference < 0} {
 	return {}
     }
-    return [cm::contact::KnownLimited [db do eval {
+
+    set sponsors [db do eval {
 	SELECT contact
 	FROM   sponsors
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $sponsors]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $sponsors]
+}
+
+proc ::cm::conference::known-speaker {p} {
+    debug.cm/conference {}
+    Setup
+
+    set submission [$p config @submission]
+
+    set talkers [db do eval {
+	SELECT contact
+	FROM   talker
+	WHERE  talk IN (SELECT id
+			FROM   talk
+			WHERE  submission = :submission)
+    }]
+    if {![llength $talkers]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $talkers]
 }
 
 proc ::cm::conference::known-sponsor-select {conference} {
@@ -2623,11 +2705,17 @@ proc ::cm::conference::known-sponsor-select {conference} {
 	($conference < 0)} {
 	return {}
     }
-    return [cm::contact::KnownSelectLimited [db do eval {
+
+    set sponsors [db do eval {
 	SELECT contact
 	FROM   sponsors
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $sponsors]} {
+	return {}
+    }
+
+    return [cm::contact::KnownSelectLimited $sponsors]
 }
 
 proc ::cm::conference::known-staff {} {
@@ -2638,11 +2726,17 @@ proc ::cm::conference::known-staff {} {
     if {$conference < 0} {
 	return {}
     }
-    return [cm::contact::KnownLimited [db do eval {
+
+    set staff [db do eval {
 	SELECT contact
 	FROM   conference_staff
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $staff]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $staff]
 }
 
 proc ::cm::conference::known-staff-select {conference} {
