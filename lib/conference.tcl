@@ -61,7 +61,8 @@ namespace eval ::cm::conference {
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
-	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker
+	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
+	known-attachment get-attachment
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -861,28 +862,25 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    $t add Authors  $authors
 
 	    if {$accepted} {
-		set first 1
-		db do eval {
+		set speakers [db do eval {
 		    SELECT dname
 		    FROM   contact
 		    WHERE  id IN (SELECT id
 				  FROM   talker
 				  WHERE  talk = :talk)
-		} {
-		    if {$first} { $t add Speaker {} }
-		    set first 0
-		    $t add {} $
+		}]
+		if {[llength $speakers]} {
+		    $t add Speakers [join $speakers \n]
 		}
 
-		set first 1
-		db do eval {
+		# TODO: attachments - determine and show size ?
+		set attachments [db do eval {
 		    SELECT type AS atype
 		    FROM   attachment
 		    WHERE  talk = :talk
-		} {
-		    if {$first} { $t add Attachments {} }
-		    set first 0
-		    $t add {} $atype
+		}]
+		if {[llength $attachments]} {
+		    $t add Attachments [join $attachments \n]
 		}
 	    }
 
@@ -1029,8 +1027,6 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
     set conference [current]
     set submission [$config @submission]
 
-    puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
-
     set talk [db do onecolumn {
 	SELECT id
 	FROM   talk
@@ -1041,6 +1037,8 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
 	    "Unable to add speakers for a submission which is not an accepted talk" \
 	    NOT-A-TALK
     }
+
+    puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
 	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
@@ -1064,8 +1062,6 @@ proc ::cm::conference::cmd_submission_dropspeaker {config} {
     set conference [current]
     set submission [$config @submission]
 
-    puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
-
     set talk [db do onecolumn {
 	SELECT id
 	FROM   talk
@@ -1076,6 +1072,8 @@ proc ::cm::conference::cmd_submission_dropspeaker {config} {
 	    "Unable to remove speakers from a submission which is not an accepted talk" \
 	    NOT-A-TALK
     }
+
+    puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
 	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
@@ -1097,7 +1095,35 @@ proc ::cm::conference::cmd_submission_attach {config} {
     debug.cm/conference {}
     Setup
     db show-location
-NYI
+
+    set conference [current]
+    set submission [$config @submission]
+    set type       [$config @type]
+    set mime       [$config @mimetype]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to attach to a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts -nonewline "Adding attachment \"$type\" to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    fconfigure stdin -translation binary -encoding binary
+    set data [read stdin]
+
+    db do eval {
+	INSERT INTO attachment
+	VALUES (NULL, :talk, :type, :mime, @data)
+    }
+
+    puts [color good OK]
     return
 }
 
@@ -1105,7 +1131,35 @@ proc ::cm::conference::cmd_submission_detach {config} {
     debug.cm/conference {}
     Setup
     db show-location
-NYI
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to detach from a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Removing attachments from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\""
+
+    foreach type [$config @type] {
+	puts -nonewline "- \"[get-attachment $type]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM   attachment
+	    WHERE  id = :type
+	}
+
+	puts [color good OK]
+    }
     return
 }
 
@@ -2695,6 +2749,32 @@ proc ::cm::conference::known-speaker {p} {
     }
 
     return [cm::contact::KnownLimited $talkers]
+}
+
+proc ::cm::conference::get-attachment {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT type
+	FROM   attachment
+	WHERE   id = :id
+    }]
+}
+
+proc ::cm::conference::known-attachment {p} {
+    debug.cm/conference {}
+    Setup
+
+    set submission [$p config @submission]
+
+    return [db do eval {
+	SELECT type, id
+	FROM   attachment
+	WHERE  talk IN (SELECT id
+			FROM   talk
+			WHERE  submission = :submission)
+    }]
 }
 
 proc ::cm::conference::known-sponsor-select {conference} {
