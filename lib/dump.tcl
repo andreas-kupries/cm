@@ -57,9 +57,7 @@ proc ::cm::dump::cmd {config} {
     Dump    $chan contact
     Dump    $chan tutorial
     Dump    $chan conference
-    #       - rate, t-schedule, timeline,
-    #       - submissions, talks, schedule
-    #       - staff, sponsors
+    #       - talks, schedule
     # TODO dump campaign
     Trailer $chan
 

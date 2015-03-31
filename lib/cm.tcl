@@ -672,12 +672,29 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Shift an event of the timeline for the conference }
 	    input event {
 		The event to shift.
-	    } {	optional ; generate [cm::call conference select-timeline] }
+	    } {	optional
+		validate [cm::vt timeline]
+		generate [cm::call conference select-timeline]
+	    }
 	    input shift {
 		Number of days to shift the event by.
 		negative numbers to the past, positive numbers to the future.
 	    } {	optional ; interact ; validate integer }
 	} [cm::call conference cmd_timeline_shift]
+
+	private timeline-set {
+	    section {Conference Management}
+	    description { Set an event of the timeline for the conference to an exact date }
+	    input event {
+		The event to set the date of.
+	    } {	optional
+		validate [cm::vt timeline]
+		generate [cm::call conference select-timeline]
+	    }
+	    input date {
+		The new date for the event.
+	    } {	optional ; interact ; validate [cm::cvt date] }
+	} [cm::call conference cmd_timeline_set]
 
 	private timeline {
 	    section {Conference Management}

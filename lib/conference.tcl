@@ -49,16 +49,16 @@ namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
-	cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink cmd_sponsor_ping \
-	cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
+	cmd_timeline_set cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
-	select label current get insert known-sponsor \
+	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
-	get-submission-handle known-submissions-vt
+	get-submission-handle known-submissions-vt known-timeline-validation
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -157,7 +157,7 @@ proc ::cm::conference::cmd_create {config} {
     }
 
     # check year-of start-date vs year
-    set syear [clock format $start -format %Y]
+    set syear [hyear $start]
     if {$syear != $year} {
 	util user-error \
 	    "Start date in $syear does not match conference year $year" \
@@ -467,10 +467,38 @@ proc ::cm::conference::cmd_timeline_shift {config} {
 	set new [clock add $old $shift days]
 
 	puts -nonewline "To    [hdate $new] ... "
+	flush stdout
 
 	db do eval {
 	    UPDATE timeline
 	    SET    date = :new
+	    WHERE  con  = :conference
+	    AND    type = :entry
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_timeline_set {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set entry      [$config @event]
+    set date       [$config @date]
+
+    puts "Set \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\""
+
+    db do transaction {
+	puts -nonewline "To    [hdate $date] ... "
+	flush stdout
+
+	db do eval {
+	    UPDATE timeline
+	    SET    date = :date
 	    WHERE  con  = :conference
 	    AND    type = :entry
 	}
@@ -1000,12 +1028,12 @@ proc ::cm::conference::cmd_staff_show {config} {
 	db do eval {
 	    SELECT C.dname AS name,
 	           R.text  AS role
-	    FROM conference_staff S,
-	         contact          C,
-	         staff_role       R
-	    WHERE S.conference = :conference
-	    AND   S.contact    = C.id
-	    AND   S.role       = R.id
+	    FROM   conference_staff S,
+	           contact          C,
+	           staff_role       R
+	    WHERE  S.conference = :conference
+	    AND    S.contact    = C.id
+	    AND    S.role       = R.id
 	    ORDER BY role, name
 	} {
 	    if {$first} {
@@ -2328,6 +2356,10 @@ proc ::cm::conference::hdate {x} {
     clock format $x -format {%B %d, %Y}
 }
 
+proc ::cm::conference::isodate {x} {
+    clock format $x -format %Y-%m-%d
+}
+
 proc ::cm::conference::hmday {x} {
     clock format $x -format {%B %d}
 }
@@ -2338,6 +2370,10 @@ proc ::cm::conference::hwday {x} {
 
 proc ::cm::conference::hmon {x} {
     clock format $x -format %B
+}
+
+proc ::cm::conference::hyear {x} {
+    clock format $x -format %Y
 }
 
 proc ::cm::conference::when {s e} {
@@ -2863,6 +2899,25 @@ proc ::cm::conference::known-timeline {} {
     return $known
 }
 
+proc ::cm::conference::known-timeline-validation {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text, key
+	FROM   timeline_type
+    } {
+	dict set known $text $id
+	dict set known $key  $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
 proc ::cm::conference::select-timeline {p} {
     debug.cm/conference {}
 
@@ -2895,6 +2950,17 @@ proc ::cm::conference::get-timeline {id} {
 
     return [db do onecolumn {
 	SELECT text
+	FROM   timeline_type
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::get-timeline-key {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT key
 	FROM   timeline_type
 	WHERE  id = :id
     }]
@@ -3329,7 +3395,7 @@ proc ::cm::conference::Dump {chan} {
 
 	set management [cm contact get-name  $management]
 	set submission [cm contact get-email $submission]
-	set startdate  [clock format $startdate -format %Y-%m-%d]
+	set startdate  [isodate $startdate]
 	if {$alignment > 0} {
 	    set alignment  [weekday 2external $alignment]
 	} else {
@@ -3343,32 +3409,106 @@ proc ::cm::conference::Dump {chan} {
 	# auto-select conference as current
 
 	if {$hotel ne {}} {
-	    set hotel [cm location get-name $hotel]
-	    cm dump save $chan  conference hotel $hotel
+	    cm dump save $chan  conference hotel \
+		[cm location get-name $hotel]
 	}
 	if {$facility ne {}} {
-	    set facility [cm location get-name $facility]
-	    cm dump save $chan  conference facility $facility
+	    cm dump save $chan  conference facility \
+		[cm location get-name $facility]
 	}
 	# city is implied by the facility/hotel
 
 	cm dump save $chan conference registration [get-rstatus $rstatus]
-	cm dump save $chan conference timeline-init
-
-cm dump step $chan
-cm dump comment $chan conference timeline-set ...
-cm dump comment $chan conference set-rate ...
-cm dump comment $chan conference add-sponsor ...
-cm dump comment $chan conference add-staff ... 
-cm dump comment $chan conference submit ...
-
-# TODO: timeline-set (+timeline-init)
-# TODO: rate information
-# TODO: conference sponsors
-# TODO: conference staff
-# TODO: submissions
 
 	cm dump step $chan
+	cm dump save $chan conference timeline-init
+	db do eval {
+	    SELECT T.date AS date,
+	           E.key  AS text
+	    FROM   timeline      T,
+                   timeline_type E
+	    WHERE  T.con  = :id
+	    AND    T.type = E.id
+	    ORDER BY T.date
+	} {
+	    cm dump save $chan conference timeline-set $text [isodate $date]
+	}
+
+	db do eval {
+	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
+	    FROM   rate
+	    WHERE  conference = :id
+	    AND    location   = :hotel
+	} {
+	    set factor 10e$decimal
+	    set rate [format %.${decimal}f [expr {$rate / $factor}]]
+
+	    cm dump step $chan
+	    cm dump save $chan conference rate \
+		-G $groupcode \
+		-F [isodate $begindate] \
+		-T [isodate $enddate] \
+		-D [isodate $deadline] \
+		-P [isodate $pdeadline] \
+		$rate $currency $decimal
+	}
+
+	set first 1
+	db do eval {
+	    SELECT C.dname AS name,
+	           R.text  AS role
+	    FROM   conference_staff S,
+	           contact          C,
+	           staff_role       R
+	    WHERE  S.conference = :id
+	    AND    S.contact    = C.id
+	    AND    S.role       = R.id
+	    ORDER BY role, name
+	} {
+	    if {$first} { cm dump step $chan ; set first 0 }
+	    cm dump save $chan conference add-staff $role $name
+	}
+
+	set first 1
+	db do eval {
+	    SELECT C.dname AS name
+	    FROM   sponsors S,
+	           contact  C
+	    WHERE  S.conference = :id
+	    AND    S.contact    = C.id
+	    ORDER BY C.dname
+	} {
+	    if {$first} { cm dump step $chan ; set first 0 }
+	    cm dump save $chan conference add-sponsor $name
+	}
+
+	set first 1
+	db do eval {
+	    SELECT id AS sid, title, invited, submitdate
+	    FROM   submission
+	    WHERE  conference = :id
+	    ORDER BY submitdate, id
+	} {
+	    if {$first} { cm dump step $chan ; set first 0 }
+
+	    set authors [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   submitter
+			      WHERE  submission = :sid)
+		ORDER BY dname
+	    }]
+
+	    if {$invited} {
+		cm dump save $chan conference submit \
+		    --on [isodate $submitdate] --invited $title \
+		    {*}$authors
+	    } else {
+		cm dump save $chan conference submit \
+		    --on [isodate $submitdate] $title {*}$authors
+	    }
+	}
     }
     return
 }
