@@ -764,6 +764,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The role to staff
 	    } {
 		optional
+		validate [cm::vt staff-role]
 		generate [cm::call conference select-staff-role]
 	    }
 	    input name {
