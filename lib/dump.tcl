@@ -49,8 +49,8 @@ proc ::cm::dump::cmd {config} {
     variable chan ;#
 
     set dst [$config @destination]
-    file mkdir [file dirname $dst]
-    set chan [open $dst w]
+    file mkdir [file dirname ${dst}__main]
+    set chan [open ${dst}__main w]
 
     Header
     Dump    config::core
@@ -70,8 +70,8 @@ proc ::cm::dump::cmd {config} {
 
 proc ::cm::dump::write {suffix data args} {
     variable dst
-    fileutil::writeFile {*}$args ${dst}.$suffix $data
-    return [file tail ${dst}.$suffix]
+    fileutil::writeFile {*}$args ${dst}$suffix $data
+    return [file tail ${dst}$suffix]
 }
 
 proc ::cm::dump::step {} {
@@ -115,6 +115,8 @@ proc ::cm::dump::Separator {} {
 proc ::cm::dump::Dump {area} {
     debug.cm/dump {}
     variable chan
+
+    puts ...$area
 
     puts $chan \n[Separator]
     puts $chan "## -- $area --\n"
