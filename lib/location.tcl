@@ -753,7 +753,7 @@ proc ::cm::location::Setup {} {
     return
 }
 
-proc ::cm::location::Dump {chan} {
+proc ::cm::location::Dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/location {}
 
@@ -767,10 +767,10 @@ proc ::cm::location::Dump {chan} {
     } {
 	set city [city get $city]
 
-	cm dump save $chan \
+	cm dump save  \
 	    location create $name $streetaddress $zipcode $city
 	# create auto-selects new location as current.
-	cm dump save $chan \
+	cm dump save  \
 	    location contact $book_phone $book_fax $book_link $local_phone $local_fax $local_link
 
 	db do eval {
@@ -779,15 +779,17 @@ proc ::cm::location::Dump {chan} {
 	    WHERE  location = :id
 	    ORDER BY name, position
 	} {	
-	    cm dump save $chan \
+	    cm dump save  \
 		location add-staff $position $name $phone $email
 	}
 
 	if {$transportation ne {}} {
-	    cm dump save $chan location map-set << $transportation
+	    cm dump save \
+		location map-set \
+		< [cm dump write location$id $transportation]
 	}
 
-	cm dump step $chan
+	cm dump step 
     }
     return
 }

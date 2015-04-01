@@ -3913,7 +3913,7 @@ proc ::cm::conference::Setup {} {
 }
 
 
-proc ::cm::conference::Dump {chan} {
+proc ::cm::conference::Dump {} {
     debug.cm/conference {}
 
     db do eval {
@@ -3924,7 +3924,6 @@ proc ::cm::conference::Dump {chan} {
 	FROM   conference
 	ORDER BY title
     } {
-
 	set management [cm contact get-name  $management]
 	set submission [cm contact get-email $submission]
 	set startdate  [isodate $startdate]
@@ -3937,23 +3936,28 @@ proc ::cm::conference::Dump {chan} {
 	# enddate - implied (start+length)
 	# talklength, sessionlen - fixed, currently
 
-	cm dump save $chan  conference create $title $year $alignment $startdate $length $management $submission
+	cm dump save \
+	    conference create $title $year $alignment $startdate $length \
+	    $management $submission
 	# auto-select conference as current
 
 	if {$hotel ne {}} {
-	    cm dump save $chan  conference hotel \
-		[cm location get-name $hotel]
+	    cm dump save  \
+		conference hotel [cm location get-name $hotel]
 	}
 	if {$facility ne {}} {
-	    cm dump save $chan  conference facility \
-		[cm location get-name $facility]
+	    cm dump save   \
+		conference facility [cm location get-name $facility]
 	}
 	# city is implied by the facility/hotel
 
-	cm dump save $chan conference registration [get-rstatus $rstatus]
+	cm dump save \
+	    conference registration [get-rstatus $rstatus]
 
-	cm dump step $chan
-	cm dump save $chan conference timeline-init
+	# timeline
+	cm dump step 
+	cm dump save \
+	    conference timeline-init
 	db do eval {
 	    SELECT T.date AS date,
 	           E.key  AS text
@@ -3963,9 +3967,11 @@ proc ::cm::conference::Dump {chan} {
 	    AND    T.type = E.id
 	    ORDER BY T.date
 	} {
-	    cm dump save $chan conference timeline-set $text [isodate $date]
+	    cm dump save \
+		conference timeline-set $text [isodate $date]
 	}
 
+	# rate
 	db do eval {
 	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
 	    FROM   rate
@@ -3975,8 +3981,9 @@ proc ::cm::conference::Dump {chan} {
 	    set factor 10e$decimal
 	    set rate [format %.${decimal}f [expr {$rate / $factor}]]
 
-	    cm dump step $chan
-	    cm dump save $chan conference rate \
+	    cm dump step 
+	    cm dump save \
+		conference rate \
 		-G $groupcode \
 		-F [isodate $begindate] \
 		-T [isodate $enddate] \
@@ -3985,6 +3992,7 @@ proc ::cm::conference::Dump {chan} {
 		$rate $currency $decimal
 	}
 
+	# staff
 	set first 1
 	db do eval {
 	    SELECT C.dname AS name,
@@ -3997,10 +4005,12 @@ proc ::cm::conference::Dump {chan} {
 	    AND    S.role       = R.id
 	    ORDER BY role, name
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
-	    cm dump save $chan conference add-staff $role $name
+	    if {$first} { cm dump step ; set first 0 }
+	    cm dump save \
+		conference add-staff $role $name
 	}
 
+	# sponsors
 	set first 1
 	db do eval {
 	    SELECT C.dname AS name
@@ -4010,18 +4020,20 @@ proc ::cm::conference::Dump {chan} {
 	    AND    S.contact    = C.id
 	    ORDER BY C.dname
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
-	    cm dump save $chan conference add-sponsor $name
+	    if {$first} { cm dump step  ; set first 0 }
+	    cm dump save \
+		conference add-sponsor $name
 	}
 
+	# submissions
 	set first 1
 	db do eval {
-	    SELECT id AS sid, title, invited, submitdate
+	    SELECT id AS sid, title, invited, submitdate, abstract, summary
 	    FROM   submission
 	    WHERE  conference = :id
-	    ORDER BY submitdate, id
+	    ORDER BY submitdate, sid
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
+	    if {$first} { cm dump step  ; set first 0 }
 
 	    set authors [db do eval {
 		SELECT dname
@@ -4033,13 +4045,28 @@ proc ::cm::conference::Dump {chan} {
 	    }]
 
 	    if {$invited} {
-		cm dump save $chan conference submit \
+		cm dump save \
+		    submit \
 		    --on [isodate $submitdate] --invited $title \
 		    {*}$authors
 	    } else {
-		cm dump save $chan conference submit \
+		cm dump save \
+		    submit \
 		    --on [isodate $submitdate] $title {*}$authors
 	    }
+
+	    if {$summary ne {}} {
+		cm dump save \
+		    submission set-summary $title \
+		    < [cm dump write submission-summary${sid} $summary]
+	    }
+
+	    if {$abstract ne {}} {
+		cm dump save \
+		    submission set-abstract $title \
+		    < [cm dump write submission-abstract${sid} $abstract]
+	    }
+	    cm dump step
 	}
 
 	set first 1
@@ -4059,12 +4086,13 @@ proc ::cm::conference::Dump {chan} {
 	    AND    T.speaker    = C.id
 	    ORDER BY day, half, track
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
+	    if {$first} { cm dump step  ; set first 0 }
 	    incr day ;# move to the external 1-based day offset.
-	    cm dump save $chan conference tutorial $day $half $track $speaker/$tutorial
+	    cm dump save \
+		conference tutorial $day $half $track $speaker/$tutorial
 	}
 
-	cm dump step $chan
+	cm dump step 
     }
     return
 }
