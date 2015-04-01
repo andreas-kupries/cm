@@ -44,7 +44,7 @@ proc ::cm::validate::tutorial::default  {p}   { return {} }
 proc ::cm::validate::tutorial::release  {p x} { return }
 proc ::cm::validate::tutorial::validate {p x} {
     set known   [tutorial known]
-    set matches [complete-enum [dict keys $known] 1 $x]
+    set matches [complete-enum [dict keys $known] 0 $x]
 
     set n [llength $matches]
     if {!$n} {
@@ -69,7 +69,7 @@ proc ::cm::validate::tutorial::validate {p x} {
 }
 
 proc ::cm::validate::tutorial::complete {p x} {
-    complete-enum [dict keys [tutorial known]] 1 $x
+    complete-enum [dict keys [tutorial known]] 0 $x
 }
 
 # # ## ### ##### ######## ############# ######################
