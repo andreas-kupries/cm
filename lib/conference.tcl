@@ -54,11 +54,15 @@ namespace eval ::cm::conference {
 	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
+	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
+	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role select-staff known-staff known-rstatus \
 	get-role select-timeline get-timeline select-submission get-submission \
-	get-submission-handle known-submissions-vt known-timeline-validation
+	get-submission-handle known-submissions-vt known-timeline-validation \
+	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
+	known-attachment get-attachment
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -797,9 +801,46 @@ proc ::cm::conference::cmd_submission_show {config} {
 		ORDER BY dname
 	    }] \n]
 
+	    set issues {}
+	    # Accepted as talk ?
+	    set talk [db do onecolumn {
+		SELECT id
+		FROM   talk
+		WHERE  submission = :id
+	    }]
+	    # When accepted, check for speakers and attachments.
+	    # These are issues if found missing.
+	    if {$talk ne {}} {
+		set accepted 1
+		set alabel [color good yes]
+		if {![db do eval {
+		    SELECT count(id)
+		    FROM   talker
+		    WHERE  talk = :talk
+		}]} {
+		    +issue "No speakers"
+		}
+		if {![db do eval {
+		    SELECT count(id)
+		    FROM   attachment
+		    WHERE  talk = :talk
+		}]} {
+		    +issue "No materials"
+		}
+	    } else {
+		set accepted 0
+		set alabel [color bad no]
+	    }
+
+	    if {[llength $issues]} {
+		$t add [color bad Issues] [fmt-issues-cli $issues]
+		$t add {} {}
+	    }
+
 	    $t add Id        [get-submission-handle $id]
 	    $t add Submitted [hdate $submitdate]
 	    $t add Title     $title
+	    $t add Accepted  $alabel
 
 	    if {$invited} {
 		$t add [color note Invited] yes
@@ -807,7 +848,42 @@ proc ::cm::conference::cmd_submission_show {config} {
 		$t add Invited  no
 	    }
 
+	    if {$accepted} {
+		db do eval {
+		    SELECT type AS ttype, state AS tstate
+		    FROM   talk
+		    WHERE  submission = :id
+		} {
+		    $t add Type  [get-talk-type  $ttype]
+		    $t add State [get-talk-state $tstate]
+		}
+	    }
+
 	    $t add Authors  $authors
+
+	    if {$accepted} {
+		set speakers [db do eval {
+		    SELECT dname
+		    FROM   contact
+		    WHERE  id IN (SELECT id
+				  FROM   talker
+				  WHERE  talk = :talk)
+		}]
+		if {[llength $speakers]} {
+		    $t add Speakers [join $speakers \n]
+		}
+
+		# TODO: attachments - determine and show size ?
+		set attachments [db do eval {
+		    SELECT type AS atype
+		    FROM   attachment
+		    WHERE  talk = :talk
+		}]
+		if {[llength $attachments]} {
+		    $t add Attachments [join $attachments \n]
+		}
+	    }
+
 	    $t add Abstract [util adjust $w $abstract]
 	    $t add Summary  [util adjust $w $summary]
 	}
@@ -823,7 +899,7 @@ proc ::cm::conference::cmd_submission_list {config} {
     set conference [current]
 
     puts "Submissions for \"[color name [get $conference]]\""
-    [table t {Id Date Authors {} Title} {
+    [table t {Id Date Authors {} Title Accepted} {
 	db do eval {
 	    SELECT id, title, invited, submitdate
 	    FROM   submission
@@ -843,9 +919,247 @@ proc ::cm::conference::cmd_submission_list {config} {
 	    set invited    [expr {$invited ? "Invited" : ""}]
 	    set submitdate [hdate $submitdate]
 
-	    $t add [get-submission-handle $id] $submitdate $authors $invited $title
+	    set issues {}
+	    # Accepted as talk ?
+	    set talk [db do onecolumn {
+		SELECT id
+		FROM   talk
+		WHERE  submission = :id
+	    }]
+	    # When accepted, check for speakers and attachments.
+	    # These are issues if found missing.
+	    if {$talk ne {}} {
+		set accepted [color good yes]
+		if {![db do eval {
+		    SELECT count(id)
+		    FROM   talker
+		    WHERE  talk = :talk
+		}]} {
+		    +issue "No speakers"
+		}
+		if {![db do eval {
+		    SELECT count(id)
+		    FROM   attachment
+		    WHERE  talk = :talk
+		}]} {
+		    +issue "No materials"
+		}
+
+		if {[llength $issues]} {
+		    set accepted [fmt-issues-cli $issues]
+		}
+	    } else {
+		set accepted [color bad no]
+	    }
+
+	    $t add [get-submission-handle $id] $submitdate $authors $invited $title $accepted
 	}
     }] show
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_submission_accept {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    if {[$config @type set?]} {
+	set type [$config @type]
+    } else {
+	set invited [db do eval { SELECT invited FROM submission WHERE id = :submission }]
+	set type [expr {$invited ? 1 : 2}]
+    }
+
+    puts -nonewline "Accept \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do transaction {
+	if {[db do exists {
+	    SELECT id FROM talk WHERE submission = :submission
+	}]} {
+	    puts [color note {Already accepted, nothing done}]
+	} else {
+	    db do eval {
+		INSERT INTO talk
+		VALUES (NULL, :submission, :type, 1, 0)
+	    }
+
+	    puts [color good OK]
+	}
+    }
+    return
+}
+
+proc ::cm::conference::cmd_submission_reject {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "In conference \"[color name [get $conference]]\""
+
+    foreach submission [$config @submission] {
+	puts -nonewline "Reject \"[color name [get-submission $submission]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM  talk
+	    WHERE submission = :submission
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_submission_addspeaker {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to add speakers for a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    foreach speaker [$config @speaker] {
+	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO talker
+	    VALUES (NULL, :talk, :speaker)
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_submission_dropspeaker {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to remove speakers from a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    foreach speaker [$config @speaker] {
+	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM   talker
+	    WHERE  talk    = :talk
+	    AND    contact = :speaker
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_submission_attach {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+    set type       [$config @type]
+    set mime       [$config @mimetype]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to attach to a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts -nonewline "Adding attachment \"$type\" to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    fconfigure stdin -translation binary -encoding binary
+    set data [read stdin]
+
+    db do eval {
+	INSERT INTO attachment
+	VALUES (NULL, :talk, :type, :mime, @data)
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_submission_detach {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to detach from a submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Removing attachments from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\""
+
+    foreach type [$config @type] {
+	puts -nonewline "- \"[get-attachment $type]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM   attachment
+	    WHERE  id = :type
+	}
+
+	puts [color good OK]
+    }
     return
 }
 
@@ -2404,11 +2718,63 @@ proc ::cm::conference::known-sponsor {} {
     if {$conference < 0} {
 	return {}
     }
-    return [cm::contact::KnownLimited [db do eval {
+
+    set sponsors [db do eval {
 	SELECT contact
 	FROM   sponsors
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $sponsors]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $sponsors]
+}
+
+proc ::cm::conference::known-speaker {p} {
+    debug.cm/conference {}
+    Setup
+
+    set submission [$p config @submission]
+
+    set talkers [db do eval {
+	SELECT contact
+	FROM   talker
+	WHERE  talk IN (SELECT id
+			FROM   talk
+			WHERE  submission = :submission)
+    }]
+    if {![llength $talkers]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $talkers]
+}
+
+proc ::cm::conference::get-attachment {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT type
+	FROM   attachment
+	WHERE   id = :id
+    }]
+}
+
+proc ::cm::conference::known-attachment {p} {
+    debug.cm/conference {}
+    Setup
+
+    set submission [$p config @submission]
+
+    return [db do eval {
+	SELECT type, id
+	FROM   attachment
+	WHERE  talk IN (SELECT id
+			FROM   talk
+			WHERE  submission = :submission)
+    }]
 }
 
 proc ::cm::conference::known-sponsor-select {conference} {
@@ -2419,11 +2785,17 @@ proc ::cm::conference::known-sponsor-select {conference} {
 	($conference < 0)} {
 	return {}
     }
-    return [cm::contact::KnownSelectLimited [db do eval {
+
+    set sponsors [db do eval {
 	SELECT contact
 	FROM   sponsors
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $sponsors]} {
+	return {}
+    }
+
+    return [cm::contact::KnownSelectLimited $sponsors]
 }
 
 proc ::cm::conference::known-staff {} {
@@ -2434,11 +2806,17 @@ proc ::cm::conference::known-staff {} {
     if {$conference < 0} {
 	return {}
     }
-    return [cm::contact::KnownLimited [db do eval {
+
+    set staff [db do eval {
 	SELECT contact
 	FROM   conference_staff
 	WHERE  conference = :conference
-    }]]
+    }]
+    if {![llength $staff]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $staff]
 }
 
 proc ::cm::conference::known-staff-select {conference} {
@@ -2534,6 +2912,42 @@ proc ::cm::conference::known-rstatus {} {
     db do eval {
 	SELECT id, text
 	FROM   rstatus
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::known-talk-state {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   talk_state
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::known-talk-type {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   talk_type
     } {
 	dict set known $text $id
     }
@@ -2897,6 +3311,28 @@ proc ::cm::conference::known-timeline {} {
 
     debug.cm/conference {==> ($known)}
     return $known
+}
+
+proc ::cm::conference::get-talk-type {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   talk_type
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::get-talk-state {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   talk_state
+	WHERE  id = :id
+    }]
 }
 
 proc ::cm::conference::known-timeline-validation {} {
@@ -3375,13 +3811,109 @@ proc ::cm::conference::Setup {} {
 	}
     }
 
+    if {![dbutil initialize-schema ::cm::db::do error talk {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    submission	INTEGER	NOT NULL REFERENCES submission,	-- implies conference
+	    type	INTEGER	NOT NULL REFERENCES talk_type,
+	    state	INTEGER	NOT NULL REFERENCES talk_state,
+	    isremote	INTEGER	NOT NULL,			-- hangout, skype, other ? => TEXT?
+
+	    UNIQUE (submission) -- Not allowed to have the same submission in multiple conferences.
+
+	    -- constraint: talk.conference == talk.submission.conference
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {submission	INTEGER 1 {} 0}
+	    {type	INTEGER 1 {} 0}
+	    {state	INTEGER 1 {} 0}
+	    {isremote	INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error talk $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error talker {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    talk	INTEGER	NOT NULL REFERENCES talk,
+	    contact	INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk||can_submit
+
+	    UNIQUE (talk, contact)
+
+	    -- We allow multiple speakers => panels, co-presentation
+	    -- Note: Presenter is not necessarily any of the submitters of the submission behind the talk
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {talk	INTEGER 1 {} 0}
+	    {contact	INTEGER 1 {} 0}
+	} {contact}
+    }]} {
+	db setup-error talker $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error attachment {
+	{
+	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    talk	INTEGER	NOT NULL REFERENCES talk,
+	    type	TEXT	NOT NULL,	-- Readable type/label
+	    mime	TEXT	NOT NULL,	-- mime type for downloads and the like?
+	    data	BLOB	NOT NULL,
+	    UNIQUE (talk, type)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {talk	INTEGER 1 {} 0}
+	    {type	TEXT    1 {} 0}
+	    {mime	TEXT    1 {} 0}
+	    {data	BLOB    1 {} 0}
+	} {}
+    }]} {
+	db setup-error attachment $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error talk_type {
+	{
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    text TEXT    NOT NULL UNIQUE
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {text TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error talk_type $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
+	    INSERT OR IGNORE INTO talk_type VALUES (2,'submitted');
+	    INSERT OR IGNORE INTO talk_type VALUES (3,'keynote');
+	    INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
+	}
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error talk_state {
+	{
+	    id	 INTEGER NOT NULL PRIMARY KEY,
+	    text TEXT    NOT NULL UNIQUE
+	} {
+	    {id   INTEGER 1 {} 1}
+	    {text TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error talk_state $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
+	    INSERT OR IGNORE INTO talk_state VALUES (2,'received');
+	}
+    }
+
     # Shortcircuit further calls
     proc ::cm::conference::Setup {args} {}
     return
 }
 
 
-proc ::cm::conference::Dump {chan} {
+proc ::cm::conference::Dump {} {
     debug.cm/conference {}
 
     db do eval {
@@ -3392,7 +3924,6 @@ proc ::cm::conference::Dump {chan} {
 	FROM   conference
 	ORDER BY title
     } {
-
 	set management [cm contact get-name  $management]
 	set submission [cm contact get-email $submission]
 	set startdate  [isodate $startdate]
@@ -3405,23 +3936,28 @@ proc ::cm::conference::Dump {chan} {
 	# enddate - implied (start+length)
 	# talklength, sessionlen - fixed, currently
 
-	cm dump save $chan  conference create $title $year $alignment $startdate $length $management $submission
+	cm dump save \
+	    conference create $title $year $alignment $startdate $length \
+	    $management $submission
 	# auto-select conference as current
 
 	if {$hotel ne {}} {
-	    cm dump save $chan  conference hotel \
-		[cm location get-name $hotel]
+	    cm dump save  \
+		conference hotel [cm location get-name $hotel]
 	}
 	if {$facility ne {}} {
-	    cm dump save $chan  conference facility \
-		[cm location get-name $facility]
+	    cm dump save   \
+		conference facility [cm location get-name $facility]
 	}
 	# city is implied by the facility/hotel
 
-	cm dump save $chan conference registration [get-rstatus $rstatus]
+	cm dump save \
+	    conference registration [get-rstatus $rstatus]
 
-	cm dump step $chan
-	cm dump save $chan conference timeline-init
+	# timeline
+	cm dump step 
+	cm dump save \
+	    conference timeline-init
 	db do eval {
 	    SELECT T.date AS date,
 	           E.key  AS text
@@ -3431,9 +3967,11 @@ proc ::cm::conference::Dump {chan} {
 	    AND    T.type = E.id
 	    ORDER BY T.date
 	} {
-	    cm dump save $chan conference timeline-set $text [isodate $date]
+	    cm dump save \
+		conference timeline-set $text [isodate $date]
 	}
 
+	# rate
 	db do eval {
 	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
 	    FROM   rate
@@ -3443,8 +3981,9 @@ proc ::cm::conference::Dump {chan} {
 	    set factor 10e$decimal
 	    set rate [format %.${decimal}f [expr {$rate / $factor}]]
 
-	    cm dump step $chan
-	    cm dump save $chan conference rate \
+	    cm dump step 
+	    cm dump save \
+		conference rate \
 		-G $groupcode \
 		-F [isodate $begindate] \
 		-T [isodate $enddate] \
@@ -3453,6 +3992,7 @@ proc ::cm::conference::Dump {chan} {
 		$rate $currency $decimal
 	}
 
+	# staff
 	set first 1
 	db do eval {
 	    SELECT C.dname AS name,
@@ -3465,10 +4005,12 @@ proc ::cm::conference::Dump {chan} {
 	    AND    S.role       = R.id
 	    ORDER BY role, name
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
-	    cm dump save $chan conference add-staff $role $name
+	    if {$first} { cm dump step ; set first 0 }
+	    cm dump save \
+		conference add-staff $role $name
 	}
 
+	# sponsors
 	set first 1
 	db do eval {
 	    SELECT C.dname AS name
@@ -3478,18 +4020,20 @@ proc ::cm::conference::Dump {chan} {
 	    AND    S.contact    = C.id
 	    ORDER BY C.dname
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
-	    cm dump save $chan conference add-sponsor $name
+	    if {$first} { cm dump step  ; set first 0 }
+	    cm dump save \
+		conference add-sponsor $name
 	}
 
+	# submissions
 	set first 1
 	db do eval {
-	    SELECT id AS sid, title, invited, submitdate
+	    SELECT id AS sid, title, invited, submitdate, abstract, summary
 	    FROM   submission
 	    WHERE  conference = :id
-	    ORDER BY submitdate, id
+	    ORDER BY submitdate, sid
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
+	    if {$first} { cm dump step  ; set first 0 }
 
 	    set authors [db do eval {
 		SELECT dname
@@ -3501,13 +4045,28 @@ proc ::cm::conference::Dump {chan} {
 	    }]
 
 	    if {$invited} {
-		cm dump save $chan conference submit \
+		cm dump save \
+		    submit \
 		    --on [isodate $submitdate] --invited $title \
 		    {*}$authors
 	    } else {
-		cm dump save $chan conference submit \
+		cm dump save \
+		    submit \
 		    --on [isodate $submitdate] $title {*}$authors
 	    }
+
+	    if {$summary ne {}} {
+		cm dump save \
+		    submission set-summary $title \
+		    < [cm dump write submission-summary${sid} $summary]
+	    }
+
+	    if {$abstract ne {}} {
+		cm dump save \
+		    submission set-abstract $title \
+		    < [cm dump write submission-abstract${sid} $abstract]
+	    }
+	    cm dump step
 	}
 
 	set first 1
@@ -3527,12 +4086,13 @@ proc ::cm::conference::Dump {chan} {
 	    AND    T.speaker    = C.id
 	    ORDER BY day, half, track
 	} {
-	    if {$first} { cm dump step $chan ; set first 0 }
+	    if {$first} { cm dump step  ; set first 0 }
 	    incr day ;# move to the external 1-based day offset.
-	    cm dump save $chan conference tutorial $day $half $track $speaker/$tutorial
+	    cm dump save \
+		conference tutorial $day $half $track $speaker/$tutorial
 	}
 
-	cm dump step $chan
+	cm dump step 
     }
     return
 }
