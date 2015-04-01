@@ -865,7 +865,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 		set speakers [db do eval {
 		    SELECT dname
 		    FROM   contact
-		    WHERE  id IN (SELECT id
+		    WHERE  id IN (SELECT contact
 				  FROM   talker
 				  WHERE  talk = :talk)
 		}]
@@ -4025,6 +4025,30 @@ proc ::cm::conference::Dump {} {
 		conference add-sponsor $name
 	}
 
+	# tutorial schedule
+	set first 1
+	db do eval {
+	    SELECT S.day   AS day,
+	           H.text  AS half,
+	           S.track AS track,
+	           T.title AS tutorial,
+	           C.dname AS speaker
+	    FROM   tutorial_schedule S,
+	           tutorial          T,
+	           dayhalf           H,
+	           contact           C
+	    WHERE  S.conference = :id
+	    AND    S.tutorial   = T.id
+	    AND    S.half       = H.id
+	    AND    T.speaker    = C.id
+	    ORDER BY day, half, track
+	} {
+	    if {$first} { cm dump step  ; set first 0 }
+	    incr day ;# move to the external 1-based day offset.
+	    cm dump save \
+		conference tutorial $day $half $track $speaker/$tutorial
+	}
+
 	# submissions
 	set first 1
 	db do eval {
@@ -4069,27 +4093,53 @@ proc ::cm::conference::Dump {} {
 	    cm dump step
 	}
 
+	# talks
 	set first 1
 	db do eval {
-	    SELECT S.day   AS day,
-	           H.text  AS half,
-	           S.track AS track,
-	           T.title AS tutorial,
-	           C.dname AS speaker
-	    FROM   tutorial_schedule S,
-	           tutorial          T,
-	           dayhalf           H,
-	           contact           C
-	    WHERE  S.conference = :id
-	    AND    S.tutorial   = T.id
-	    AND    S.half       = H.id
-	    AND    T.speaker    = C.id
-	    ORDER BY day, half, track
+	    SELECT T.id AS tid, S.title AS title, X.text AS type
+	    FROM   talk       T,
+	           submission S,
+	           talk_type  X
+	    WHERE  T.submission = S.id
+	    AND    T.type = X.id
+	    ORDER BY S.title
 	} {
 	    if {$first} { cm dump step  ; set first 0 }
-	    incr day ;# move to the external 1-based day offset.
+
 	    cm dump save \
-		conference tutorial $day $half $track $speaker/$tutorial
+		submission accept -type $type $title
+
+	    db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			  FROM   talker
+			  WHERE  talk = :tid)
+		ORDER BY dname
+	    } {
+		cm dump save \
+		    submission add-speaker $title $dname
+	    }
+
+	    db do eval {
+		SELECT id AS aid, type, mime
+		FROM   attachment
+		WHERE  talk = :tid
+		ORDER BY type
+	    } {
+		set ch [db do incrblob -readonly attachment data $aid]
+		fconfigure $ch -encoding binary -translation binary
+		set value [read $ch]
+		close $ch
+
+		cm dump save \
+		    submission attach $title $type $mime \
+		    < [cm dump write attachment$aid $value \
+			   -encoding binary \
+			   -translation binary]
+	    }
+
+
 	}
 
 	cm dump step 
