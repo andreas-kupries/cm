@@ -274,18 +274,18 @@ proc ::cm::template::Setup {} {
     return
 }
 
-proc ::cm::template::Dump {chan} {
+proc ::cm::template::Dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/template {}
 
     db do eval {
-	SELECT name, value
+	SELECT id, name, value
 	FROM   template
 	ORDER BY name
     } {
-	cm dump save $chan \
-	    template create $name << $value
-	cm dump step $chan
+	cm dump save \
+	    template create $name \
+	    < [cm dump write template$id $value]
     }
     return
 }

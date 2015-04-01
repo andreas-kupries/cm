@@ -232,7 +232,7 @@ proc ::cm::city::Setup {} {
     return
 }
 
-proc ::cm::city::Dump {chan} {
+proc ::cm::city::Dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/city {}
 
@@ -241,7 +241,7 @@ proc ::cm::city::Dump {chan} {
 	FROM   city
 	ORDER BY nation, state, name
     } {
-	cm dump save $chan \
+	cm dump save \
 	    city create $name $state $nation
     }
     return
