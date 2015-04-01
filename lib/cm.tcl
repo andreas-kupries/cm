@@ -1060,6 +1060,9 @@ cmdr create cm::cm [file tail $::argv0] {
 		The type of attachment to remove
 	    } { optional ; list ; interact ; validate [cm::vt attachment] }
 	} [cm::call conference cmd_submission_detach]
+
+	# attachments: change type, mimetype, content
+	# talks:       change type, status
     }
     alias submissions = submission list
     alias unsubmit    = submission drop
