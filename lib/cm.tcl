@@ -510,25 +510,30 @@ cmdr create cm::cm [file tail $::argv0] {
 	private create {
 	    section {Tutorial Management}
 	    description { Create a new tutorial to offer. }
+
 	    option requisites {
 		Knowledge needed to take the course.
 	    } { alias prereq ; alias R ; validate str }
-	    input description {
-		The description of the course.
-	    } { validate str }
+
 	    input speaker {
 		The speaker/lecturer offering the tutorial.
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator person
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
 	    # Note: tag and title are unique only within the context
 	    # of the speaker. I.e. the speaker must be known for the
 	    # validations below to work. Reason for why the speaker is
 	    # first.
 	    input tag {
 		Short tag for the tutorial, must be usable in an html anchor.
-	    } { optional ; interact ; validate [cm::vt nottutorialtag] }
+	    } { validate [cm::vt nottutorialtag] }
 	    input title {
 		Title of the new tutorial
 	    } { optional ; interact ; validate [cm::vt nottutorial] }
+
+	    input description {
+		The description of the course.
+	    } { optional ; validate str }
+
 	} [cm::call tutorial cmd_create]
 	alias add
 	alias new

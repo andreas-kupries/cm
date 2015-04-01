@@ -19,6 +19,7 @@
 package require Tcl 8.5
 package require debug
 package require debug::caller
+package require fileutil
 package require cm::db
 
 debug level  cm/dump
@@ -31,7 +32,7 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::dump {
-    namespace export cmd step save comment
+    namespace export cmd write step save comment
     namespace ensemble create
 
     namespace import ::cm::db
@@ -44,42 +45,54 @@ proc ::cm::dump::cmd {config} {
     db do version
     db show-location
 
-    set dst [$config @destination]
+    variable dst  ;# Local state, namespace.
+    variable chan ;#
 
+    set dst [$config @destination]
     file mkdir [file dirname $dst]
     set chan [open $dst w]
 
-    Header  $chan
-    Dump    $chan config::core
-    Dump    $chan template
-    Dump    $chan city
-    Dump    $chan location
-    Dump    $chan contact
-    Dump    $chan tutorial
-    Dump    $chan conference
+    Header
+    Dump    config::core
+    Dump    template
+    Dump    city
+    Dump    location
+    Dump    contact
+    Dump    tutorial
+    Dump    conference
     #       - talks, schedule
     # TODO dump campaign
-    Trailer $chan
+    Trailer
 
     close $chan
     return
 }
 
-proc ::cm::dump::step {chan} {
+proc ::cm::dump::write {suffix data args} {
+    variable dst
+    fileutil::writeFile {*}$args ${dst}.$suffix $data
+    return [file tail ${dst}.$suffix]
+}
+
+proc ::cm::dump::step {} {
+    variable chan
     puts $chan ""
 }
 
-proc ::cm::dump::comment {chan args} {
+proc ::cm::dump::comment {args} {
+    variable chan
     puts $chan "# $args"
     return
 }
 
-proc ::cm::dump::save {chan args} {
+proc ::cm::dump::save {args} {
+    variable chan
     puts $chan "cm $args"
     return
 }
 
-proc ::cm::dump::Header {chan} {
+proc ::cm::dump::Header {} {
+    variable chan
     puts $chan "#!/usr/bin/env tclsh"
     puts $chan [Separator]
     puts $chan "## Save script for CM '[db location]'\n"
@@ -87,7 +100,8 @@ proc ::cm::dump::Header {chan} {
     return
 }
 
-proc ::cm::dump::Trailer {chan} {
+proc ::cm::dump::Trailer {} {
+    variable chan
     puts $chan \n[Separator]\n
     puts $chan "## Done"
     puts $chan exit
@@ -98,15 +112,16 @@ proc ::cm::dump::Separator {} {
     return "# # ## ### ##### ########"
 }
 
-proc ::cm::dump::Dump {chan area} {
+proc ::cm::dump::Dump {area} {
     debug.cm/dump {}
+    variable chan
 
     puts $chan \n[Separator]
     puts $chan "## -- $area --\n"
 
     package require cm::${area}
     cm::${area}::Setup
-    cm::${area}::Dump $chan
+    cm::${area}::Dump
 
     return
 }
