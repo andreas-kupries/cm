@@ -1,6 +1,15 @@
 NOW
 ===
 
+-- talks
+--- issues: no talks (no accepted submissions)
+--- issues in talk:
+---- no talkers, no attachments
+---- show information in conference details, in submission list, details
+---- show acceptance state at submission list/details, ditto talkers, attachments.
+---- show talks in admin page 
+
+
 * ---- con mgmt --- ready for initial cfp 1 ---
 
 * website, more pages

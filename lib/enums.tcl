@@ -48,64 +48,6 @@ debug prefix cm/enum {[debug caller] | }
 proc ::cm::enum::Setup {} {
     debug.cm/enum {}
 
-    if {![dbutil initialize-schema ::cm::db::do error talk_type {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error talk_type $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
-	    INSERT OR IGNORE INTO talk_type VALUES (2,'submitted');
-	    INSERT OR IGNORE INTO talk_type VALUES (3,'keynote');
-	    INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
-	}
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error talk_state {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error talk_state $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
-	    INSERT OR IGNORE INTO talk_state VALUES (2,'received');
-	}
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error staff_role {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error staff_role $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO staff_role VALUES (1,'chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (2,'facilities chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (3,'program chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (4,'program committee');
-	    INSERT OR IGNORE INTO staff_role VALUES (5,'hotel liaison');
-	    INSERT OR IGNORE INTO staff_role VALUES (6,'web admin');
-	    INSERT OR IGNORE INTO staff_role VALUES (7,'proceedings editor');
-	}
-    }
-
     # Shortcircuit further calls
     proc ::cm::enum::Setup {args} {}
     return
