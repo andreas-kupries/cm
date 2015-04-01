@@ -920,11 +920,10 @@ proc ::cm::contact::new-mlist {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,
-		3, :name, :dname,	-- mailing list
+	VALUES (NULL, NULL,             -- id, tag
+		3, :name, :dname,	-- mailing list, name, dname
 		NULL,			-- no initial bio
-		NULL,			-- un-affiliated
-		1,0,0,0,0)
+		1,0,0,0,0)              -- can flags
     }
     return [db do last_insert_rowid]
 }
@@ -936,11 +935,11 @@ proc ::cm::contact::new-company {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,
-		2, :name, :dname,	-- company
+	VALUES (NULL, NULL,             -- id, tag
+		2, :name, :dname,	-- company, name, dname
 		NULL,			-- no initial bio
-		NULL,			-- un-affiliated
-		1,0,0,0,1)
+		1,0,0,0,1)              -- can flags
+
 	-- TODO/Note: talker for a company submission should have company affiliation.
 	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
     }
@@ -954,11 +953,10 @@ proc ::cm::contact::new-person {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,
-		1, :name, :dname,	-- person
+	VALUES (NULL, NULL,             -- id, tag
+		1, :name, :dname,	-- type (person), name, dname
 		NULL,			-- no initial bio
-		NULL,			-- un-affiliated
-		1,1,1,1,1)
+		1,1,1,1,1)              -- can flags
     }
     return [db do last_insert_rowid]
 }
