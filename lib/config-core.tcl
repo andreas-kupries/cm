@@ -189,7 +189,7 @@ proc ::cm::config::core::Setup {} {
     return
 }
 
-proc ::cm::config::core::Dump {chan} {
+proc ::cm::config::core::Dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/config/core {}
 
@@ -201,7 +201,7 @@ proc ::cm::config::core::Dump {chan} {
 	# Ignore internal state recorded as config
 	if {[string match @* $key]} continue
 
-	cm dump save $chan \
+	cm dump save \
 	    config set $key $value
     }
     return

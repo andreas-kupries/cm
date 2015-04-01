@@ -95,10 +95,15 @@ proc ::cm::tutorial::cmd_create {config} {
     # try to insert, report failure as user error
 
     set prereq      [$config @requisites]
-    set description [$config @description]
     set speaker     [$config @speaker]
     set tag         [$config @tag]
     set title       [$config @title]
+
+    if {![$config @description set ?]} {
+	set description [read stdin]
+    } else {
+	set description [$config @description]
+    }
 
     puts -nonewline "Creating \"[color name [cm::contact get $speaker]]\" tutorial \"[color name $title]\" ... "
 
@@ -607,11 +612,12 @@ proc ::cm::tutorial::Setup {} {
     return
 }
 
-proc ::cm::tutorial::Dump {chan} {
+proc ::cm::tutorial::Dump {} {
     debug.cm/tutorial {}
 
     db do eval {
-	SELECT C.dname       AS nspeaker,
+	SELECT T.id          AS id,
+	       C.dname       AS nspeaker,
 	       T.tag         AS tag,
 	       T.title       AS title,
 	       T.prereq      AS req,
@@ -621,12 +627,16 @@ proc ::cm::tutorial::Dump {chan} {
 	WHERE  C.id = T.speaker
 	ORDER BY nspeaker, title
     } {
+	cm dump save \
+	    tutorial add $nspeaker $tag $title \
+	    < [cm dump write tutorial$id $desc]
+
 	if {$req ne {}} {
-	    cm dump save $chan tutorial add -R $req $desc $nspeaker $tag $title
-	} else {
-	    cm dump save $chan tutorial add $desc $nspeaker $tag $title
+	    cm dump save \
+		tutorial set-prereq $req
 	}
-	cm dump step $chan
+
+	cm dump step
     }
     return
 }

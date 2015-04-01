@@ -1585,7 +1585,7 @@ proc ::cm::contact::Setup {} {
     return
 }
 
-proc ::cm::contact::Dump {chan} {
+proc ::cm::contact::Dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/contact {}
 
@@ -1609,36 +1609,38 @@ proc ::cm::contact::Dump {chan} {
 	}]
 
 	switch $type {
-	    1 {	cm dump save $chan  contact create-person  $dname }
-	    2 {	cm dump save $chan  contact create-company $dname }
-	    3 {	cm dump save $chan  contact create-list    $dname [lindex $mail 0] }
+	    1 {	cm dump save  contact create-person  $dname }
+	    2 {	cm dump save  contact create-company $dname }
+	    3 {	cm dump save  contact create-list    $dname [lindex $mail 0] }
 	}
 
 	if {!$can_recvmail} {
-	    cm dump save $chan  contact disable $dname
+	    cm dump save  contact disable $dname
 	}
 	if {$tag ne {}} {
-	    cm dump save $chan  contact set-tag $dname $tag
+	    cm dump save  contact set-tag $dname $tag
 	}
 
 	if {$type != 3} {
 	    foreach {mail inactive} $mail {
-		cm dump save $chan	contact add-mail $dname -E $mail
+		cm dump save  contact add-mail $dname -E $mail
 		if {!$inactive} continue
-		cm dump save $chan	contact disable-mail $mail
+		cm dump save  contact disable-mail $mail
 	    }
 	}
 
 	foreach link $links {
-	    cm dump save $chan \
+	    cm dump save \
 		contact add-link $dname -L $link
 	}
 
 	if {$biography ne {}} {
-	    cm dump save $chan  contact set-bio $dname << $biography
+	    cm dump save \
+		contact set-bio $dname \
+		< [cm dump write contact$id $biography]
 	}
 
-	cm dump step $chan
+	cm dump step
     }
 
     # Step II. Relationships (Affiliations & Liaisons)
@@ -1652,10 +1654,11 @@ proc ::cm::contact::Dump {chan} {
 	AND    A.person  = P.id
 	ORDER BY nperson, ncompany
     } {
-	cm dump save $chan  contact affiliate $nperson $ncompany
+	cm dump save \
+	    contact affiliate $nperson $ncompany
     }
 
-    cm dump step $chan
+    cm dump step
 
     db do eval {
 	SELECT C.dname AS ncompany,
@@ -1667,7 +1670,8 @@ proc ::cm::contact::Dump {chan} {
 	AND    L.person  = P.id
 	ORDER BY ncompany, nperson
     } {
-	cm dump save $chan  contact add-liaison $ncompany $nperson
+	cm dump save \
+	    contact add-liaison $ncompany $nperson
     }
     return
 }
