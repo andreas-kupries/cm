@@ -73,5 +73,5 @@ proc ::cm::validate::timeline::complete {p x} {
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::validate::dayhalf 0
+package provide cm::validate::timeline 0
 return
