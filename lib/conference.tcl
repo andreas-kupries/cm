@@ -4041,7 +4041,7 @@ proc ::cm::conference::Dump {} {
 	    AND    S.tutorial   = T.id
 	    AND    S.half       = H.id
 	    AND    T.speaker    = C.id
-	    ORDER BY day, half, track
+	    ORDER BY day, track, H.id
 	} {
 	    if {$first} { cm dump step  ; set first 0 }
 	    incr day ;# move to the external 1-based day offset.
