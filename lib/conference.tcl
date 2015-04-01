@@ -58,8 +58,8 @@ namespace eval ::cm::conference {
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
-	select-sponsor select-staff-role select-staff known-staff known-rstatus \
-	get-role select-timeline get-timeline select-submission get-submission \
+	select-sponsor select-staff-role known-staff-role select-staff known-staff \
+	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
 	known-attachment get-attachment
@@ -4046,7 +4046,7 @@ proc ::cm::conference::Dump {} {
 	    if {$first} { cm dump step  ; set first 0 }
 	    incr day ;# move to the external 1-based day offset.
 	    cm dump save \
-		conference tutorial $day $half $track $speaker/$tutorial
+		conference add-tutorial $day $half $track $speaker/$tutorial
 	}
 
 	# submissions
