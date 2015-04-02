@@ -181,7 +181,12 @@ proc ::cm::tutorial::cmd_setdesc {config} {
     db show-location
 
     set tutorial [$config @tutorial] 
-    set text     [$config @text]
+
+    if {![$config @text set?]} {
+	set text [read stdin]
+    } else {
+	set text [$config @text]
+    }
 
     puts -nonewline "Set description of \"[color name [get $tutorial]]\" ... "
     flush stdout

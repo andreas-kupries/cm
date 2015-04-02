@@ -555,7 +555,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The tutorial to change
 	    } { validate [cm::vt tutorial] }
 	    # TODO: This would be useful to have a mode taking either a path to a file, or reading stdin.
-	    input text { The new text to set }
+	    input text { The new text to set } { optional }
 	} [cm::call tutorial cmd_setdesc]
 	alias change-description
 
