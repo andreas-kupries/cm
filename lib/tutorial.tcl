@@ -99,7 +99,7 @@ proc ::cm::tutorial::cmd_create {config} {
     set tag         [$config @tag]
     set title       [$config @title]
 
-    if {![$config @description set ?]} {
+    if {![$config @description set?]} {
 	set description [read stdin]
     } else {
 	set description [$config @description]
