@@ -56,7 +56,7 @@ namespace eval ::cm::conference {
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
 	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
-	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
+	cmd_submission_settitle cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
@@ -775,6 +775,28 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
     return
 }
 
+proc ::cm::conference::cmd_submission_settitle {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+    set title      [$config @text]
+
+    puts -nonewline "Set title of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE submission
+	SET    title = :title
+	WHERE  id    = :submission
+    }
+
+    puts [color good OK]
+    return
+}
+
 proc ::cm::conference::cmd_submission_show {config} {
     debug.cm/conference {}
     Setup
@@ -898,6 +920,9 @@ proc ::cm::conference::cmd_submission_list {config} {
 
     set conference [current]
 
+    set w [string length "| Id | Date | Authors |  | Title | Accepted |"]
+    set w [util tspace $w 60]
+
     puts "Submissions for \"[color name [get $conference]]\""
     [table t {Id Date Authors {} Title Accepted} {
 	db do eval {
@@ -952,6 +977,7 @@ proc ::cm::conference::cmd_submission_list {config} {
 		set accepted [color bad no]
 	    }
 
+	    set title [util adjust $w $title]
 	    $t add [get-submission-handle $id] $submitdate $authors $invited $title $accepted
 	}
     }] show
