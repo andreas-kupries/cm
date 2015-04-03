@@ -2222,7 +2222,7 @@ proc ::cm::conference::make_admin {conference} {
 	SELECT id, submitdate, invited, abstract, summary, title
 	FROM   submission
 	WHERE  conference = :conference
-
+	ORDER BY submitdate, id
     } {
 	set submitters [db do eval {
 	    SELECT C.dname, S.note
