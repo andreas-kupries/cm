@@ -966,6 +966,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The submission to change
 	    } { validate [cm::vt submission] }
 	} [cm::call conference cmd_submission_setsummary]
+	alias change-summary
 
 	private set-abstract {
 	    section {Submission Management}
@@ -974,6 +975,19 @@ cmdr create cm::cm [file tail $::argv0] {
 		The submission to change
 	    } { validate [cm::vt submission] }
 	} [cm::call conference cmd_submission_setabstract]
+	alias change-abstract
+
+	private set-title {
+	    section {Submission Management}
+	    description { Change title of a submission. }
+	    input submission {
+		The submission to change
+	    } { validate [cm::vt submission] }
+	    input text {
+		New title of the submission.
+	    } { optional ; interact }
+	} [cm::call conference cmd_submission_settitle]
+	alias change-title
 
 	private show {
 	    section {Submission Management}
