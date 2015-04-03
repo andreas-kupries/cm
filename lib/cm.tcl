@@ -989,6 +989,40 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call conference cmd_submission_settitle]
 	alias change-title
 
+	private set-date {
+	    section {Submission Management}
+	    description { Change the submission date of a submission. }
+	    input submission {
+		The submission to change
+	    } { validate [cm::vt submission] }
+	    input date {
+		New submisison date.
+	    } { optional ; interact ; validate [cm::cvt date] }
+	} [cm::call conference cmd_submission_setdate]
+	alias change-date
+
+	private add-submitter {
+	    section {Submission Management}
+	    description { Add one or more submitters to a submission. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input submitter {
+		The submitters to add
+	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator person (can_talk)
+	} [cm::call conference cmd_submission_addsubmitter]
+
+	private drop-submitter {
+	    section {Submission Management}
+	    description { Remove one or more submitter from a submission. }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	    input submitter {
+		The submitters to remove
+	    } { optional ; list ; interact ; validate [cm::vt submitter] }
+	} [cm::call conference cmd_submission_dropsubmitter]
+
 	private show {
 	    section {Submission Management}
 	    description { Show the details of the specified submission }

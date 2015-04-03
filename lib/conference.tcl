@@ -56,13 +56,15 @@ namespace eval ::cm::conference {
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
 	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
-	cmd_submission_settitle cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink \
+	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
+	cmd_submission_dropsubmitter cmd_tutorial_show cmd_tutorial_link \
+	cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
-	known-attachment get-attachment
+	known-attachment get-attachment known-submitter
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -796,6 +798,79 @@ proc ::cm::conference::cmd_submission_settitle {config} {
     puts [color good OK]
     return
 }
+
+proc ::cm::conference::cmd_submission_setdate {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+    set date       [$config @date]
+
+    puts -nonewline "Set submission date of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    db do eval {
+	UPDATE submission
+	SET    submitdate = :date
+	WHERE  id         = :submission
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_submission_addsubmitter {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    puts "Adding submitters to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    foreach submitter [$config @submitter] {
+	puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO submitter
+	    VALUES (NULL, :submission, :submitter, NULL)
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::conference::cmd_submission_dropsubmitter {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    puts "Removing submitters from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    foreach submitter [$config @submitter] {
+	puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
+	flush stdout
+
+	db do eval {
+	    DELETE
+	    FROM   submitter
+	    WHERE  submission = :submission
+	    AND    contact    = :submitter
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
 
 proc ::cm::conference::cmd_submission_show {config} {
     debug.cm/conference {}
@@ -2775,6 +2850,24 @@ proc ::cm::conference::known-speaker {p} {
     }
 
     return [cm::contact::KnownLimited $talkers]
+}
+
+proc ::cm::conference::known-submitter {p} {
+    debug.cm/conference {}
+    Setup
+
+    set submission [$p config @submission]
+
+    set submitters [db do eval {
+	SELECT contact
+	FROM   submitter
+	WHERE  submission = :submission
+    }]
+    if {![llength $submitters]} {
+	return {}
+    }
+
+    return [cm::contact::KnownLimited $submitters]
 }
 
 proc ::cm::conference::get-attachment {id} {
