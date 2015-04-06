@@ -701,6 +701,17 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {	optional ; interact ; validate [cm::cvt date] }
 	} [cm::call conference cmd_timeline_set]
 
+	private timeline-done {
+	    section {Conference Management}
+	    description { Mark an event on the timeline for the conference as done. }
+	    input event {
+		The event to mark as done.
+	    } {	optional
+		validate [cm::vt timeline]
+		generate [cm::call conference select-timeline]
+	    }
+	} [cm::call conference cmd_timeline_done]
+
 	private timeline {
 	    section {Conference Management}
 	    description { Show the timeline for the conference }
