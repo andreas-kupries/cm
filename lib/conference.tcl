@@ -2342,7 +2342,7 @@ proc ::cm::conference::make_admin_timeline {conference textvar tag} {
 
 	set date [hdate $date]
 	set done [expr {$done
-			? "&bull;"
+			? "&check;"
 			: ""}]
 
 	if {$ispublic} {
