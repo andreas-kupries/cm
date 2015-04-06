@@ -9,25 +9,19 @@ NOW
 ---- show acceptance state at submission list/details, ditto talkers, attachments.
 ---- show talks in admin page 
 
-
-* ---- con mgmt --- ready for initial cfp 1 ---
-
 * website, more pages
 
 SOON
 ====
 
 * website - internal pages,
-  - status page - show status of timeline - see below re flag/checkmark
-
-* Need flag on timeline entries - checkmark if an action was done or not.
 
 * 'isprimary' attribute of emails and links for a contact ?
   Or reverse link to the primary items from the contact ?
 
   -- link to previous site/conference ? -- papers --
 
-* implement handling of talks, schedule
+* implement handling of schedule
 
 LATER
 =====

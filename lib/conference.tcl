@@ -50,7 +50,7 @@ namespace eval ::cm::conference {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
-	cmd_timeline_set cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
+	cmd_timeline_set cmd_timeline_done cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
 	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
@@ -515,6 +515,32 @@ proc ::cm::conference::cmd_timeline_set {config} {
     return
 }
 
+proc ::cm::conference::cmd_timeline_done {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set entry      [$config @event]
+
+    puts "Mark \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\""
+
+    db do transaction {
+	puts -nonewline "Done ... "
+	flush stdout
+
+	db do eval {
+	    UPDATE timeline
+	    SET    done = 1
+	    WHERE  con  = :conference
+	    AND    type = :entry
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
 proc ::cm::conference::cmd_timeline_show {config} {
     debug.cm/conference {}
     Setup
@@ -523,23 +549,29 @@ proc ::cm::conference::cmd_timeline_show {config} {
     set conference [current]
 
     puts "Timeline of \"[color name [get $conference]]\":"
-    [table t {Event When} {
+    [table t {Done Event When} {
 	#$t style table/html ;# quick testing
 	db do eval {
 	    SELECT T.date     AS date,
 	           E.text     AS text,
-	           E.ispublic AS ispublic
+	           E.ispublic AS ispublic,
+	           T.done     AS done
 	    FROM   timeline      T,
 	           timeline_type E
 	    WHERE T.con  = :conference
 	    AND   T.type = E.id
 	    ORDER BY T.date
 	} {
+	    set date [hdate $date]
+	    set done [expr {$done
+			    ? "[color good Yes]"
+			    : "No"}]
+
 	    if {$ispublic} {
-		$t add [color note $text] [color note [hdate $date]]
-	    } else {
-		$t add $text [hdate $date]
+		set text [color note $text]
+		set date [color note $date]
 	    }
+	    $t add $done $text $date
 	}
     }] show
     return
@@ -2285,31 +2317,46 @@ proc ::cm::conference::make_admin_timeline {conference textvar tag} {
     append text \n
     append text [anchor $tag] \n
     append text "# Events\n\n"
-    append text |What|When|\n|-|-|\n
+
+    set first 1
     db do eval {
 	SELECT T.date     AS date,
                E.ispublic AS ispublic,
-	       E.text     AS what
+	       E.text     AS what,
+	       T.done     AS done
 	FROM   timeline      T,
 	       timeline_type E
 	WHERE T.con  = :conference
 	AND   T.type = E.id
 	ORDER BY T.date
     } {
+	if {$first} {
+	    append text |Done|What|When|\n|-|-|-|\n
+	    set first 0
+	}
 
 	if {!$pastnow && ($date > $now)} {
 	    set pastnow yes
-	    append text |||\n|__Today__| [hdate $now] |\n|||\n
+	    append text ||||\n||__Today__| [hdate $now] |\n||||\n
 	}
 
+	set date [hdate $date]
+	set done [expr {$done
+			? "&bull;"
+			: ""}]
+
 	if {$ispublic} {
-	    #append text |__ $what __|__ [hdate $date] __|\n
-	    append text |__ [hdate $date] __|__ $what __|\n
-	} else {
-	    #append text | $what | [hdate $date] |\n
-	    append text | [hdate $date] | $what |\n
+	    set date __${date}__
+	    set what __${what}__
 	}
+
+	append text || $date | $what |\n
     }
+
+    if {$first} {
+	append text "__No events defined__"
+    }
+
     append text \n
     return
 }
@@ -2716,7 +2763,7 @@ proc ::cm::conference::timeline-init {conference} {
 	    }
 	    db do eval {
 		INSERT INTO timeline
-		VALUES (NULL, :conference, :new, :id)
+		VALUES (NULL, :conference, :new, :id, 0)
 	    }
 	}
     }] show
@@ -3964,12 +4011,14 @@ proc ::cm::conference::Setup {} {
 	    id	 INTEGER NOT NULL PRIMARY KEY,
 	    con	 INTEGER NOT NULL REFERENCES conference,
 	    date INTEGER NOT NULL,		-- when this happens [epoch]
-	    type INTEGER NOT NULL REFERENCES timeline_type
+	    type INTEGER NOT NULL REFERENCES timeline_type,
+	    done INTEGER NOT NULL
 	} {
 	    {id   INTEGER 1 {} 1}
 	    {con  INTEGER 1 {} 0}
 	    {date INTEGER 1 {} 0}
 	    {type INTEGER 1 {} 0}
+	    {done INTEGER 1 {} 0}
 	} {con}
     }]} {
 	db setup-error timeline $error
@@ -4320,7 +4369,8 @@ proc ::cm::conference::Dump {} {
 	    conference timeline-init
 	db do eval {
 	    SELECT T.date AS date,
-	           E.key  AS text
+	           E.key  AS text,
+	           T.done AS done
 	    FROM   timeline      T,
                    timeline_type E
 	    WHERE  T.con  = :id
@@ -4329,6 +4379,10 @@ proc ::cm::conference::Dump {} {
 	} {
 	    cm dump save \
 		conference timeline-set $text [isodate $date]
+	    if {$done} {
+		cm dump save \
+		    conference timeline-done $text
+	    }
 	}
 
 	# rate
