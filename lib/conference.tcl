@@ -900,6 +900,12 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    }] \n]
 
 	    set issues {}
+
+	    if {([string trim $abstract] eq {}) &&
+		([string trim $summary] eq {})} {
+		+issue "Missing abstract/summary"
+	    }
+
 	    # Accepted as talk ?
 	    set talk [db do onecolumn {
 		SELECT id
@@ -1002,7 +1008,7 @@ proc ::cm::conference::cmd_submission_list {config} {
     puts "Submissions for \"[color name [get $conference]]\""
     [table t {Id Date Authors {} Title Accepted} {
 	db do eval {
-	    SELECT id, title, invited, submitdate
+	    SELECT id, title, invited, submitdate, abstract, summary
 	    FROM   submission
 	    WHERE  conference = :conference
 	    ORDER BY submitdate, id
@@ -1021,6 +1027,12 @@ proc ::cm::conference::cmd_submission_list {config} {
 	    set submitdate [hdate $submitdate]
 
 	    set issues {}
+
+	    if {([string trim $abstract] eq {}) &&
+		([string trim $summary] eq {})} {
+		+issue "Missing abstract/summary"
+	    }
+
 	    # Accepted as talk ?
 	    set talk [db do onecolumn {
 		SELECT id
@@ -1045,12 +1057,12 @@ proc ::cm::conference::cmd_submission_list {config} {
 		}]} {
 		    +issue "No materials"
 		}
-
-		if {[llength $issues]} {
-		    set accepted [fmt-issues-cli $issues]
-		}
 	    } else {
 		set accepted [color bad no]
+	    }
+
+	    if {[llength $issues]} {
+		append authors \n [fmt-issues-cli $issues]
 	    }
 
 	    set title [util adjust $w $title]
@@ -2376,7 +2388,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
     append text \n
     append text [anchor $tag] \n
     append text "# Accepted Talks\n\n"
-    append text |When|Invited|By|Title|\n|-|-|-|-|\n
+    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
 
     db do eval {
 	SELECT S.id         AS id,
@@ -2406,7 +2418,13 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	set invited    [expr {$invited ? "__yes__" : ""}]
 	set submitters [join [dict keys $submitters] {, }]
 
-	append text | [hdate $submitdate] | $invited | $submitters | [link $title __s${id}.html] |\n
+	set issue {}
+	if {([string trim $abstract] eq {}) &&
+	    ([string trim $summary] eq {})} {
+	    set issue "__Missing abstract/summary__"
+	}
+
+	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
     }
     append text \n
     return
@@ -2422,7 +2440,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     append text \n
     append text [anchor $tag] \n
     append text "# Submissions\n\n"
-    append text |When|Invited|By|Title|\n|-|-|-|-|\n
+    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
 
     db do eval {
 	SELECT S.id         AS id,
@@ -2452,7 +2470,13 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	set invited    [expr {$invited ? "__yes__" : ""}]
 	set submitters [join [dict keys $submitters] {, }]
 
-	append text | [hdate $submitdate] | $invited | $submitters | [link $title __s${id}.html] |\n
+	set issue {}
+	if {([string trim $abstract] eq {}) &&
+	    ([string trim $summary] eq {})} {
+	    set issue "__Missing abstract/summary__"
+	}
+
+	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
     }
     append text \n
     return
@@ -2460,7 +2484,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 
 proc ::cm::conference::make_submission {submission submitters date invited abstract summary} {
     debug.cm/conference {}
-upvar 1 dstdir dstdir
+    upvar 1 dstdir dstdir
 
     append text "\# Submitted\n\n"
     if {$invited} { set invited " (by invitation)" } else { set invited {} }
@@ -2529,8 +2553,8 @@ upvar 1 dstdir dstdir
     }
     append text \n
 
-    if {$abstract eq {}} { set abstract "__No abstract__" }
-    if {$summary  eq {}} { set summary  "__No summary__"  }
+    if {[string trim $abstract] eq {}} { set abstract "__No abstract__" }
+    if {[string trim $summary]  eq {}} { set summary  "__No summary__"  }
 
     append text "\# Abstract\n\n"
     append text $abstract
