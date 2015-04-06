@@ -2350,7 +2350,7 @@ proc ::cm::conference::make_admin_timeline {conference textvar tag} {
 	    set what __${what}__
 	}
 
-	append text || $date | $what |\n
+	append text | $done | $date | $what |\n
     }
 
     if {$first} {
