@@ -2319,6 +2319,12 @@ proc ::cm::conference::make_admin_campaign {conference textvar tag} {
 	return
     }
 
+    set destinations [db do eval {
+	SELECT email
+	FROM   campaign_destination
+	WHERE  campaign = :campaign
+    }]
+
     set first 1
     db do eval {
 	SELECT M.id   AS mailrun,
