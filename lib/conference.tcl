@@ -2251,10 +2251,10 @@ proc ::cm::conference::make_admin {conference} {
     if {[llength $issues]} {
 	append text "* " [link Issues      {} issues] \n
     }
-    append text "* " [link Events      {} events] \n
-    append text "* " [link Campaign    {} campaign] \n
     append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
+    append text "* " [link Campaign    {} campaign] \n
+    append text "* " [link Events      {} events] \n
     append text \n
 
     if {[llength $issues]} {
@@ -2265,10 +2265,10 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
     }
 
-    make_admin_timeline    $conference text events
-    make_admin_campaign    $conference text campaign
     make_admin_accepted    $conference text accepted
     make_admin_submissions $conference text submissions
+    make_admin_campaign    $conference text campaign
+    make_admin_timeline    $conference text events
 
     # What else ...
     return $text
@@ -2388,8 +2388,8 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
     append text \n
     append text [anchor $tag] \n
     append text "# Accepted Talks\n\n"
-    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
 
+    set first 1
     db do eval {
 	SELECT S.id         AS id,
 	       S.submitdate AS submitdate,
@@ -2402,6 +2402,11 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	AND    0 < (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
 	ORDER BY submitdate, id
     } {
+	if {$first} {
+	    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
+	    set first 0
+	}
+
 	set submitters [db do eval {
 	    SELECT C.dname, S.note
 	    FROM   submitter S,
@@ -2426,6 +2431,11 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 
 	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
     }
+
+    if {$first} {
+	append text "No accepted talks" \n
+    }
+
     append text \n
     return
 }
@@ -2440,8 +2450,8 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     append text \n
     append text [anchor $tag] \n
     append text "# Submissions\n\n"
-    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
 
+    set first 1
     db do eval {
 	SELECT S.id         AS id,
 	       S.submitdate AS submitdate,
@@ -2454,6 +2464,11 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	AND    0 = (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
 	ORDER BY submitdate, id
     } {
+	if {$first} {
+	    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
+	    set first 0
+	}
+
 	set submitters [db do eval {
 	    SELECT C.dname, S.note
 	    FROM   submitter S,
@@ -2478,6 +2493,11 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 
 	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
     }
+
+    if {$first} {
+	append text "No submissions yet" \n
+    }
+
     append text \n
     return
 }
@@ -3388,6 +3408,17 @@ proc ::cm::conference::issues {details} {
 	WHERE  conference = :xconference
     }]} {
 	+issue "No submissions"
+    } else {
+	db do eval {
+	    SELECT abstract, summary
+	    FROM   submission
+	    WHERE  conference = :xconference
+	} {
+	    if {[string trim $abstract] ne {}} continue
+	    if {[string trim $summary]  ne {}} continue
+	    +issue "Have submissions without abstract, nor summary"
+	    break
+	}
     }
 
     if {![llength $issues]} return
