@@ -23,6 +23,7 @@ package require cmdr::validate::weekday
 package require dbutil
 package require debug
 package require debug::caller
+package require struct::set
 package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
@@ -2239,6 +2240,8 @@ proc ::cm::conference::make_admin {conference} {
 	append text "* " [link Issues      {} issues] \n
     }
     append text "* " [link Events      {} events] \n
+    append text "* " [link Campaign    {} campaign] \n
+    append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
     append text \n
 
@@ -2250,13 +2253,25 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
     }
 
+    make_admin_timeline    $conference text events
+    make_admin_campaign    $conference text campaign
+    make_admin_accepted    $conference text accepted
+    make_admin_submissions $conference text submissions
+
+    # What else ...
+    return $text
+}
+
+proc ::cm::conference::make_admin_timeline {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
     # Full timeline, including the non-public events.
 
     set now [clock seconds]
     set pastnow 0
 
     append text \n
-    append text [anchor events] \n
+    append text [anchor $tag] \n
     append text "# Events\n\n"
     append text |What|When|\n|-|-|\n
     db do eval {
@@ -2284,19 +2299,89 @@ proc ::cm::conference::make_admin {conference} {
 	}
     }
     append text \n
+    return
+}
 
-    # Table of submissions received so far, plus one side page per to
+proc ::cm::conference::make_admin_campaign {conference textvar tag} {
+    package require cm::campaign
+
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # Status of the email campaign (see 'campaign status')
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Campaign Status\n\n"
+
+    set campaign [cm campaign get-for $conference]
+    if {$campaign eq {}} {
+	append text "__Conference \"$clabel\" has no campaign__"
+	return
+    }
+
+    set first 1
+    db do eval {
+	SELECT M.id   AS mailrun,
+	       M.date AS date,
+	       T.name AS name
+	FROM   campaign_mailrun M,
+	       template         T
+	WHERE  M.campaign = :campaign
+	AND    M.template = T.id
+	ORDER BY date
+    } {
+	if {$first} {
+	    append text |When|Template|Reached|Unreached|\n|-|-|-|-|\n
+	    set first 0
+	}
+	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
+
+	set reached [db do eval {
+	    SELECT email
+	    FROM   campaign_received
+	    WHERE  mailrun = :mailrun
+	}]
+	set unreached [struct::set difference $destinations $reached]
+	set unreached [llength $unreached]
+	set reached   [llength $reached]
+
+	if {$unreached} {
+	    set unreached __$unreached__
+	}
+
+	append text | $date | $name | $reached | $unreached |\n
+    }
+
+    if {$first} {
+	append text "Campaign has not been run yet" \n
+    }
+
+    append text \n
+    return
+}
+
+proc ::cm::conference::make_admin_accepted {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 dstdir dstdir $textvar text
+
+    # Table of accepted submissions aka talks, plus one side page per to
     # hold the larger associated texts.
 
     append text \n
-    append text [anchor submissions] \n
-    append text "# Submissions\n\n"
+    append text [anchor $tag] \n
+    append text "# Accepted Talks\n\n"
     append text |When|Invited|By|Title|\n|-|-|-|-|\n
 
     db do eval {
-	SELECT id, submitdate, invited, abstract, summary, title
-	FROM   submission
+	SELECT S.id         AS id,
+	       S.submitdate AS submitdate,
+	       S.invited    AS invited,
+	       S.abstract   AS abstract,
+	       S.summary    AS summary,
+	       S.title      AS title
+	FROM   submission S
 	WHERE  conference = :conference
+	AND    0 < (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
 	ORDER BY submitdate, id
     } {
 	set submitters [db do eval {
@@ -2310,7 +2395,7 @@ proc ::cm::conference::make_admin {conference} {
 
 	# Side page per submission, holding the entire data.
 	make_internal_page $title __s$id \
-	    make_submission $submitters $submitdate $invited $abstract $summary
+	    make_submission $id $submitters $submitdate $invited $abstract $summary
 
 	set invited    [expr {$invited ? "__yes__" : ""}]
 	set submitters [join [dict keys $submitters] {, }]
@@ -2318,17 +2403,67 @@ proc ::cm::conference::make_admin {conference} {
 	append text | [hdate $submitdate] | $invited | $submitters | [link $title __s${id}.html] |\n
     }
     append text \n
-
-    # What else ...
-    return $text
+    return
 }
 
-proc ::cm::conference::make_submission {submitters date invited abstract summary} {
+proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     debug.cm/conference {}
+    upvar 1 dstdir dstdir $textvar text
+
+    # Table of submissions received so far, plus one side page per to
+    # hold the larger associated texts.
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Submissions\n\n"
+    append text |When|Invited|By|Title|\n|-|-|-|-|\n
+
+    db do eval {
+	SELECT S.id         AS id,
+	       S.submitdate AS submitdate,
+	       S.invited    AS invited,
+	       S.abstract   AS abstract,
+	       S.summary    AS summary,
+	       S.title      AS title
+	FROM   submission S
+	WHERE  conference = :conference
+	AND    0 = (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
+	ORDER BY submitdate, id
+    } {
+	set submitters [db do eval {
+	    SELECT C.dname, S.note
+	    FROM   submitter S,
+	           contact   C
+	    WHERE  S.submission = :id
+	    AND    C.id = S.contact
+	    ORDER BY C.dname
+	}]
+
+	# Side page per submission, holding the entire data.
+	make_internal_page $title __s$id \
+	    make_submission $id $submitters $submitdate $invited $abstract $summary
+
+	set invited    [expr {$invited ? "__yes__" : ""}]
+	set submitters [join [dict keys $submitters] {, }]
+
+	append text | [hdate $submitdate] | $invited | $submitters | [link $title __s${id}.html] |\n
+    }
+    append text \n
+    return
+}
+
+proc ::cm::conference::make_submission {submission submitters date invited abstract summary} {
+    debug.cm/conference {}
+upvar 1 dstdir dstdir
 
     append text "\# Submitted\n\n"
-
     if {$invited} { set invited " (by invitation)" } else { set invited {} }
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
 
     append text |||\n|-|-|\n
     append text |On| [hdate $date] $invited |\n
@@ -2340,6 +2475,51 @@ proc ::cm::conference::make_submission {submitters date invited abstract summary
 	}
 	append text |\n
 	set prefix {}
+    }
+
+    if {$talk ne {}} {
+	append text |__Accepted__||\n
+
+	set speakers [db do eval {
+	    SELECT C.dname
+	    FROM   talker  T,
+	           contact C
+	    WHERE  T.talk = :talk
+	    AND    C.id   = T.contact
+	    ORDER BY C.dname
+	}]
+
+	set prefix Speaker
+	foreach name $speakers {
+	    append text | $prefix | $name |\n
+	    set prefix {}
+	}
+
+	set attachments [db do eval {
+	    SELECT id, type
+	    FROM   attachment
+	    WHERE  talk = :talk
+	    ORDER BY type
+	}]
+	set prefix Attachment
+	foreach {aid title} $attachments {
+	    file mkdir $dstdir/static/asset
+
+	    # TODO: some way of getting the mime-type associated to the asset-file ?
+
+	    set in  [db do incrblob -readonly attachment data $aid]
+	    set out [open $dstdir/static/asset/attachment$aid w]
+
+	    fconfigure $in  -encoding binary -translation binary
+	    fconfigure $out -encoding binary -translation binary
+	    fcopy $in $out
+
+	    close $in
+	    close $out
+
+	    append text | $prefix | [link $title asset/attachment$aid] |\n
+	    set prefix {}
+	}
     }
     append text \n
 

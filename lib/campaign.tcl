@@ -45,7 +45,7 @@ namespace eval ::cm {
 namespace eval ::cm::campaign {
     namespace export cmd_setup cmd_close cmd_status cmd_mail \
 	cmd_test cmd_reset cmd_drop \
-	add-mail drop-mail
+	add-mail drop-mail get-for
     namespace ensemble create
 
     namespace import ::cmdr::color
