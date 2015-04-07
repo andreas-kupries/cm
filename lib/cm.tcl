@@ -479,6 +479,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show staff for current location }
 	} [cm::call location cmd_staff_show]
 
+	private delete {
+	    section {Location Management}
+	    description { Delete the specified location }
+	    input location {
+		Location to delete
+	    } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call location select]
+	    }
+	} [cm::call location cmd_delete]
+	alias remove
+
 	# remove - if not used
 	# modify - change name, street, zip, city (rename, relocate/move)
     }
