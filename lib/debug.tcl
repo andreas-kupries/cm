@@ -60,6 +60,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db
     package require cm::db::city
     package require cm::db::config
+    package require cm::db::dayhalf
     package require cm::db::staffrole
     package require cm::db::template
     #package require cm::debug ;#-- self

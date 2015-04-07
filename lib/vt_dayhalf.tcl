@@ -16,7 +16,8 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::tutorial
+package require cm::db::dayhalf
+package require cm::util
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +34,8 @@ namespace eval ::cm::validate::dayhalf {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::tutorial
+    namespace import ::cm::db::dayhalf
+    namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,33 +45,15 @@ namespace eval ::cm::validate::dayhalf {
 proc ::cm::validate::dayhalf::default  {p}   { return {} }
 proc ::cm::validate::dayhalf::release  {p x} { return }
 proc ::cm::validate::dayhalf::validate {p x} {
-    set known   [tutorial known-half]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p DAYHALF "a dayhalf identifier" $x
+    switch -exact -- [util match-substr id [dayhalf known] nocase $x] {
+	ok        { return $id }
+	fail      { fail $p DAYHALF "a dayhalf identifier"              $x }
+	ambiguous { fail $p DAYHALF "an unambiguous dayhalf identifier" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p DAYHALF "an unambigous dayhalf identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::dayhalf::complete {p x} {
-    complete-enum [dict keys [tutorial known-half]] 1 $x
+    complete-enum [dict keys [dayhalf known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################
