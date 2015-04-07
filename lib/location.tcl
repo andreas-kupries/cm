@@ -23,9 +23,9 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::city
 package require cm::config::core
 package require cm::db
+package require cm::db::city
 package require cm::table
 package require cm::util
 
@@ -45,8 +45,8 @@ namespace eval ::cm::location {
 
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
-    namespace import ::cm::city
     namespace import ::cm::db
+    namespace import ::cm::db::city
     namespace import ::cm::util
 
     namespace import ::cm::config::core
@@ -187,7 +187,7 @@ proc ::cm::location::cmd_show {config} {
 
 	dict with details {}
 
-	set xcity [city get $xcity]
+	set xcity [city 2name $xcity]
 
 	if {!$xstaffcount} {
 	    set xstaffcount [color bad None]
@@ -711,7 +711,7 @@ proc ::cm::location::Setup {} {
     debug.cm/location {}
 
     ::cm::config::core::Setup
-    ::cm::city::Setup
+    city setup
 
     if {![dbutil initialize-schema ::cm::db::do error location {
 	{
@@ -784,7 +784,7 @@ proc ::cm::location::Dump {} {
 	FROM   location
 	ORDER BY name
     } {
-	set city [city get $city]
+	set city [city 2name $city]
 
 	cm dump save  \
 	    location create $name $streetaddress $zipcode $city

@@ -88,6 +88,13 @@ proc ::cm::no-search {} {
 }
 
 # NOTE: call, vt, sequence, exclude - Possible convenience cmds for Cmdr.
+proc ::cm::call-db {p args} {
+    lambda {p args} {
+	package require cm::db::$p
+	cm::db::$p {*}$args
+    } $p {*}$args
+}
+
 proc ::cm::call {p args} {
     lambda {p args} {
 	package require cm::$p
@@ -344,17 +351,29 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name   { description {Name of the city}        }
 	    input state  { description {State the city is in}    }
 	    input nation { description {Nation the state is in}  }
-	} [cm::call city cmd_create]
+	} [cm::call city create]
 	alias new
 	alias add
+
+	private delete {
+	    section {City Management}
+	    description { Delete the specified city }
+	    input city {
+		The city to delete
+	    } {
+		optional
+		validate [cm::vt city]
+		generate [cm::call-db city select]
+	    }
+	} [cm::call city delete]
+	alias remove
 
 	private list {
 	    section {City Management}
 	    description { Show a table of all known cities }
-	} [cm::call city cmd_list]
+	} [cm::call city list-all]
 
-	# remove - if not used
-	# modify - change state, nation
+	# TODO: modify cities - change name, state, nation
     }
     alias cities = city list
 
@@ -380,7 +399,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input city          { City the location is in }           {
 		optional
 		validate [cm::vt city]
-		generate [cm::call city select]
+		generate [cm::call-db city select]
 	    }
 
 	    # Contact details, and staff information to be set after

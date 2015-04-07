@@ -28,10 +28,10 @@ package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
 
-package require cm::city
 package require cm::config::core
 package require cm::contact
 package require cm::db
+package require cm::db::city
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
@@ -72,9 +72,9 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::date
     namespace import ::cmdr::validate::weekday
-    namespace import ::cm::city
     namespace import ::cm::contact
     namespace import ::cm::db
+    namespace import ::cm::db::city
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
@@ -397,7 +397,7 @@ proc ::cm::conference::cmd_facility {config} {
     set facility [$config @location]
     set flabel   [location get $facility]
     set city     [dict get [location details $facility] xcity]
-    set clabel   [city get $city]
+    set clabel   [city 2name $city]
 
     puts "Conference \"[color name [get $id]]\":"
     puts "- Set facility as \"[color name $flabel]\""
@@ -429,7 +429,7 @@ proc ::cm::conference::cmd_hotel {config} {
     set hotel   [$config @location]
     set hlabel  [location get $hotel]
     set city    [dict get [location details $hotel] xcity]
-    set clabel  [city get $city]
+    set clabel  [city 2name $city]
 
     puts "Conference \"[color name [get $id]]\":"
     puts "- Set hotel    as \"[color name $hlabel]\""
@@ -2795,7 +2795,7 @@ proc ::cm::conference::insert {id text} {
 
     # City information
 
-    +map @c:city@ [city get [dict get $details xcity]]
+    +map @c:city@ [city 2name [dict get $details xcity]]
 
     # Hotel information, if available.
     # insert - TODO: Facility information, and hotel != facility.
@@ -2814,7 +2814,7 @@ proc ::cm::conference::insert {id text} {
 	set xhstreet    [dict get $hdetails xstreet]
 	set xhzipcode   [dict get $hdetails xzipcode]
 	set xhtransport [dict get $hdetails xtransport]
-	set xhcity      [city get [dict get $hdetails xcity]]
+	set xhcity      [city 2name [dict get $hdetails xcity]]
     } else {
 	set xlocalphone __Missing__
 	set xlocalfax   __Missing__
@@ -3933,7 +3933,7 @@ proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
     ::cm::config::core::Setup
-    ::cm::city::Setup
+    city setup
     ::cm::location::Setup
     ::cm::contact::Setup
 
