@@ -294,7 +294,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	private list {
 	    section {Conference Management} {Mail Campaign} {Template Management}
 	    description { Show a table of all known templates }
-	} [cm::call template cmd_list]
+	} [cm::call template list-all]
 
 	private show {
 	    section {Conference Management} {Mail Campaign} {Template Management}
@@ -302,7 +302,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the template to show
 	    } { validate [cm::vt template] }
-	} [cm::call template cmd_show]
+	} [cm::call template show]
 
 	private create {
 	    section {Conference Management} {Mail Campaign} {Template Management}
@@ -310,7 +310,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the template to create
 	    } { validate [cm::vt nottemplate] }
-	} [cm::call template cmd_create]
+	} [cm::call template create]
 	alias add
 	alias new
 
@@ -320,17 +320,18 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the template to remove
 	    } { validate [cm::vt template] }
-	} [cm::call template cmd_remove]
+	} [cm::call template remove]
 	alias drop
+	alias delete
 
-	private set {
+	private update {
 	    section {Conference Management} {Mail Campaign} {Template Management}
 	    description { Update the named template. The text is read from stdin. }
 	    input name {
 		Name of the template to update
 	    } { validate [cm::vt template] }
-	} [cm::call template cmd_set]
-	alias update
+	} [cm::call template update]
+	alias set
 	alias replace
     }
     alias templates = template list
@@ -889,7 +890,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
-		generate [cm::call template find mail-sponsors]
+		generate [cm::call-db template find-p mail-sponsors]
 		validate [cm::vt template] }
 	} [cm::call conference cmd_sponsor_ping]
 
@@ -899,7 +900,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
-		generate [cm::call template find mail-committee]
+		generate [cm::call-db template find-p mail-committee]
 		validate [cm::vt template] }
 	} [cm::call conference cmd_committee_ping]
 

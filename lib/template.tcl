@@ -26,6 +26,7 @@ package require try
 package require cm::util
 package require cm::table
 package require cm::db
+package require cm::db::template
 
 # # ## ### ##### ######## ############# ######################
 
@@ -34,14 +35,13 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::template {
-    namespace export \
-	cmd_create cmd_remove cmd_set cmd_list cmd_show \
-	get details known select find find-by-name use
+    namespace export create remove update list-all show
     namespace ensemble create
 
     namespace import ::cmdr::color
     namespace import ::cmdr::ask
     namespace import ::cm::db
+    namespace import ::cm::db::template
     namespace import ::cm::util
 
     namespace import ::cm::table::do
@@ -55,39 +55,36 @@ debug prefix cm/template {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::template::cmd_show {config} {
+proc ::cm::template::show {config} {
     debug.cm/template {}
-    Setup
+    template setup
     db show-location
 
-    set id [$config @name]
-    puts "Template [color name [$config @name string]]:"
-    puts [details $id]
+    set template [$config @name]
+
+    puts "Template [color name [template 2name $template]]:"
+    puts [template value $template]
     return
 }
 
-proc ::cm::template::cmd_list {config} {
+proc ::cm::template::list-all {config} {
     debug.cm/template {}
-    Setup
+    template setup
     db show-location
 
     # TODO: compute and show issues with templates (missing place holders)
 
     [table t {Name} {
-	db do eval {
-	    SELECT name
-	    FROM   template
-	    ORDER BY name
-	} {
+	foreach {template name} [template all] {
 	    $t add $name
 	}
     }] show
     return
 }
 
-proc ::cm::template::cmd_create {config} {
+proc ::cm::template::create {config} {
     debug.cm/template {}
-    Setup
+    template setup
     db show-location
 
     # try to insert, report failure as user error
@@ -101,15 +98,11 @@ proc ::cm::template::cmd_create {config} {
     puts -nonewline "Creating template \"[color name $name]\" ... "
 
     try {
-	db do transaction {
-	    db do eval {
-		INSERT INTO template
-		VALUES (NULL, :name, :text)
-	    }
-	}
+	template new $name $text
     } on error {e o} {
+	# Report insert failure as user error
 	# TODO: trap only proper insert error, if possible.
-	puts [color bad $e]
+	util user-error $e TEMPLATE CREATE
 	return
     }
 
@@ -117,176 +110,38 @@ proc ::cm::template::cmd_create {config} {
     return
 }
 
-proc ::cm::template::cmd_remove {config} {
+proc ::cm::template::remove {config} {
     debug.cm/template {}
-    Setup
+    template setup
     db show-location
 
-    set id [$config @name]
-
-    puts -nonewline "Remove [color name [$config @name string]] ... "
-    flush stdout
+    set template [$config @name]
 
     # TODO: prevent removal if used in campaigns
 
-    db do eval {
-	DELETE FROM template
-	WHERE id = :id
-    }
+    puts -nonewline "Remove [color name [template 2name $template]] ... "
+    flush stdout
+
+    template delete $template
 
     puts [color good OK]
     return
 }
 
-proc ::cm::template::cmd_set {config} {
+proc ::cm::template::update {config} {
     debug.cm/template {}
-    Setup
+    template setup
     db show-location
 
     set template [$config @name]
     set text     [read stdin]
 
-    puts -nonewline "Update [color name [$config @name string]] ... "
+    puts -nonewline "Update [color name [template 2name $template]] ... "
     flush stdout
 
-    db do eval {
-	UPDATE template
-	SET    value = :text
-	WHERE  id = :template
-    }
+    template update $template $text
 
     puts [color good OK]
-    return
-}
-
-# # ## ### ##### ######## ############# ######################
-## Internal import support commands.
-
-proc ::cm::template::use {name} {
-    # use - TODO: could do with caching ?!
-    return [details [find-by-name $name]]
-}
-
-proc ::cm::template::get {id} {
-    debug.cm/template {}
-    Setup
-    return [db do onecolumn {
-	SELECT name
-	FROM   template
-	WHERE  id = :id
-    }]
-}
-
-proc ::cm::template::details {id} {
-    debug.cm/template {}
-    Setup
-    return [db do onecolumn {
-	SELECT value
-	FROM   template
-	WHERE  id = :id
-    }]
-}
-
-proc ::cm::template::known {} {
-    debug.cm/template {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, name
-	FROM template
-    } {
-	dict set known $name $id
-    }
-
-    return $known
-}
-
-proc ::cm::template::find-by-name {name} {
-    debug.cm/template {}
-
-    # dict: label -> id
-    set templates [known]
-
-    if {![dict exists $templates $name]} {
-	util user-error "Template \"$name\" not found"
-	#$p undefined!
-    }
-
-    # Map to id
-    return [dict get $templates $name]
-}
-
-proc ::cm::template::find {name p} {
-    debug.cm/template {}
-    return [find-by-name $name]
-}
-
-proc ::cm::template::select {p} {
-    debug.cm/template {}
-
-    if {![cmdr interactive?]} {
-	$p undefined!
-    }
-
-    # dict: label -> id
-    set templates [known]
-    set choices   [lsort -dict [dict keys $templates]]
-
-    switch -exact [llength $choices] {
-	0 { $p undefined! }
-	1 {
-	    # Single choice, return
-	    # TODO: print note
-	    return [lindex $templates 1]
-	}
-    }
-
-    set choice [ask menu "" "Which template: " $choices]
-
-    # Map back to id
-    return [dict get $templates $choice]
-}
-
-proc ::cm::template::Setup {} {
-    debug.cm/template {}
-
-    if {![dbutil initialize-schema ::cm::db::do error template {
-	{
-	    -- Text templates for mail campaigns
-
-	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    name	TEXT    NOT NULL UNIQUE,
-	    value	TEXT	NOT NULL
-	} {
-	    {id     INTEGER 1 {} 1}
-	    {name   TEXT    1 {} 0}
-	    {value  TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error template $error
-    }
-
-    # Shortcircuit further calls
-    proc ::cm::template::Setup {args} {}
-    return
-}
-
-proc ::cm::template::Dump {} {
-    # We can assume existence of the 'cm dump' ensemble.
-    debug.cm/template {}
-
-    db do eval {
-	SELECT id, name, value
-	FROM   template
-	ORDER BY name
-    } {
-	cm dump save \
-	    template create $name \
-	    < [cm dump write template$id $value]
-    }
     return
 }
 

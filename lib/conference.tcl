@@ -37,7 +37,7 @@ package require cm::location
 package require cm::mailer
 package require cm::mailgen
 package require cm::table
-package require cm::template
+package require cm::db::template
 package require cm::tutorial
 package require cm::util
 
@@ -80,7 +80,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
-    namespace import ::cm::template
+    namespace import ::cm::db::template
     namespace import ::cm::tutorial
     namespace import ::cm::util
 
@@ -621,12 +621,12 @@ proc ::cm::conference::cmd_committee_ping {config} {
     set conference [current]
     set details    [details $conference]
     set template   [$config @template]
-    set tlabel     [template get $template]
+    set tlabel     [template 2name $template]
 
     puts "Mailing the committee of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
 
-    set template     [template details $template]
+    set template     [template value $template]
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
@@ -1343,12 +1343,12 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 
     set conference [current]
     set template   [$config @template]
-    set tlabel     [template get $template]
+    set tlabel     [template 2name $template]
 
     puts "Mailing the sponsors of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
 
-    set template     [template details $template]
+    set template     [template value $template]
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
@@ -3884,6 +3884,7 @@ proc ::cm::conference::Setup {} {
     ::cm::location::Setup
     city      setup
     staffrole setup
+    template  setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{

@@ -16,7 +16,8 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::template
+package require cm::db::template
+package require cm::util
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +34,8 @@ namespace eval ::cm::validate::template {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::template
+    namespace import ::cm::db::template
+    namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,15 +45,15 @@ namespace eval ::cm::validate::template {
 proc ::cm::validate::template::default  {p}   { return {} }
 proc ::cm::validate::template::release  {p x} { return }
 proc ::cm::validate::template::validate {p x} {
-    set known [template known]
-    if {[dict exists $known $x]} {
-	return [dict get $known $x]
+    switch -exact -- [util match-substr id [template known] 0 $x] {
+	ok        { return $id }
+	fail      { fail $p TEMPLATE "a template name"              $x }
+	ambiguous { fail $p TEMPLATE "an unambiguous template name" $x }
     }
-    fail $p TEMPLATE "a template name" $x
 }
 
 proc ::cm::validate::template::complete {p x} {
-    complete-enum [dict keys [template known]] 1 $x
+    complete-enum [dict keys [template known]] 0 $x
 }
 
 # # ## ### ##### ######## ############# ######################

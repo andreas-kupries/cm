@@ -33,7 +33,7 @@ package require cm::db
 package require cm::mailer
 package require cm::mailgen
 package require cm::table
-package require cm::template
+package require cm::db::template
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -57,7 +57,7 @@ namespace eval ::cm::campaign {
     namespace import ::cm::db
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
-    namespace import ::cm::template
+    namespace import ::cm::db::template
     namespace import ::cm::util
 
     namespace import ::cm::table::do
@@ -289,7 +289,7 @@ proc ::cm::campaign::cmd_mail {config} {
     }
 
     set template [$config @template]
-    set tname    [template get $template]
+    set tname    [template 2name $template]
 
 
     puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" ..."
@@ -334,7 +334,7 @@ proc ::cm::campaign::cmd_mail {config} {
 	puts "Addressing:   [llength $destinations]"
     }
 
-    set text [template details $template]
+    set text [template value $template]
     set now  [clock seconds]
 
     set issues [check-template $text]
@@ -397,12 +397,12 @@ proc ::cm::campaign::cmd_test {config} {
     }
 
     set template [$config @template]
-    set tname    [template get $template]
+    set tname    [template 2name $template]
 
 
     puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" ..."
 
-    set text   [template details $template]
+    set text   [template value $template]
     set issues [check-template $text]
 
     set text [conference insert $conference $text]
@@ -563,7 +563,7 @@ proc ::cm::campaign::Setup {} {
     debug.cm/campaign {}
     ::cm::conference::Setup
     ::cm::contact::Setup
-    ::cm::template::Setup
+    template setup
 
     if {![dbutil initialize-schema ::cm::db::do error campaign {
 	{
