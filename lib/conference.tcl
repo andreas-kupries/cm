@@ -32,6 +32,7 @@ package require cm::config::core
 package require cm::contact
 package require cm::db
 package require cm::db::city
+package require cm::db::staffrole
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
@@ -61,8 +62,8 @@ namespace eval ::cm::conference {
 	cmd_submission_dropsubmitter cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
-	select-sponsor select-staff-role known-staff-role select-staff known-staff \
-	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
+	select-sponsor select-staff known-staff \
+	known-rstatus select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
 	known-attachment get-attachment known-submitter
@@ -75,6 +76,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::db::city
+    namespace import ::cm::db::staffrole
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
@@ -262,7 +264,7 @@ proc ::cm::conference::cmd_show {config} {
 	}
 
 	set xhotelid $xhotel
-	if {$xcity     ne {}} { set xcity     [city     get $xcity] }
+	if {$xcity     ne {}} { set xcity     [city   2name $xcity] }
 	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
 	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
 
@@ -1519,7 +1521,7 @@ proc ::cm::conference::cmd_staff_link {config} {
     set conference [current]
     set role       [$config @role]
 
-    puts "Adding [get-role $role] to conference \"[color name [get $conference]]\" ... "
+    puts "Adding [staffrole 2name $role] to conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
 	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
@@ -1546,7 +1548,7 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 
     lassign [$config @name] role contact
 
-    puts -nonewline "  [get-role $role] \"[color name [cm contact get $contact]]\" ... "
+    puts -nonewline "  [staffrole 2name $role] \"[color name [cm contact get $contact]]\" ... "
     flush stdout
 
     db do eval {
@@ -3280,24 +3282,6 @@ proc ::cm::conference::known {} {
     return $known
 }
 
-proc ::cm::conference::known-staff-role {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   staff_role
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
 proc ::cm::conference::known-rstatus {} {
     debug.cm/conference {}
     Setup
@@ -3654,43 +3638,6 @@ proc ::cm::conference::select-staff {p} {
     return [dict get $staff $choice]
 }
 
-proc ::cm::conference::select-staff-role {p} {
-    debug.cm/conference {}
-
-    if {![cmdr interactive?]} {
-	$p undefined!
-    }
-
-    # dict: label -> id
-    set staff   [known-staff-role]
-    set choices [lsort -dict [dict keys $staff]]
-
-    switch -exact [llength $choices] {
-	0 { $p undefined! }
-	1 {
-	    # Single choice, return
-	    # TODO: print note about single choice
-	    return [lindex $staff 1]
-	}
-    }
-
-    set choice [ask menu "" "Which staff role: " $choices]
-
-    # Map back to id
-    return [dict get $staff $choice]
-}
-
-proc ::cm::conference::get-role {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   staff_role
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::conference::get-rstatus {id} {
     debug.cm/conference {}
     Setup
@@ -3933,9 +3880,10 @@ proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
     ::cm::config::core::Setup
-    city setup
-    ::cm::location::Setup
     ::cm::contact::Setup
+    ::cm::location::Setup
+    city      setup
+    staffrole setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -4099,29 +4047,6 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error conference_staff $error
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error staff_role {
-	{
-	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    text	TEXT	NOT NULL UNIQUE	-- chair, facilities chair, program chair, program committee,
-						-- web admin, proceedings editor, hotel liason, ...
-	} {
-	    {id		INTEGER 1 {} 1}
-	    {text	TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error staff_role $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO staff_role VALUES (1,'Chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (2,'Facilities chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (3,'Program chair');
-	    INSERT OR IGNORE INTO staff_role VALUES (4,'Program committee');
-	    INSERT OR IGNORE INTO staff_role VALUES (5,'Hotel liaison');
-	    INSERT OR IGNORE INTO staff_role VALUES (6,'Web admin');
-	    INSERT OR IGNORE INTO staff_role VALUES (7,'Proceedings editor');
-	}
     }
 
     if {![dbutil initialize-schema ::cm::db::do error rate {

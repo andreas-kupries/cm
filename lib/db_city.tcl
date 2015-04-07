@@ -21,10 +21,8 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::table
-package require cm::util
 package require cm::db
-#package require cm::validate::city
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -41,8 +39,8 @@ namespace eval ::cm::db::city {
 	setup dump
     namespace ensemble create
 
-    namespace import ::cm::util
     namespace import ::cm::db
+    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
