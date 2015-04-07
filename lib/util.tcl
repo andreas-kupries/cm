@@ -24,6 +24,7 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::validate::common
 package require debug
 package require debug::caller
 package require linenoise
@@ -42,10 +43,12 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	initials
+	initials match-substr match-enum
     namespace ensemble create
 
     namespace import ::cmdr::color
+    namespace import ::cmdr::validate::common::complete-substr
+    namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -53,6 +56,82 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::match-substr {iv known nocase x} {
+    upvar 1 $iv id
+
+    if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
+
+    # Check for exact match first, this trumps substring matching,
+    # especially if substring matching would be ambigous.
+    if {[dict exists $known $x]} {
+	set id [dict get $known $x]
+	return ok
+    }
+
+    # Check for substring matches. Convert to ids and deplicate before
+    # deciding if the mismatch was due to ambiguity of the input.
+
+    set matches [complete-substr [dict keys $known] $nocase $x]
+    set n [llength $matches]
+    if {!$n} {
+	return fail
+    }
+
+    set ids {}
+    foreach m $matches {
+	lappend ids [dict get $known $m]
+    }
+    set ids [lsort -unique $ids]
+    set n [llength $ids]
+
+    if {$n > 1} {
+	return ambiguos
+    }
+
+    # Uniquely identified, success
+    set id [lindex $ids 0]
+    return ok
+}
+
+proc ::cm::util::match-enum {iv known nocase x} {
+    upvar 1 $iv id
+
+    if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
+
+    # Check for exact match first, this trumps prefix matching,
+    # especially if prefix matching would be ambigous.
+    if {[dict exists $known $x]} {
+	set id [dict get $known $x]
+	return ok
+    }
+
+    # Check for prefix matches. Convert to ids and deplicate before
+    # deciding if the mismatch was due to ambiguity of the input.
+
+    set matches [complete-enum [dict keys $known] $nocase $x]
+    set n [llength $matches]
+    if {!$n} {
+	return fail
+    }
+
+    set ids {}
+    foreach m $matches {
+	lappend ids [dict get $known $m]
+    }
+    set ids [lsort -unique $ids]
+    set n [llength $ids]
+
+    if {$n > 1} {
+	return ambiguous
+    }
+
+    # Uniquely identified, success
+    set id [lindex $ids 0]
+    return ok
+}
 
 # # ## ### ##### ######## ############# #####################
 
