@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::city
+package require cm::db::city
 package require cm::util
 package require cmdr::validate::common
 
@@ -34,7 +34,7 @@ namespace eval ::cm::validate::city {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::city
+    namespace import ::cm::db::city
     namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
 }
@@ -44,16 +44,15 @@ namespace eval ::cm::validate::city {
 proc ::cm::validate::city::default  {p}   { return {} }
 proc ::cm::validate::city::release  {p x} { return }
 proc ::cm::validate::city::validate {p x} {
-    set known [city known-validation]
-    switch -exact -- [util match-substr id $known nocase $x] {
+    switch -exact -- [util match-substr id [city known] nocase $x] {
 	ok        { return $id }
-	fail      { fail $p CITY "a city identifier"             $x }
-	ambiguous { fail $p CITY "an unambiguous city identifier" $x }
+	fail      { fail $p CITY "a city name"              $x }
+	ambiguous { fail $p CITY "an unambiguous city name" $x }
     }
 }
 
 proc ::cm::validate::city::complete {p x} {
-    complete-enum [dict keys [city known-validation]] 1 $x
+    complete-enum [dict keys [city known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################

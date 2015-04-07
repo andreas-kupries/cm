@@ -17,16 +17,14 @@
 
 package require Tcl 8.5
 package require cmdr::color
-package require cmdr::ask
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::table
 package require cm::util
 package require cm::db
-#package require cm::validate::city
+package require cm::db::city
 
 # # ## ### ##### ######## ############# ######################
 
@@ -35,14 +33,13 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::city {
-    namespace export cmd_create cmd_list \
-	select label get known-validation
+    namespace export create delete list-all
     namespace ensemble create
 
     namespace import ::cmdr::color
-    namespace import ::cmdr::ask
     namespace import ::cm::util
     namespace import ::cm::db
+    namespace import ::cm::db::city
 
     namespace import ::cm::table::do
     rename do table
@@ -55,29 +52,23 @@ debug prefix cm/city {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::city::cmd_list {config} {
+proc ::cm::city::list-all {config} {
     debug.cm/city {}
-    Setup
+    city setup
     db show-location
 
     [table t {Name State Nation} {
-	db do eval {
-	    SELECT name, state, nation
-	    FROM city
-	    ORDER BY name, state, nation
-	} {
+	foreach {id name state nation} [city all] {
 	    $t add $name $state $nation
 	}
     }] show
     return
 }
 
-proc ::cm::city::cmd_create {config} {
+proc ::cm::city::create {config} {
     debug.cm/city {}
-    Setup
+    city setup
     db show-location
-
-    # try to insert, report failure as user error
 
     set name   [$config @name]
     set state  [$config @state]
@@ -87,15 +78,11 @@ proc ::cm::city::cmd_create {config} {
     puts -nonewline "Creating city \"[color name $label]\" ... "
 
     try {
-	db do transaction {
-	    db do eval {
-		INSERT INTO city
-		VALUES (NULL, :name, :state, :nation)
-	    }
-	}
+	city new $name $state $nation
     } on error {e o} {
+	# Report insert failure as user error
 	# TODO: trap only proper insert error, if possible.
-	puts [color bad $e]
+	util user-error $e CITY CREATE
 	return
     }
 
@@ -103,147 +90,28 @@ proc ::cm::city::cmd_create {config} {
     return
 }
 
-# # ## ### ##### ######## ############# ######################
-## Internal import support commands.
-
-proc ::cm::city::get {id} {
+proc ::cm::city::delete {config} {
     debug.cm/city {}
-    Setup
+    city setup
+    db show-location
 
-    lassign [db do eval {
-	SELECT name, state, nation
-	FROM  city
-	WHERE id = :id
-    }] name state nation
+    set city [$config @city]
 
-    return [label $name $state $nation]
-}
+    puts -nonewline "Deleting city \"[color name [city 2name $city]]\" ... "
 
-proc ::cm::city::label {name state nation} {
-    debug.cm/city {}
+    # TODO: constrain deletion to cities not in use by locations or
+    # conferences.
 
-    set label $name
-    if {$state ne {}} {append label ", $state"}
-    append label ", $nation"
-    return $label
-}
-
-proc ::cm::city::known-validation {} {
-    set map {}
-
-    db do eval {
-	SELECT id, name, state, nation
-	FROM   city
-    } {
-	dict lappend map $id [label $name $state $nation]
-
-	if {$state ne {}} {
-	    set label "$name $state $nation"
-	} else {
-	    set label "$name $nation"
-	}
-	set initials  [util initials $label]
-	set llabel    [string tolower $label]
-	set linitials [string tolower $initials]
-
-	dict lappend map $id $label  "$initials $label"
-	dict lappend map $id $llabel "$linitials $llabel"
+    try {
+	city delete $city
+    } on error {e o} {
+	# Report deletion failure as user error
+	# TODO: trap only proper insert error, if possible.
+	util user-error $e CITY DELETE
+	return
     }
 
-    # Rekey by names, then extend with key permutations which do not
-    # clash, lastly drop all keys with multiple outcomes.
-    set map   [util dict-invert         $map]
-    # Long names for hotels, longer with location ... Too slow at the moment.
-    set map   [util dict-fill-permute   $map]
-    set known [util dict-drop-ambiguous $map]
-
-    debug.cm/city {==> ($known)}
-    return $known
-}
-
-proc ::cm::city::known {} {
-    debug.cm/city {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, name, state, nation
-	FROM city
-    } {
-	dict set known [label $name $state $nation] $id
-    }
-
-    return $known
-}
-
-proc ::cm::city::select {p} {
-    debug.cm/city {}
-
-    if {![cmdr interactive?]} {
-	$p undefined!
-    }
-
-    # dict: label -> id
-    set cities  [known]
-    set choices [lsort -dict [dict keys $cities]]
-
-    switch -exact [llength $choices] {
-	0 { $p undefined! }
-	1 {
-	    # Single choice, return
-	    # TODO: print note about single choice
-	    return [lindex $cities 1]
-	}
-    }
-
-    set choice [ask menu "" "Which city: " $choices]
-
-    # Map back to id
-    return [dict get $cities $choice]
-}
-
-proc ::cm::city::Setup {} {
-    debug.cm/city {}
-
-    if {![dbutil initialize-schema ::cm::db::do error city {
-	{
-	    -- Base data for hotels, resorts, and other locations:
-	    -- The city they are in.
-
-	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    name	TEXT    NOT NULL,
-	    state	TEXT,
-	    nation	TEXT    NOT NULL,
-	    UNIQUE (name, state, nation)
-	} {
-	    {id     INTEGER 1 {} 1}
-	    {name   TEXT    1 {} 0}
-	    {state  TEXT    0 {} 0}
-	    {nation TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error city $error
-    }
-
-    # Shortcircuit further calls
-    proc ::cm::city::Setup {args} {}
-    return
-}
-
-proc ::cm::city::Dump {} {
-    # We can assume existence of the 'cm dump' ensemble.
-    debug.cm/city {}
-
-    db do eval {
-	SELECT name, state, nation
-	FROM   city
-	ORDER BY nation, state, name
-    } {
-	cm dump save \
-	    city create $name $state $nation
-    }
+    puts [color good OK]
     return
 }
 

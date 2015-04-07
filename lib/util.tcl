@@ -23,6 +23,7 @@
 ## Requisites
 
 package require Tcl 8.5
+package require cmdr::ask
 package require cmdr::color
 package require cmdr::validate::common
 package require debug
@@ -43,9 +44,10 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	initials match-substr match-enum
+	initials match-substr match-enum select
     namespace ensemble create
 
+    namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
@@ -59,7 +61,36 @@ debug prefix cm/util {[debug caller] | }
 
 # # ## ### ##### ######## ############# #####################
 
+proc ::cm::util::select {p label mapcmd} {
+    debug.cm/util {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # map: label -> id
+    set map     [uplevel 1 $mapcmd]
+    set choices [lsort -dict [dict keys $map]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $map 1]
+	}
+    }
+
+    set choice [ask menu "" "Which ${label}: " $choices]
+
+    return [dict get $map $choice]
+}
+
+# # ## ### ##### ######## ############# #####################
+
 proc ::cm::util::match-substr {iv known nocase x} {
+    debug.cm/util {}
+
     upvar 1 $iv id
 
     if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
@@ -97,6 +128,8 @@ proc ::cm::util::match-substr {iv known nocase x} {
 }
 
 proc ::cm::util::match-enum {iv known nocase x} {
+    debug.cm/util {}
+
     upvar 1 $iv id
 
     if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
@@ -137,6 +170,7 @@ proc ::cm::util::match-enum {iv known nocase x} {
 
 proc ::cm::util::tspace {sub {tmax -1}} {
     debug.cm/util {}
+
     set max [linenoise columns]
     incr max -$sub
     if {$max < 0} {
