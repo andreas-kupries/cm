@@ -27,6 +27,7 @@ package provide cm::tutorial 0 ;# circular through contact, campaign, conference
 
 package require cm::contact
 package require cm::db
+package require cm::db::dayhalf
 package require cm::table
 package require cm::util
 
@@ -40,13 +41,14 @@ namespace eval ::cm::tutorial {
     namespace export \
 	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
 	cmd_settag known known-tag known-title get details select \
-	known-half get-half have-some dayrange trackrange \
+	have-some dayrange trackrange \
 	cell speakers
     namespace ensemble create
 
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cm::db
+    namespace import ::cm::db::dayhalf
     namespace import ::cm::contact
     namespace import ::cm::util
 
@@ -434,34 +436,6 @@ proc ::cm::tutorial::write {id details} {
     }
 }
 
-proc ::cm::tutorial::known-half {} {
-    debug.cm/tutorial {}
-    Setup
-
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   dayhalf
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/tutorial {==> ($known)}
-    return $known
-}
-
-proc ::cm::tutorial::get-half {id} {
-    debug.cm/tutorial {}
-    Setup
-
-    return [db do eval {
-	SELECT text
-	FROM   dayhalf
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::tutorial::have-some {conference} {
     debug.cm/tutorial {}
     Setup
@@ -548,6 +522,7 @@ proc ::cm::tutorial::speakers {conference} {
 proc ::cm::tutorial::Setup {} {
     debug.cm/tutorial {}
 
+    dayhalf setup
     ::cm::contact::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error tutorial {
@@ -592,24 +567,6 @@ proc ::cm::tutorial::Setup {} {
 	} {}
     }]} {
 	db setup-error tutorial_schedule $error
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error dayhalf {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error dayhalf $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO dayhalf VALUES (1,'morning');
-	    INSERT OR IGNORE INTO dayhalf VALUES (2,'afternoon');
-	    INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
-	}
     }
 
     # Shortcircuit further calls

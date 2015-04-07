@@ -32,6 +32,7 @@ package require cm::contact
 package require cm::db
 package require cm::db::city
 package require cm::db::config
+package require cm::db::dayhalf
 package require cm::db::staffrole
 package require cm::location
 package require cm::mailer
@@ -77,6 +78,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db
     namespace import ::cm::db::city
     namespace import ::cm::db::config
+    namespace import ::cm::db::dayhalf
     namespace import ::cm::db::staffrole
     namespace import ::cm::location
     namespace import ::cm::mailer
@@ -1646,7 +1648,9 @@ proc ::cm::conference::cmd_tutorial_link {config} {
 	util user-error "Bad day $day, conference is only $clen days long" DAY-OUT-OF-RANGE $day $clen
     }
 
-    puts "@ day $day [cm::tutorial get-half $half], track $track"
+    # TODO: day (=offset) => date from start, weekday
+
+    puts "@ day $day [dayhalf 2name $half], track $track"
     flush stdout
 
     incr day -1 ;# convert to the internal 0-based storage
