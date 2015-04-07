@@ -15,7 +15,7 @@
 
 package require Tcl 8.5
 package require cmdr::validate::common
-package require cm::config::core
+package require cm::db::config
 
 # # ## ### ##### ######## ############# ######################
 
@@ -34,7 +34,7 @@ namespace eval ::cm::validate::config {
 
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
-    namespace import ::cm::config::core
+    namespace import ::cm::db::config
 }
 
 proc ::cm::validate::config::release  {p x} { return }

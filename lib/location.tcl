@@ -23,9 +23,9 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::config::core
 package require cm::db
 package require cm::db::city
+package require cm::db::config
 package require cm::table
 package require cm::util
 
@@ -47,10 +47,8 @@ namespace eval ::cm::location {
     namespace import ::cmdr::color
     namespace import ::cm::db
     namespace import ::cm::db::city
+    namespace import ::cm::db::config
     namespace import ::cm::util
-
-    namespace import ::cm::config::core
-    rename core config
 
     namespace import ::cm::table::do
     rename do table
@@ -710,8 +708,8 @@ proc ::cm::location::known-staff-select {location} {
 proc ::cm::location::Setup {} {
     debug.cm/location {}
 
-    ::cm::config::core::Setup
-    city setup
+    config setup
+    city   setup
 
     if {![dbutil initialize-schema ::cm::db::do error location {
 	{

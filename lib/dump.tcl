@@ -53,7 +53,7 @@ proc ::cm::dump::cmd {config} {
     set chan [open ${dst}__main w]
 
     Header
-    Dump    config::core
+    DumpDB    config
     DumpDB    template
     DumpDB    city
     Dump    location

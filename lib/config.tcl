@@ -24,20 +24,21 @@ package require try
 
 package require cm::table
 package require cm::db
-package require cm::config::core
+package require cm::db::config
 package require cm::validate::config
 
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm::config {
-    namespace export cmd_set cmd_unset cmd_list
+    namespace export update undef listall
     namespace ensemble create
-
-    namespace import ::cmdr::color
-    namespace import ::cm::db
 
     namespace import ::cm::validate::config
     rename config vt-config
+
+    namespace import ::cmdr::color
+    namespace import ::cm::db
+    namespace import ::cm::db::config
 
     namespace import ::cm::table::do
     rename do table
@@ -50,14 +51,14 @@ debug prefix cm/config {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::config::cmd_list {config} {
+proc ::cm::config::listall {config} {
     debug.cm/config {}
-    core::Setup
+    config setup
     db show-location
 
     [table t {Property Value} {
 	foreach key [lsort -dict [vt-config all]] {
-	    set v [core get* \
+	    set v [config get* \
 		       [vt-config internal   $key] \
 		       [vt-config default-of $key]]
 	    $t add $key $v
@@ -75,30 +76,30 @@ proc ::cm::config::cmd_list {config} {
     return
 }
 
-proc ::cm::config::cmd_set {config} {
+proc ::cm::config::update {config} {
     debug.cm/config {}
-    core::Setup
+    config setup
     db show-location
 
     set key   [$config @key]
     set value [$config @value]
 
     puts -nonewline "[color name $key] = $value ..."
-    core assign $key $value
+    config assign $key $value
 
     puts [color good OK]
     return
 }
 
-proc ::cm::config::cmd_unset {config} {
+proc ::cm::config::undef {config} {
     debug.cm/config {}
-    core::Setup
+    config setup
     db show-location
 
     set key [$config @key]
 
     puts -nonewline "Unset [color name $key] ..."
-    core drop $key
+    config drop $key
 
     puts [color good OK]
     return
