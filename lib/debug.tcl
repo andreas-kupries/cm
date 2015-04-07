@@ -60,6 +60,8 @@ proc ::cm::debug::thelevels {} {
     package require cm::contact
     package require cm::db
     package require cm::db::city
+    package require cm::db::staffrole
+    package require cm::db::template
     package require cm::debug
     package require cm::enum
     package require cm::location

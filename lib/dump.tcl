@@ -54,8 +54,8 @@ proc ::cm::dump::cmd {config} {
 
     Header
     Dump    config::core
-    Dump    template
-    Dump    city
+    DumpDB    template
+    DumpDB    city
     Dump    location
     Dump    contact
     Dump    tutorial
@@ -125,6 +125,21 @@ proc ::cm::dump::Dump {area} {
     cm::${area}::Setup
     cm::${area}::Dump
 
+    return
+}
+
+proc ::cm::dump::DumpDB {area} {
+    debug.cm/dump {}
+    variable chan
+
+    puts ...$area
+
+    puts $chan \n[Separator]
+    puts $chan "## -- $area --\n"
+
+    package require cm::db::${area}
+    cm db ${area} setup
+    cm db ${area} dump
     return
 }
 

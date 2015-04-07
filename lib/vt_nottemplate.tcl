@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::template
+package require cm::db::template
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::nottemplate {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::template
+    namespace import ::cm::db::template
     namespace import ::cmdr::validate::common::fail-known-thing
 }
 
