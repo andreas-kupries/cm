@@ -28,6 +28,7 @@ package provide cm::contact 0 ; # campaign and contact are circular
 package require cm::campaign
 package require cm::table
 package require cm::db
+package require cm::db::contact-type
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -43,7 +44,7 @@ namespace eval ::cm::contact {
 	cmd_set_tag cmd_set_bio cmd_disable cmd_enable liaisons \
 	cmd_disable_mail cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
-	select label get known known-email known-type details affiliated \
+	select label get known known-email details affiliated \
 	get-name get-links get-email get-the-link related-formatted
     namespace ensemble create
 
@@ -52,6 +53,7 @@ namespace eval ::cm::contact {
 
     namespace import ::cm::campaign
     namespace import ::cm::db
+    namespace import ::cm::db::contact-type
     namespace import ::cm::util
 
     namespace import ::cm::table::do
@@ -518,7 +520,7 @@ proc ::cm::contact::cmd_retype {config} {
     db show-location
 
     set type   [$config @type]
-    set tlabel [get-type $type]
+    set tlabel [contact-type 2name $type]
 
     foreach contact [$config @name] {
 	puts -nonewline "Changing contact \"[color name [get $contact]]\" to \"$tlabel\" ... "
@@ -1174,17 +1176,6 @@ proc ::cm::contact::get-email {id} {
     }]
 }
 
-proc ::cm::contact::get-type {id} {
-    debug.cm/contact {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   contact_type
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::contact::get {id} {
     debug.cm/contact {}
     Setup
@@ -1406,21 +1397,6 @@ proc ::cm::contact::known-email {} {
     return $r
 }
 
-proc ::cm::contact::known-type {} {
-    debug.cm/contact {}
-    Setup
-
-    set r {}
-    db do eval {
-	SELECT id, text
-	FROM   contact_type
-    } {
-	dict set r $text                  $id
-	dict set r [string tolower $text] $id
-    }
-    return $r
-}
-
 proc ::cm::contact::select {p} {
     debug.cm/contact {}
 
@@ -1449,6 +1425,8 @@ proc ::cm::contact::select {p} {
 
 proc ::cm::contact::Setup {} {
     debug.cm/contact {}
+
+    contact_type setup
 
     if {![dbutil initialize-schema ::cm::db::do error contact {
 	{
@@ -1521,25 +1499,6 @@ proc ::cm::contact::Setup {} {
     }]} {
 	db setup-error link $error
     }
-
-    if {![dbutil initialize-schema ::cm::db::do error contact_type {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error contact_type $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO contact_type VALUES (1,'Person');
-	    INSERT OR IGNORE INTO contact_type VALUES (2,'Company');
-	    INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
-	}
-    }
-
 
     if {![dbutil initialize-schema ::cm::db::do error affiliation {
 	{
