@@ -37,6 +37,7 @@ namespace eval ::cm::validate::city {
     namespace import ::cm::db::city
     namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
+    namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# ######################
