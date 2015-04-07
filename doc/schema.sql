@@ -397,17 +397,17 @@ INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
 INSERT OR IGNORE INTO talk_state VALUES (2,'received');
 -- ---------------------------------------------------------------
 CREATE TABLE schedule (
-	con		INTEGER	REFERENCES conference,
-	day		INTEGER,			-- 2,3,4,... (offset from start of conference, 0-based)
-	session		INTEGER,			-- session within the day
+	conference	INTEGER NOT NULL REFERENCES conference,
+	day		INTEGER NOT NULL,		-- 2,3,4,... (offset from start of conference, 0-based)
+	session		INTEGER NOT NULL,		-- session within the day
 	slot		INTEGER,			-- slot within the session, null => whole session talk (keynotes)
 	talk		INTEGER REFERENCES talk,	-- While setting things up
-	UNIQUE (con, day, session, slot)
-	-- constraint: con == talk->con (== talk->submission->con)
+	UNIQUE (conference, day, session, slot)
+	-- constraint: conference == talk->submission->conference)
 );
 -- ---------------------------------------------------------------
 CREATE TABLE register ( -- conference registrations <=> attendee register
-	con		INTEGER	REFERENCES conference,
+	conference	INTEGER	REFERENCES conference,
 	contact		INTEGER	REFERENCES contact,		-- can_register
 	walkin		INTEGER,				-- late-register fee
 	tut1		INTEGER REFERENCES tutorial_schedule,	-- tutorial selection
@@ -416,7 +416,7 @@ CREATE TABLE register ( -- conference registrations <=> attendee register
 	tut4		INTEGER REFERENCES tutorial_schedule,
 	talk		INTEGER REFERENCES talk,		-- presenter discount
 	UNIQUE (con, contact)
-	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
+	--	constraint: conference == tutX->conference, if tutX NOT NULL, X in 1-4
 );
 -- ---------------------------------------------------------------
 CREATE TABLE booked (	-- hotel bookings
