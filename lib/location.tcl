@@ -38,7 +38,7 @@ namespace eval ::cm {
 namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	cmd_map cmd_staff_show cmd_map_get \
+	cmd_delete cmd_map cmd_staff_show cmd_map_get \
 	cmd_staff_link cmd_staff_unlink known-validation \
 	select label get details known-staff select-staff get-name
     namespace ensemble create
@@ -146,6 +146,25 @@ proc ::cm::location::cmd_select {config} {
 
     puts -nonewline "Setting current location to \"[color name [get $id]]\" ... "
     config assign @current-location $id
+    puts [color good OK]
+    return
+}
+
+proc ::cm::location::cmd_delete {config} {
+    debug.cm/location {}
+    Setup
+    db show-location
+
+    set location [$config @location]
+
+    puts -nonewline "Delete location \"[color name [get $location]]\" ... "
+
+    db do eval {
+	DELETE
+	FROM   location
+	WHERE  id = :location
+    }
+
     puts [color good OK]
     return
 }
