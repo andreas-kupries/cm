@@ -28,10 +28,10 @@ package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
 
-package require cm::config::core
 package require cm::contact
 package require cm::db
 package require cm::db::city
+package require cm::db::config
 package require cm::db::staffrole
 package require cm::location
 package require cm::mailer
@@ -76,6 +76,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::db::city
+    namespace import ::cm::db::config
     namespace import ::cm::db::staffrole
     namespace import ::cm::location
     namespace import ::cm::mailer
@@ -83,9 +84,6 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::template
     namespace import ::cm::tutorial
     namespace import ::cm::util
-
-    namespace import ::cm::config::core
-    rename core config
 
     namespace import ::cm::table::do
     rename do table
@@ -3879,10 +3877,10 @@ proc ::cm::conference::select-submission {p} {
 proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
-    ::cm::config::core::Setup
     ::cm::contact::Setup
     ::cm::location::Setup
     city      setup
+    config    setup
     staffrole setup
     template  setup
 

@@ -18,8 +18,8 @@ package require cmdr::color
 package require tls
 package require smtp
 package require mime
-package require cm::config::core
 package require cm::db
+package require cm::db::config
 package require cm::mailgen
 package require cm::table
 package require cm::validate::config
@@ -48,8 +48,7 @@ namespace eval ::cm::mailer {
     namespace import ::cm::validate::config
     rename config vt-config
 
-    namespace import ::cm::config::core
-    rename core config
+    namespace import ::cm::db::config
 
     namespace import ::cm::table::do
     rename do table

@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::config::core 0
+# Package cm::db::config 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -24,14 +24,19 @@ package require try
 package require cm::db
 
 # # ## ### ##### ######## ############# ######################
-namespace eval ::cm::config {
-    namespace export core
+
+namespace eval ::cm {
+    namespace export db
     namespace ensemble create
 }
-namespace eval ::cm::config::core {
+namespace eval ::cm::db {
+    namespace export config
+    namespace ensemble create
+}
+namespace eval ::cm::db::config {
     namespace export \
 	assign drop drop-glob get-list get get* \
-	has has-glob names
+	has has-glob names setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -39,13 +44,14 @@ namespace eval ::cm::config::core {
 
 # # ## ### ##### ######## ############# ######################
 
-debug level  cm/config/core
-debug prefix cm/config/core {[debug caller] | }
+debug level  cm/db/config
+debug prefix cm/db/config {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::config::core::assign {key value} {
-    debug.cm/config/core {}
+proc ::cm::db::config::assign {key value} {
+    debug.cm/db/config {}
+    setup
 
     # Tricky code handling setting a value for a non-existing key, or
     # overwriting the value of an existing one.
@@ -80,8 +86,10 @@ proc ::cm::config::core::assign {key value} {
     return
 }
 
-proc ::cm::config::core::drop {key} {
-    debug.cm/config/core {}
+proc ::cm::db::config::drop {key} {
+    debug.cm/db/config {}
+    setup
+
     db do transaction {
 	db do eval {
 	    DELETE
@@ -92,8 +100,10 @@ proc ::cm::config::core::drop {key} {
     return [db do changes]
 }
 
-proc ::cm::config::core::drop-glob {pattern} {
-    debug.cm/config/core {}
+proc ::cm::db::config::drop-glob {pattern} {
+    debug.cm/db/config {}
+    setup
+
     db do transaction {
 	db do eval {
 	    DELETE
@@ -104,15 +114,18 @@ proc ::cm::config::core::drop-glob {pattern} {
     return [db do changes]
 }
 
-proc ::cm::config::core::get-list {} {
-    debug.cm/config/core {}
+proc ::cm::db::config::get-list {} {
+    debug.cm/db/config {}
+    setup
+
     return [db do eval {
 	SELECT key, value FROM config
     }]
 }
 
-proc ::cm::config::core::get {key} {
-    debug.cm/config/core {}
+proc ::cm::db::config::get {key} {
+    debug.cm/db/config {}
+    setup
 
     if {![has $key]} {
 	return -code error \
@@ -122,12 +135,13 @@ proc ::cm::config::core::get {key} {
     return [db do onecolumn {
 	SELECT value
 	FROM   config
-	WHERE key = :key
+	WHERE  key = :key
     }]
 }
 
-proc ::cm::config::core::get* {key default} {
-    debug.cm/config/core {}
+proc ::cm::db::config::get* {key default} {
+    debug.cm/db/config {}
+    setup
 
     if {![has $key]} {
 	return $default
@@ -139,8 +153,10 @@ proc ::cm::config::core::get* {key default} {
     }]
 }
 
-proc ::cm::config::core::has {key} {
-    debug.cm/config/core {}
+proc ::cm::db::config::has {key} {
+    debug.cm/db/config {}
+    setup
+
     return [db do exists {
 	SELECT value
 	FROM   config
@@ -148,8 +164,10 @@ proc ::cm::config::core::has {key} {
     }]
 }
 
-proc ::cm::config::core::has-glob {pattern} {
-    debug.cm/config/core {}
+proc ::cm::db::config::has-glob {pattern} {
+    debug.cm/db/config {}
+    setup
+
     return [db do exists {
 	SELECT value
 	FROM   config
@@ -157,8 +175,10 @@ proc ::cm::config::core::has-glob {pattern} {
     }]
 }
 
-proc ::cm::config::core::names {pattern} {
-    debug.cm/config/core {}
+proc ::cm::db::config::names {pattern} {
+    debug.cm/db/config {}
+    setup
+
     return [db do eval {
 	SELECT name
 	FROM   config
@@ -166,8 +186,8 @@ proc ::cm::config::core::names {pattern} {
     }]
 }
 
-proc ::cm::config::core::Setup {} {
-    debug.cm/config/core {}
+proc ::cm::db::config::setup {} {
+    debug.cm/db/config {}
 
     if {![dbutil initialize-schema ::cm::db::do error config {
 	{
@@ -185,13 +205,13 @@ proc ::cm::config::core::Setup {} {
     }
 
     # Shortcircuit further calls
-    proc ::cm::config::core::Setup {args} {}
+    proc ::cm::db::config::setup {args} {}
     return
 }
 
-proc ::cm::config::core::Dump {} {
+proc ::cm::db::config::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
-    debug.cm/config/core {}
+    debug.cm/db/config {}
 
     db do eval {
 	SELECT key, value
@@ -208,5 +228,5 @@ proc ::cm::config::core::Dump {} {
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::config::core 0
+package provide cm::db::config 0
 return
