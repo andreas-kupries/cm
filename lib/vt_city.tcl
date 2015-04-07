@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cm::city
+package require cm::util
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -34,8 +35,8 @@ namespace eval ::cm::validate::city {
     namespace ensemble create
 
     namespace import ::cm::city
+    namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
-    namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -43,29 +44,12 @@ namespace eval ::cm::validate::city {
 proc ::cm::validate::city::default  {p}   { return {} }
 proc ::cm::validate::city::release  {p x} { return }
 proc ::cm::validate::city::validate {p x} {
-    set known   [city known-validation]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p CITY "a city identifier" $x
+    set known [city known-validation]
+    switch -exact -- [util match-substr id $known nocase $x] {
+	ok        { return $id }
+	fail      { fail $p CITY "a city identifier"             $x }
+	ambiguous { fail $p CITY "an unambiguous city identifier" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p CITY "an unambigous city identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::city::complete {p x} {
