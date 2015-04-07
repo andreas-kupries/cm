@@ -62,8 +62,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db::config
     package require cm::db::staffrole
     package require cm::db::template
-    package require cm::debug
-    package require cm::enum
+    #package require cm::debug ;#-- self
     package require cm::location
     package require cm::mailer
     package require cm::mailgen
