@@ -56,7 +56,7 @@ proc ::cm::dump::cmd {config} {
     DumpDB    config
     DumpDB    template
     DumpDB    city
-    Dump    location
+    DumpDB    location
     Dump    contact
     Dump    tutorial
     Dump    conference
