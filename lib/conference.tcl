@@ -4051,24 +4051,6 @@ proc ::cm::conference::Setup {} {
 	db setup-error submitter $error
     }
 
-    if {![dbutil initialize-schema ::cm::db::do error rstatus {
-	{
-	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    text	TEXT	NOT NULL UNIQUE
-	} {
-	    {id		INTEGER 1 {} 1}
-	    {text	TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error rstatus $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO rstatus VALUES (1,'pending');
-	    INSERT OR IGNORE INTO rstatus VALUES (2,'open');
-	    INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
-	}
-    }
-
     if {![dbutil initialize-schema ::cm::db::do error talk {
 	{
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,

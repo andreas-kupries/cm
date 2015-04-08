@@ -84,6 +84,24 @@ proc ::cm::db::rstatus::known {} {
 proc ::cm::db::rstatus::setup {} {
     debug.cm/db/rstatus {}
 
+    if {![dbutil initialize-schema ::cm::db::do error rstatus {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    text	TEXT	NOT NULL UNIQUE
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error rstatus $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO rstatus VALUES (1,'pending');
+	    INSERT OR IGNORE INTO rstatus VALUES (2,'open');
+	    INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
+	}
+    }
+
     # Shortcircuit further calls
     proc ::cm::db::rstatus::setup {args} {}
     return
