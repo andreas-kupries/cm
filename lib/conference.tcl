@@ -34,12 +34,13 @@ package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
 package require cm::db::staffrole
+package require cm::db::talk-state
 package require cm::db::talk-type
+package require cm::db::template
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
 package require cm::table
-package require cm::db::template
 package require cm::tutorial
 package require cm::util
 
@@ -67,8 +68,7 @@ namespace eval ::cm::conference {
 	select-sponsor select-staff known-staff \
 	known-rstatus select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
-	get-talk-state known-talk-stati known-speaker \
-	known-attachment get-attachment known-submitter
+	known-speaker known-attachment get-attachment known-submitter
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -81,11 +81,12 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
     namespace import ::cm::db::staffrole
+    namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
+    namespace import ::cm::db::template
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
-    namespace import ::cm::db::template
     namespace import ::cm::tutorial
     namespace import ::cm::util
 
@@ -994,8 +995,8 @@ proc ::cm::conference::cmd_submission_show {config} {
 		    FROM   talk
 		    WHERE  submission = :id
 		} {
-		    $t add Type  [talk-type 2name $ttype]
-		    $t add State [get-talk-state $tstate]
+		    $t add Type  [talk-type  2name $ttype]
+		    $t add State [talk-state 2name $tstate]
 		}
 	    }
 
@@ -3304,24 +3305,6 @@ proc ::cm::conference::known-rstatus {} {
     return $known
 }
 
-proc ::cm::conference::known-talk-state {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   talk_state
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
 proc ::cm::conference::fmt-issues-web {issues} {
     debug.cm/conference {}
     set result {}
@@ -3653,17 +3636,6 @@ proc ::cm::conference::known-timeline {} {
     return $known
 }
 
-proc ::cm::conference::get-talk-state {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   talk_state
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::conference::known-timeline-validation {} {
     debug.cm/conference {}
     Setup
@@ -3856,11 +3828,12 @@ proc ::cm::conference::Setup {} {
 
     ::cm::contact::Setup
     ::cm::location::Setup
-    city      setup
-    config    setup
-    staffrole setup
-    template  setup
-    talk-type setup
+    city       setup
+    config     setup
+    staffrole  setup
+    template   setup
+    talk-type  setup
+    talk-state setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -4180,23 +4153,6 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error attachment $error
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error talk_state {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error talk_state $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
-	    INSERT OR IGNORE INTO talk_state VALUES (2,'received');
-	}
     }
 
     # Shortcircuit further calls

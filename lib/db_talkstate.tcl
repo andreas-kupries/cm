@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::db::talk-type 0
+# Package cm::db::talk-state 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -31,10 +31,10 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::db {
-    namespace export talk-type
+    namespace export talk-state
     namespace ensemble create
 }
-namespace eval ::cm::db::talk-type {
+namespace eval ::cm::db::talk-state {
     namespace export 2name known
     namespace ensemble create
 
@@ -44,24 +44,24 @@ namespace eval ::cm::db::talk-type {
 
 # # ## ### ##### ######## ############# ######################
 
-debug level  cm/db/talk-type
-debug prefix cm/db/talk-type {[debug caller] | }
+debug level  cm/db/talk-state
+debug prefix cm/db/talk-state {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::talk-type::2name {type} {
-    debug.cm/db/talk-type {}
+proc ::cm::db::talk-state::2name {state} {
+    debug.cm/db/talk-state {}
     setup
 
     return [db do onecolumn {
 	SELECT text
-	FROM   talk_type
-	WHERE  id = :type
+	FROM   talk_state
+	WHERE  id = :state
     }]
 }
 
-proc ::cm::db::talk-type::known {} {
-    debug.cm/db/talk-type {}
+proc ::cm::db::talk-state::known {} {
+    debug.cm/db/talk-state {}
     setup
 
     # dict: label -> id
@@ -69,22 +69,22 @@ proc ::cm::db::talk-type::known {} {
 
     db do eval {
 	SELECT id, text
-	FROM   talk_type
+	FROM   talk_state
     } {
 	# nocase, assumes lower-case strings in "text".
 	dict set known $text $id
     }
 
-    debug.cm/db/talk-type {==> ($known)}
+    debug.cm/db/talk-state {==> ($known)}
     return $known
 }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::talk-type::setup {} {
-    debug.cm/db/talk-type {}
+proc ::cm::db::talk-state::setup {} {
+    debug.cm/db/talk-state {}
 
-    if {![dbutil initialize-schema ::cm::db::do error talk_type {
+    if {![dbutil initialize-schema ::cm::db::do error talk_state {
 	{
 	    id	 INTEGER NOT NULL PRIMARY KEY,
 	    text TEXT    NOT NULL UNIQUE
@@ -93,21 +93,19 @@ proc ::cm::db::talk-type::setup {} {
 	    {text TEXT    1 {} 0}
 	} {}
     }]} {
-	db setup-error talk_type $error
+	db setup-error talk_state $error
     } else {
 	db do eval {
-	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
-	    INSERT OR IGNORE INTO talk_type VALUES (2,'submitted');
-	    INSERT OR IGNORE INTO talk_type VALUES (3,'keynote');
-	    INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
+	    INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
+	    INSERT OR IGNORE INTO talk_state VALUES (2,'received');
 	}
     }
 
     # Shortcircuit further calls
-    proc ::cm::db::talk-type::setup {args} {}
+    proc ::cm::db::talk-state::setup {args} {}
     return
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::db::talk-type 0
+package provide cm::db::talk-state 0
 return
