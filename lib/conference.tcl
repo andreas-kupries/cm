@@ -34,6 +34,7 @@ package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
 package require cm::db::staffrole
+package require cm::db::talk-type
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
@@ -66,7 +67,7 @@ namespace eval ::cm::conference {
 	select-sponsor select-staff known-staff \
 	known-rstatus select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
-	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
+	get-talk-state known-talk-stati known-speaker \
 	known-attachment get-attachment known-submitter
     namespace ensemble create
 
@@ -80,6 +81,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
     namespace import ::cm::db::staffrole
+    namespace import ::cm::db::talk-type
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
@@ -992,7 +994,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 		    FROM   talk
 		    WHERE  submission = :id
 		} {
-		    $t add Type  [get-talk-type  $ttype]
+		    $t add Type  [talk-type 2name $ttype]
 		    $t add State [get-talk-state $tstate]
 		}
 	    }
@@ -3320,24 +3322,6 @@ proc ::cm::conference::known-talk-state {} {
     return $known
 }
 
-proc ::cm::conference::known-talk-type {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   talk_type
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
 proc ::cm::conference::fmt-issues-web {issues} {
     debug.cm/conference {}
     set result {}
@@ -3669,17 +3653,6 @@ proc ::cm::conference::known-timeline {} {
     return $known
 }
 
-proc ::cm::conference::get-talk-type {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   talk_type
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::conference::get-talk-state {id} {
     debug.cm/conference {}
     Setup
@@ -3887,6 +3860,7 @@ proc ::cm::conference::Setup {} {
     config    setup
     staffrole setup
     template  setup
+    talk-type setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -4206,25 +4180,6 @@ proc ::cm::conference::Setup {} {
 	} {}
     }]} {
 	db setup-error attachment $error
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error talk_type {
-	{
-	    id	 INTEGER NOT NULL PRIMARY KEY,
-	    text TEXT    NOT NULL UNIQUE
-	} {
-	    {id   INTEGER 1 {} 1}
-	    {text TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error talk_type $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO talk_type VALUES (1,'invited');
-	    INSERT OR IGNORE INTO talk_type VALUES (2,'submitted');
-	    INSERT OR IGNORE INTO talk_type VALUES (3,'keynote');
-	    INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
-	}
     }
 
     if {![dbutil initialize-schema ::cm::db::do error talk_state {

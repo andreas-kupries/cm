@@ -63,6 +63,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db::contact-type
     package require cm::db::dayhalf
     package require cm::db::staffrole
+    package require cm::db::talk-type
     package require cm::db::template
     #package require cm::debug ;#-- self
     package require cm::location
