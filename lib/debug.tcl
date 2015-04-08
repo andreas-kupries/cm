@@ -69,6 +69,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db::talk-type
     package require cm::db::template
     package require cm::db::timeline
+    package require cm::db::tutorial
     #package require cm::debug ;#-- self
     package require cm::location
     package require cm::mailer

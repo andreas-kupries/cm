@@ -530,15 +530,15 @@ cmdr create cm::cm [file tail $::argv0] {
 	private list {
 	    section {Tutorial Management}
 	    description { Show a table of all known tutorials }
-	} [cm::call tutorial cmd_list]
+	} [cm::call tutorial list-all]
 
 	private show {
 	    section {Tutorial Management}
 	    description { Show the text of the specified tutorial }
 	    input name {
 		Identifier of the tutorial to show (handle, tag, unambigous part of the title)
-	    } { optional ; generate [cm::call tutorial select] ; validate [cm::vt tutorial] }
-	} [cm::call tutorial cmd_show]
+	    } { optional ; generate [cm::call-db tutorial select] ; validate [cm::vt tutorial] }
+	} [cm::call tutorial show]
 
 	private create {
 	    section {Tutorial Management}
@@ -567,7 +567,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The description of the course.
 	    } { optional ; validate str }
 
-	} [cm::call tutorial cmd_create]
+	} [cm::call tutorial create]
 	alias add
 	alias new
 
@@ -578,7 +578,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The tutorial to change
 	    } { validate [cm::vt tutorial] }
 	    input text { The new text to set }
-	} [cm::call tutorial cmd_settitle]
+	} [cm::call tutorial set-title]
 	alias change-title
 
 	private set-description {
@@ -589,7 +589,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt tutorial] }
 	    # TODO: This would be useful to have a mode taking either a path to a file, or reading stdin.
 	    input text { The new text to set } { optional }
-	} [cm::call tutorial cmd_setdesc]
+	} [cm::call tutorial set-desc]
 	alias change-description
 
 	private set-prereq {
@@ -599,7 +599,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The tutorial to change
 	    } { validate [cm::vt tutorial] }
 	    input text { The new text to set }
-	} [cm::call tutorial cmd_setreq]
+	} [cm::call tutorial set-req]
 	alias change-prereq
 
 	private set-tag {
@@ -609,7 +609,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The tutorial to change
 	    } { validate [cm::vt tutorial] }
 	    input text { The new text to set }
-	} [cm::call tutorial cmd_settag]
+	} [cm::call tutorial set-tag]
 	alias change-tag
 
 	# TODO tutorial operations: remove (if not used), retag,
@@ -943,7 +943,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The tutorial to add
 	    } { optional
 		validate [cm::vt tutorial]
-		generate [cm::call tutorial select] }
+		generate [cm::call-db tutorial select] }
 	} [cm::call conference cmd_tutorial_link]
 
 	private drop-tutorial {
@@ -953,7 +953,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Identifiers of the tutorials to remove
 	    } { 
 		optional ; list
-		generate [cm::call tutorial select]
+		generate [cm::call-db tutorial select]
 		validate [cm::vt tutorial]
 	    }
 	} [cm::call conference cmd_tutorial_unlink]
