@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::location
+package require cm::db::location
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::location {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::location
+    namespace import ::cm::db::location
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,33 +43,15 @@ namespace eval ::cm::validate::location {
 proc ::cm::validate::location::default  {p}   { return {} }
 proc ::cm::validate::location::release  {p x} { return }
 proc ::cm::validate::location::validate {p x} {
-    set known   [location known-validation]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p LOCATION "a location identifier" $x
+    switch -exact -- [util match-substr id [location known] 0 $x] {
+	ok        { return $id }
+	fail      { fail $p LOCATION "a location name"              $x }
+	ambiguous { fail $p LOCATION "an unambiguous location name" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p LOCATION "an unambigous location identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::location::complete {p x} {
-    complete-enum [dict keys [location known-validation]] 1 $x
+    complete-enum [dict keys [location known]] 0 $x
 }
 
 # # ## ### ##### ######## ############# ######################

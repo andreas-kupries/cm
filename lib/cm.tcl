@@ -406,14 +406,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    # Contact details, and staff information to be set after
 	    # the fact (of creation).
 
-	} [cm::call location cmd_create]
+	} [cm::call location create]
 	alias new
 	alias add
 
 	private list {
 	    section {Location Management}
 	    description { Show a table of all known locations }
-	} [cm::call location cmd_list]
+	} [cm::call location list-all]
 
 	private select {
 	    section {Location Management}
@@ -423,14 +423,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {
 		optional
 		validate [cm::vt location]
-		generate [cm::call location select]
+		generate [cm::call-db location select]
 	    }
-	} [cm::call location cmd_select]
+	} [cm::call location select]
 
 	private show {
 	    section {Location Management}
 	    description { Show the details of the current location }
-	} [cm::call location cmd_show]
+	} [cm::call location show]
 
 	private contact {
 	    section {Location Management}
@@ -441,7 +441,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input localphone {Direct phone to the hotel}      { optional }
 	    input localfax   {Direct fax to the hotel}        { optional }
 	    input locallink  {Direct website of the hotel}    { optional }
-	} [cm::call location cmd_contact]
+	} [cm::call location contact_set]
 
 	private map-set {
 	    section {Location Management}
@@ -449,7 +449,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Set the map, directions, transport information of the current location.
 		Note: The data is read from stdin.
 	    }
-	} [cm::call location cmd_map]
+	} [cm::call location map_set]
 	alias directions-set
 	alias transport-set
 	alias note-set
@@ -459,7 +459,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Return the map and other hotel specific data.
 	    }
-	} [cm::call location cmd_map_get]
+	} [cm::call location map_get]
 	alias directions
 	alias transport
 	alias note
@@ -480,7 +480,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Staff email
 	    } { optional ; interact ; validate [cm::vt mail-address] }
 
-	} [cm::call location cmd_staff_link]
+	} [cm::call location staff_create]
 
 	private drop-staff {
 	    section {Location Management}
@@ -489,15 +489,15 @@ cmdr create cm::cm [file tail $::argv0] {
 		Position and name of the staff to remove
 	    } { 
 		optional
-		generate [cm::call location select-staff]
+		generate [cm::call-db location select-staff]
 		validate [cm::vt location-staff]
 	    }
-	} [cm::call location cmd_staff_unlink]
+	} [cm::call location staff_delete]
 
 	private staff {
 	    section {Location Management}
 	    description { Show staff for current location }
-	} [cm::call location cmd_staff_show]
+	} [cm::call location staff_show]
 
 	private delete {
 	    section {Location Management}
@@ -509,7 +509,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::vt location]
 		generate [cm::call location select]
 	    }
-	} [cm::call location cmd_delete]
+	} [cm::call location delete]
 	alias remove
 
 	# remove - if not used
@@ -758,7 +758,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input location { Conference facility } {
 		optional
 		validate [cm::vt location]
-		generate [cm::call location select]
+		generate [cm::call-db location select]
 	    }
 	} [cm::call conference cmd_facility]
 
@@ -768,7 +768,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input location { Conference hotel } {
 		optional
 		validate [cm::vt location]
-		generate [cm::call location select]
+		generate [cm::call-db location select]
 	    }
 	} [cm::call conference cmd_hotel]
 

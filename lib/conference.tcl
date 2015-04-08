@@ -33,13 +33,13 @@ package require cm::db
 package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
+package require cm::db::location
 package require cm::db::rstatus
 package require cm::db::staffrole
 package require cm::db::talk-state
 package require cm::db::talk-type
 package require cm::db::template
 package require cm::db::timeline
-package require cm::location
 package require cm::mailer
 package require cm::mailgen
 package require cm::table
@@ -82,13 +82,13 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::city
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
+    namespace import ::cm::db::location
     namespace import ::cm::db::rstatus
     namespace import ::cm::db::staffrole
     namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
     namespace import ::cm::db::template
     namespace import ::cm::db::timeline
-    namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
     namespace import ::cm::tutorial
@@ -271,9 +271,9 @@ proc ::cm::conference::cmd_show {config} {
 	}
 
 	set xhotelid $xhotel
-	if {$xcity     ne {}} { set xcity     [city   2name $xcity] }
-	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
-	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
+	if {$xcity     ne {}} { set xcity     [city     2name $xcity] }
+	if {$xhotel    ne {}} { set xhotel    [location 2name $xhotel] }
+	if {$xfacility ne {}} { set xfacility [location 2name $xfacility] }
 
 	set xmanagement [contact get       $xmanagement]
 	set xsubmission [contact get-email $xsubmission]
@@ -404,8 +404,8 @@ proc ::cm::conference::cmd_facility {config} {
     dict with details {}
 
     set facility [$config @location]
-    set flabel   [location get $facility]
-    set city     [dict get [location details $facility] xcity]
+    set city     [dict get [location get $facility] xcity]
+    set flabel   [location 2name $facility]
     set clabel   [city 2name $city]
 
     puts "Conference \"[color name [get $id]]\":"
@@ -436,8 +436,8 @@ proc ::cm::conference::cmd_hotel {config} {
     dict with details {}
 
     set hotel   [$config @location]
-    set hlabel  [location get $hotel]
-    set city    [dict get [location details $hotel] xcity]
+    set city    [dict get [location get $hotel] xcity]
+    set hlabel  [location 2name $hotel]
     set clabel  [city 2name $city]
 
     puts "Conference \"[color name [get $id]]\":"
@@ -2813,7 +2813,7 @@ proc ::cm::conference::insert {id text} {
 
     set xhotel [dict get $details xhotel]
     if {$xhotel ne {}} {
-	set hdetails [location details $xhotel]
+	set hdetails [location get $xhotel]
 
 	set xlocalphone [dict get $hdetails xlocalphone]
 	set xlocalfax   [dict get $hdetails xlocalfax]
@@ -3717,9 +3717,9 @@ proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
     ::cm::contact::Setup
-    ::cm::location::Setup
     city       setup
     config     setup
+    location   setup
     rstatus    setup
     staffrole  setup
     talk-state setup
@@ -4025,11 +4025,11 @@ proc ::cm::conference::Dump {} {
 
 	if {$hotel ne {}} {
 	    cm dump save  \
-		conference hotel [cm location get-name $hotel]
+		conference hotel [location 2name* $hotel]
 	}
 	if {$facility ne {}} {
 	    cm dump save   \
-		conference facility [cm location get-name $facility]
+		conference facility [location 2name* $facility]
 	}
 	# city is implied by the facility/hotel
 
