@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::conference
+package require cm::db::timeline
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::timeline {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::conference
+    namespace import ::cm::db::timeline
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,33 +43,15 @@ namespace eval ::cm::validate::timeline {
 proc ::cm::validate::timeline::default  {p}   { return {} }
 proc ::cm::validate::timeline::release  {p x} { return }
 proc ::cm::validate::timeline::validate {p x} {
-    set known   [conference known-timeline-validation]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p TIMELINE "an event identifier" $x
+    switch -exact -- [util match-substr id [timeline known] nocase $x] {
+	ok        { return $id }
+	fail      { fail $p TIMELINE "an event name"             $x }
+	ambiguous { fail $p TIMELINE "an unambiguous event name" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p TIMELINE "an unambigous event identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::timeline::complete {p x} {
-    complete-enum [dict keys [conference known-timeline-validation]] 1 $x
+    complete-enum [dict keys [timeline known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################

@@ -38,6 +38,7 @@ package require cm::db::staffrole
 package require cm::db::talk-state
 package require cm::db::talk-type
 package require cm::db::template
+package require cm::db::timeline
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
@@ -65,10 +66,10 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink \
-	select label current get insert known-sponsor known-timeline \
+	select label current get insert known-sponsor \
 	select-sponsor select-staff known-staff \
-	select-timeline get-timeline select-submission get-submission \
-	get-submission-handle known-submissions-vt known-timeline-validation \
+	select-submission get-submission \
+	get-submission-handle known-submissions-vt \
 	known-speaker known-attachment get-attachment known-submitter
     namespace ensemble create
 
@@ -86,6 +87,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
     namespace import ::cm::db::template
+    namespace import ::cm::db::timeline
     namespace import ::cm::location
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
@@ -468,7 +470,7 @@ proc ::cm::conference::cmd_timeline_shift {config} {
     set entry      [$config @event]
     set shift      [$config @shift]
 
-    puts "Shift \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\"\nBy    $shift days"
+    puts "Shift \"[timeline 2name $entry]\"\nOf    \"[color name [get $conference]]\"\nBy    $shift days"
 
     db do transaction {
 	set old [db do onecolumn {
@@ -504,7 +506,7 @@ proc ::cm::conference::cmd_timeline_set {config} {
     set entry      [$config @event]
     set date       [$config @date]
 
-    puts "Set \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\""
+    puts "Set \"[timeline 2name $entry]\"\nOf    \"[color name [get $conference]]\""
 
     db do transaction {
 	puts -nonewline "To    [hdate $date] ... "
@@ -530,7 +532,7 @@ proc ::cm::conference::cmd_timeline_done {config} {
     set conference [current]
     set entry      [$config @event]
 
-    puts "Mark \"[get-timeline $entry]\"\nOf    \"[color name [get $conference]]\""
+    puts "Mark \"[timeline 2name $entry]\"\nOf    \"[color name [get $conference]]\""
 
     db do transaction {
 	puts -nonewline "Done ... "
@@ -3591,91 +3593,6 @@ proc ::cm::conference::select-staff {p} {
     return [dict get $staff $choice]
 }
 
-proc ::cm::conference::known-timeline {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   timeline_type
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
-proc ::cm::conference::known-timeline-validation {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text, key
-	FROM   timeline_type
-    } {
-	dict set known $text $id
-	dict set known $key  $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
-proc ::cm::conference::select-timeline {p} {
-    debug.cm/conference {}
-
-    if {![cmdr interactive?]} {
-	$p undefined!
-    }
-
-    # dict: label -> id
-    set entries [known-timeline]
-    set choices [lsort -dict [dict keys $entries]]
-
-    switch -exact [llength $choices] {
-	0 { $p undefined! }
-	1 {
-	    # Single choice, return
-	    # TODO: print note about single choice
-	    return [lindex $entries 1]
-	}
-    }
-
-    set choice [ask menu "" "Which timeline entry: " $choices]
-
-    # Map back to id
-    return [dict get $entries $choice]
-}
-
-proc ::cm::conference::get-timeline {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   timeline_type
-	WHERE  id = :id
-    }]
-}
-
-proc ::cm::conference::get-timeline-key {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT key
-	FROM   timeline_type
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::conference::get-rate {conference location} {
     debug.cm/conference {}
     Setup
@@ -3808,6 +3725,7 @@ proc ::cm::conference::Setup {} {
     talk-state setup
     talk-type  setup
     template   setup
+    timeline   setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -3894,46 +3812,6 @@ proc ::cm::conference::Setup {} {
 	} {con}
     }]} {
 	db setup-error timeline $error
-    }
-
-    if {![dbutil initialize-schema ::cm::db::do error timeline_type {
-	{
-	    -- The possible types of action items in the conference timeline
-	    -- public items are for use within mailings, the website, etc.
-	    -- internal items are for the mgmt only.
-	    -- the offset [in days] is used to compute the initial proposal
-	    -- of a timeline for the conference. 
-
-	    id		INTEGER NOT NULL PRIMARY KEY,
-	    ispublic	INTEGER NOT NULL,
-	    offset	INTEGER NOT NULL,	-- >0 => days after conference start
-	    					-- <0 => days before start
-	    key		TEXT    NOT NULL UNIQUE,	-- internal key for the type
-	    text	TEXT    NOT NULL UNIQUE		-- human-readable
-	} {
-	    {id		INTEGER 1 {} 1}
-	    {ispublic	INTEGER 1 {} 0}
-	    {offset	INTEGER 1 {} 0}
-	    {key	TEXT    1 {} 0}
-	    {text	TEXT    1 {} 0}
-	} {}
-    }]} {
-	db setup-error timeline_type $error
-    } else {
-	db do eval {
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 1,0,-196,'cfp1',      '1st Call for papers');         --  -28w (--)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 2,0,-140,'cfp2',      '2nd Call for papers');         --  -20w (8w) (~2m)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 3,0, -84,'cfp3',      '3rd Call for papers');         --  -12w (8w) (~2m)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 4,1, -84,'wipopen',   'WIP & BOF Reservations open'); --  -12w
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 5,1, -56,'submitdead','Submissions due');             --   -8w (4w) (~1m)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 6,1, -56,'regopen',   'Registration opens');          --   -8w same
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 7,1, -49,'authornote','Notifications to Authors');    --   -7w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 8,1, -21,'writedead', 'Author Materials due');        --   -3w (4w)+1w grace
-	    INSERT OR IGNORE INTO timeline_type VALUES ( 9,0, -14,'procedit',  'Edit proceedings');            --   -2w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES (10,0,  -7,'procship',  'Ship proceedings');            --   -1w (1w)
-	    INSERT OR IGNORE INTO timeline_type VALUES (11,1,   0,'begin-t',   'Tutorial Start');              --  <=>
-	    INSERT OR IGNORE INTO timeline_type VALUES (12,1,   2,'begin-s',   'Session Start');               --  +2d
-	}
     }
 
     if {![dbutil initialize-schema ::cm::db::do error sponsors {

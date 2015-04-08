@@ -712,7 +712,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The event to shift.
 	    } {	optional
 		validate [cm::vt timeline]
-		generate [cm::call conference select-timeline]
+		generate [cm::call-db timeline select]
 	    }
 	    input shift {
 		Number of days to shift the event by.
@@ -727,7 +727,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The event to set the date of.
 	    } {	optional
 		validate [cm::vt timeline]
-		generate [cm::call conference select-timeline]
+		generate [cm::call-db timeline select]
 	    }
 	    input date {
 		The new date for the event.
@@ -741,7 +741,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The event to mark as done.
 	    } {	optional
 		validate [cm::vt timeline]
-		generate [cm::call conference select-timeline]
+		generate [cm::call-db timeline select]
 	    }
 	} [cm::call conference cmd_timeline_done]
 
