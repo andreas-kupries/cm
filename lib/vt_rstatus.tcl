@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::conference
+package require cm::db::rstatus
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::rstatus {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::conference
+    namespace import ::cm::db::rstatus
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,33 +43,15 @@ namespace eval ::cm::validate::rstatus {
 proc ::cm::validate::rstatus::default  {p}   { return {} }
 proc ::cm::validate::rstatus::release  {p x} { return }
 proc ::cm::validate::rstatus::validate {p x} {
-    set known   [conference known-rstatus]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p RSTATUS "a registration status" $x
+    switch -exact -- [util match-substr id [rstatus known] nocase $x] {
+	ok        { return $id }
+	fail      { fail $p RSTATUS "a registration status"              $x }
+	ambiguous { fail $p RSTATUS "an unambiguous registration status" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p RSTATUS "an unambigous registration status" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::rstatus::complete {p x} {
-    complete-enum [dict keys [conference known-rstatus]] 1 $x
+    complete-enum [dict keys [rstatus known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################

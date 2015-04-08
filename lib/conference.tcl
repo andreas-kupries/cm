@@ -33,6 +33,7 @@ package require cm::db
 package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
+package require cm::db::rstatus
 package require cm::db::staffrole
 package require cm::db::talk-state
 package require cm::db::talk-type
@@ -66,7 +67,7 @@ namespace eval ::cm::conference {
 	cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff known-staff \
-	known-rstatus select-timeline get-timeline select-submission get-submission \
+	select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	known-speaker known-attachment get-attachment known-submitter
     namespace ensemble create
@@ -80,6 +81,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::city
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
+    namespace import ::cm::db::rstatus
     namespace import ::cm::db::staffrole
     namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
@@ -277,7 +279,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Year             $xyear
 	$t add Management       $xmanagement
 	$t add {Submissions To} $xsubmission
-	$t add Registrations    [get-rstatus $xrstatus] ;# TODO: colorize the status
+	$t add Registrations    [rstatus 2name $xrstatus] ;# TODO: colorize the status
 	$t add Start            $xstart
 	$t add End              $xend
 	$t add Aligned          $xalign
@@ -1324,7 +1326,7 @@ proc ::cm::conference::cmd_registration {config} {
     set conference [current]
     set newstatus  [$config @status] 
 
-    puts -nonewline "Conference \"[color name [get $conference]]\" registration = [get-rstatus $newstatus] ... "
+    puts -nonewline "Conference \"[color name [get $conference]]\" registration = [rstatus 2name $newstatus] ... "
     flush stdout
 
     db do eval {
@@ -2035,7 +2037,7 @@ proc ::cm::conference::make_location {} {
 
 proc ::cm::conference::registration-mode {conference} {
     debug.cm/conference {}
-    return [get-rstatus [dict get [details $conference] xrstatus]]
+    return [rstatus 2name [dict get [details $conference] xrstatus]]
 }
 
 proc ::cm::conference::make_registration_pending {} {
@@ -3287,24 +3289,6 @@ proc ::cm::conference::known {} {
     return $known
 }
 
-proc ::cm::conference::known-rstatus {} {
-    debug.cm/conference {}
-    Setup
-
-    # dict: label -> id
-    set known {}
-
-    db do eval {
-	SELECT id, text
-	FROM   rstatus
-    } {
-	dict set known $text $id
-    }
-
-    debug.cm/conference {==> ($known)}
-    return $known
-}
-
 proc ::cm::conference::fmt-issues-web {issues} {
     debug.cm/conference {}
     set result {}
@@ -3607,17 +3591,6 @@ proc ::cm::conference::select-staff {p} {
     return [dict get $staff $choice]
 }
 
-proc ::cm::conference::get-rstatus {id} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do onecolumn {
-	SELECT text
-	FROM   rstatus
-	WHERE  id = :id
-    }]
-}
-
 proc ::cm::conference::known-timeline {} {
     debug.cm/conference {}
     Setup
@@ -3830,10 +3803,11 @@ proc ::cm::conference::Setup {} {
     ::cm::location::Setup
     city       setup
     config     setup
+    rstatus    setup
     staffrole  setup
-    template   setup
-    talk-type  setup
     talk-state setup
+    talk-type  setup
+    template   setup
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -4200,7 +4174,7 @@ proc ::cm::conference::Dump {} {
 	# city is implied by the facility/hotel
 
 	cm dump save \
-	    conference registration [get-rstatus $rstatus]
+	    conference registration [rstatus 2name $rstatus]
 
 	# timeline
 	cm dump step 

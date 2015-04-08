@@ -62,6 +62,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db::config
     package require cm::db::contact-type
     package require cm::db::dayhalf
+    package require cm::db::rstatus
     package require cm::db::staffrole
     package require cm::db::talk-state
     package require cm::db::talk-type
