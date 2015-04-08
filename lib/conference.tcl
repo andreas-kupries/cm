@@ -40,10 +40,10 @@ package require cm::db::talk-state
 package require cm::db::talk-type
 package require cm::db::template
 package require cm::db::timeline
+package require cm::db::tutorial
 package require cm::mailer
 package require cm::mailgen
 package require cm::table
-package require cm::tutorial
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -89,9 +89,9 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::talk-type
     namespace import ::cm::db::template
     namespace import ::cm::db::timeline
+    namespace import ::cm::db::tutorial
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
-    namespace import ::cm::tutorial
     namespace import ::cm::util
 
     namespace import ::cm::table::do
@@ -358,11 +358,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add [color $color Staff] [color $color $scount]$suffix
 
 	# - -- --- ----  -------- ------------- tutorial summary
-	set tcount [db do eval {
-	    SELECT count (id)
-	    FROM   tutorial_schedule
-	    WHERE  conference = :id
-	}]
+	set tcount [tutorial scheduled $id]
 	if {!$tcount} {
 	    set tcount None
 	    set color  bad
@@ -1589,8 +1585,8 @@ proc ::cm::conference::cmd_tutorial_show {config} {
     # 0     ...
     # ...
 
-    lassign [cm::tutorial dayrange   $conference] daymin   daymax   daylast
-    lassign [cm::tutorial trackrange $conference] trackmin trackmax tracklast
+    lassign [tutorial dayrange   $conference] daymin   daymax   daylast
+    lassign [tutorial trackrange $conference] trackmin trackmax tracklast
 
     # Build table, by day, by track in day, by half in the day.
     # TODO: See if we can do loops and the range extraction above in a single sql SELECT.
@@ -1610,10 +1606,10 @@ proc ::cm::conference::cmd_tutorial_show {config} {
 		    FROM   dayhalf
 		    ORDER  BY id
 		} {
-		    set tutorial [cm::tutorial cell $conference $day $half $track]
+		    set tutorial [tutorial cell $conference $day $half $track]
 
 		    if {$tutorial ne {}} {
-			set    tdetails [tutorial details $tutorial]
+			set    tdetails [tutorial get $tutorial]
 			set    title    [dict get $tdetails xtitle]
 			set    tag      @
 			append tag      [dict get [contact details [dict get $tdetails xspeaker]] xtag] :
@@ -1647,7 +1643,7 @@ proc ::cm::conference::cmd_tutorial_link {config} {
     set track    [$config @track]    ;# future - constrain|limit to a max number of tracks
     set tutorial [$config @tutorial]
 
-    puts "Adding \"[color name [cm::tutorial get $tutorial]]\" to conference \"[color name [get $conference]]\" ... "
+    puts "Adding \"[color name [tutorial 2name $tutorial]]\" to conference \"[color name [get $conference]]\" ... "
     set details [details $conference]
     set clen    [dict get $details xlength]
 
@@ -1660,11 +1656,7 @@ proc ::cm::conference::cmd_tutorial_link {config} {
     puts "@ day $day [dayhalf 2name $half], track $track"
     flush stdout
 
-    incr day -1 ;# convert to the internal 0-based storage
-    db do eval {
-	INSERT INTO tutorial_schedule
-	VALUES (NULL, :conference, :day, :half, :track, :tutorial)
-    }
+    tutorial schedule $conference $tutorial $day $half $track
 
     puts [color good OK]
     return
@@ -1680,15 +1672,10 @@ proc ::cm::conference::cmd_tutorial_unlink {config} {
     puts "Removing tutorials from conference \"[color name [get $conference]]\" ... "
 
     foreach tutorial [$config @tutorial] {
-	puts -nonewline "- \"[color name [cm::tutorial get $tutorial]]\" ... "
+	puts -nonewline "- \"[color name [tutorial 2name $tutorial]]\" ... "
 	flush stdout
 
-	db do eval {
-	    DELETE
-	    FROM  tutorial_schedule
-	    WHERE conference = :conference
-	    AND   tutorial   = :tutorial
-	}
+	tutorial unschedule $conference $tutorial
 
 	puts [color good OK]
     }
@@ -1875,7 +1862,7 @@ proc ::cm::conference::cmd_website_make {config} {
 	}
     }
 
-    if {[cm::tutorial have-some $conference]} {
+    if {[tutorial scheduled $conference]} {
 	puts "Tutorials: [color good Yes]"
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
     } else {
@@ -2073,8 +2060,8 @@ proc ::cm::conference::make_tutorials {conference} {
     set    text [template use www-tutorials]
     append text \n "# Tutorial schedule" \n\n
 
-    lassign [cm::tutorial dayrange   $conference] daymin   daymax   daylast
-    lassign [cm::tutorial trackrange $conference] trackmin trackmax tracklast
+    lassign [tutorial dayrange   $conference] daymin   daymax   daylast
+    lassign [tutorial trackrange $conference] trackmin trackmax tracklast
 
     set start [dict get [details $conference] xstart]
 
@@ -2119,14 +2106,14 @@ proc ::cm::conference::make_tutorials {conference} {
 		FROM   dayhalf
 		ORDER  BY id
 	    } {
-		set tutorial [cm::tutorial cell $conference $day $half $track]
+		set tutorial [tutorial cell $conference $day $half $track]
 
 		if {$tutorial eq {}} {
 		    append text |
 		    continue
 		}
 
-		set tdetails [tutorial details $tutorial]
+		set tdetails [tutorial get $tutorial]
 		set title    [dict get $tdetails xtitle]
 		set desc     [dict get $tdetails xdescription]
 		set req      [dict get $tdetails xprereq]
@@ -2154,8 +2141,8 @@ proc ::cm::conference::make_tutorials {conference} {
     db do eval {
 	SELECT tutorial
 	FROM   tutorial_schedule S,
-	       tutorial T,
-	       contact  C
+	       tutorial          T,
+	       contact           C
 	WHERE  S.conference = :conference
 	AND    T.id         = S.tutorial
 	AND    C.id         = T.speaker
@@ -2210,13 +2197,7 @@ proc ::cm::conference::make_abstracts {} {
 proc ::cm::conference::have-speakers {conference} {
     debug.cm/conference {}
     # have-speakers TODO keynotes & presenters
-    return [db do exists {
-	SELECT T.speaker
-	FROM tutorial_schedule S,
-	     tutorial          T
-	WHERE S.conference = :conference
-	AND   S.tutorial   = T.id
-    }]
+    return [llength [tutorial speakers $conference]]
 }
 
 proc ::cm::conference::make_speakers_none {} {
@@ -2236,7 +2217,7 @@ proc ::cm::conference::make_speakers {conference} {
     set map  {} ; # name -> (tag, bio)
     set type {} ; # name -> list(types), type in T, K, P
 
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+    foreach {dname tag bio} [tutorial speakers* $conference] {
 	if {$bio eq {}} { set bio "__No biography known__" }
 	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
 	dict set     map  $dname [list $tag $bio]
@@ -2717,17 +2698,6 @@ proc ::cm::conference::sidebar_reg_show {} {
 	AND   E.ispublic
 	ORDER BY T.date
     }
-}
-
-proc ::cm::conference::have-tutorials {conference} {
-    debug.cm/conference {}
-    Setup
-
-    return [db do exists {
-	SELECT id
-	FROM   tutorial_schedule
-	WHERE  conference = :conference
-    }]
 }
 
 proc ::cm::conference::cdefault {attr dcmd} {
@@ -3380,11 +3350,7 @@ proc ::cm::conference::issues {details} {
 	+issue "Staff trouble: No one is \"$text\""
     }
 
-    if {![db do exists {
-	SELECT id
-	FROM   tutorial_schedule
-	WHERE  conference = :xconference
-    }]} {
+    if {![tutorial scheduled $xconference]} {
 	+issue "No tutorials lined up"
     }
 

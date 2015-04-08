@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::tutorial
+package require cm::db::tutorial
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::nottutorialtag {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::tutorial
+    namespace import ::cm::db::tutorial
     namespace import ::cmdr::validate::common::fail-known-thing
 }
 
@@ -47,7 +47,7 @@ proc ::cm::validate::nottutorialtag::validate {p x} {
     if {![dict exists $known $x]} {
 	return $x
     }
-    fail-known-thing $p NOT-TUTORIAL "tutorial name" $x
+    fail-known-thing $p NOT-TUTORIAL-TAG "tutorial tag" $x
 }
 
 

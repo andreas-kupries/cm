@@ -58,7 +58,7 @@ proc ::cm::dump::cmd {config} {
     DumpDB    city
     DumpDB    location
     Dump    contact
-    Dump    tutorial
+    DumpDB    tutorial
     Dump    conference
     #       - talks, schedule
     # TODO dump campaign

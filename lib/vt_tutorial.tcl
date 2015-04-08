@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::tutorial
+package require cm::db::tutorial
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::tutorial {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::tutorial
+    namespace import ::cm::db::tutorial
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,29 +43,11 @@ namespace eval ::cm::validate::tutorial {
 proc ::cm::validate::tutorial::default  {p}   { return {} }
 proc ::cm::validate::tutorial::release  {p x} { return }
 proc ::cm::validate::tutorial::validate {p x} {
-    set known   [tutorial known]
-    set matches [complete-enum [dict keys $known] 0 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p TUTORIAL "a tutorial identifier" $x
+    switch -exact -- [util match-substr id [tutorial known] 0 $x] {
+	ok        { return $id }
+	fail      { fail $p TUTORIAL "a tutorial identifier"              $x }
+	ambiguous { fail $p TUTORIAL "an unambiguous tutorial identifier" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p TUTORIAL "an unambigous tutorial identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::tutorial::complete {p x} {
