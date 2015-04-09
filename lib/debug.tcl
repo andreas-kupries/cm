@@ -58,6 +58,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::config
     package require cm::contact
     package require cm::db
+    package require cm::db::campaign
     package require cm::db::city
     package require cm::db::config
     package require cm::db::contact

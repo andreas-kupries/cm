@@ -22,6 +22,7 @@ package require dbutil
 package require try
 
 package require cm::db
+package require cm::db::campaign
 package require cm::db::contact-type
 package require cm::util
 
@@ -33,7 +34,8 @@ namespace eval ::cm {
 }
 namespace eval ::cm::db::contact {
     namespace export \
-	emails active-emails email-addrs email-addrs+state links \
+	relations-formatted \
+	email= emails email-count email-addrs email-addrs+state links \
 	affiliation representatives affiliated represents merge \
 	all disable-email squash-email type= name= recv= tag= bio= \
         add-mails add-links new-mail new-link \
@@ -42,12 +44,13 @@ namespace eval ::cm::db::contact {
 	find-mlist find-company find-person \
 	add-affiliation add-representative \
 	drop-affiliation drop-representative \
-	2name 2nameB 2name-email get the-link label \
+	2name 2name-plain 2name-email get the-link label \
 	\
 	select label known known-email 
     namespace ensemble create
 
     namespace import ::cm::db
+    namespace import ::cm::db::campaign
     namespace import ::cm::db::contact-type
     namespace import ::cm::util
 }
@@ -59,26 +62,54 @@ debug prefix cm/db/contact {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::contact::emails {contact} {
+proc ::cm::contact::relations-formatted {contact type} {
+    debug.cm/db/contact {}
+
+    if {$type != 1} {
+	# representatives/liaisons
+	set related [dict values [representatives $contact]]
+	if {[llength $related]} {
+	    # Hanging indent, TODO utility command
+	    set other [lassign $related primary]
+	    set related "Rep: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "   : "]
+	    }
+	}
+    } else {
+	# affiliations
+	set related [dict values [affiliations $contact]]
+	if {[llength $related]} {
+	    # Hanging indent, TODO utility command
+	    set other [lassign $related primary]
+	    set related "Of: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "  : "]
+	    }
+	}
+    }
+
+    return $related
+}
+
+proc ::cm::db::contact::emails {} {
     debug.cm/db/contact {}
     setup
 
     return [db do eval {
-	SELECT id
+	SELECT id, email
 	FROM   email
-	WHERE  contact = :contact
     }]
 }
 
-proc ::cm::db::contact::active-emails {contact} {
+proc ::cm::db::contact::email-count {contact} {
     debug.cm/db/contact {}
     setup
 
-    return [db do eval {
-	SELECT id
+    return [db do onecolumn {
+	SELECT count(id)
 	FROM   email
 	WHERE  contact = :contact
-	AND    NOT inactive
     }]
 }
 
@@ -182,7 +213,7 @@ proc ::cm::db::contact::represents {contact} {
     }]
 }
 
-proc ::cm::db::contact::all {} {
+proc ::cm::db::contact::all {pattern} {
     debug.cm/db/contact {}
     setup
 
@@ -206,6 +237,17 @@ proc ::cm::db::contact::all {} {
     }]
 }
 
+proc ::cm::db::contact::email= {email addr} {
+    debug.cm/db/contact {}
+    setup
+
+    db do eval {
+	UPDATE email
+	SET    email = :addr
+	WHERE  id    = :email
+    }
+    return
+}
 
 proc ::cm::db::contact::disable-email {email} {
     debug.cm/db/contact {}
@@ -217,9 +259,16 @@ proc ::cm::db::contact::disable-email {email} {
 	    UPDATE email
 	    SET inactive = 1
 	    WHERE id = :email
+	    ;
+
+	    -- See also recv=
+	    DELETE
+	    FROM  campaign_destination
+	    WHERE email    = :email
+	    AND   campaign IN (SELECT id
+			       FROM   campaign
+			       WHERE  active)
 	} 
-	# ... and drop the mail from all active campaigns.
-	campaign drop-mail $email ;# TODO inline ?!
     }
     return
 }
@@ -364,30 +413,6 @@ proc ::cm::db::contact::merge {primary secondary} {
     return
 }
 
-XXX proc ::cm::db::contact::cmd_mail_fix {config} {
-    debug.cm/db/contact {}
-    setup
-    db show-location
-
-    puts -nonewline "Fixing mails, forcing lowercase ... "
-    flush stdout
-
-    db do eval {
-	SELECT id, email
-	FROM email
-    } {
-	set down [string tolower $email]
-	db do eval {
-	    UPDATE email
-	    SET    email = :down
-	    WHERE  id = :id
-	}
-    }
-
-    puts [color good OK]
-    return
-}
-
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::db::contact::issues {details} {
@@ -427,18 +452,18 @@ proc ::cm::db::contact::+issue {text} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::contact::add-mails {id config} {
+proc ::cm::db::contact::add-mails {contact addrlist} {
     debug.cm/db/contact {}
-    foreach mail [$config @email] {
-	new-mail $id [string trim $mail]
+    foreach emailaddr $addrlist {
+	new-mail $contact [string trim $emailaddr]
     }
     return
 }
 
-proc ::cm::db::contact::add-links {id config} {
+proc ::cm::db::contact::add-links {contact linklist} {
     debug.cm/db/contact {}
-    foreach link [$config @link] {
-	new-link $id [string trim $link]
+    foreach link $linklist {
+	new-link $contact [string trim $link]
     }
     return
 }
@@ -493,23 +518,31 @@ proc ::cm::db::contact::new-person {dname} {
     return [db do last_insert_rowid]
 }
 
-proc ::cm::db::contact::new-mail {contact mail} {
+proc ::cm::db::contact::new-mail {contact mailaddr} {
     debug.cm/db/contact {}
     setup
 
     # Mail addresses are handled -nocase by the mail system. Store
     # them in a canonical form to have a sensible uniqueness.
-    set mail [string tolower $mail]
+    set mailaddr [string tolower $mailaddr]
 
-    db do eval {
-	INSERT INTO email
-	VALUES (NULL, :mail, :contact, 0)
+    db do transaction {
+	db do eval {
+	    INSERT INTO email
+	    VALUES (NULL, :mailaddr, :contact, 0)
+	}
+	set email [db do last_insert_rowid]
+
+	# See also recv=
+	db do eval {
+	    INSERT
+	    INTO   campaign_destination
+	    SELECT NULL, id, :email
+	    FROM   campaign
+	    WHERE  active
+	}
     }
-    set id [db do last_insert_rowid]
-
-    campaign add-mail $id
-
-    return $id
+    return $email
 }
 
 proc ::cm::db::contact::new-link {contact link} {
@@ -529,10 +562,43 @@ proc ::cm::db::contact::recv= {contact enable} {
     debug.cm/db/contact {}
     setup
 
-    db do eval {
-	UPDATE contact
-	SET    can_recvmail = :enable
-	WHERE  id           = :contact
+    db do transaction {
+	db do eval {
+	    UPDATE contact
+	    SET    can_recvmail = :enable
+	    WHERE  id           = :contact
+	}
+
+	if {$enable} {
+	    # Add the active mails of the contact to all active campaigns.
+
+	    db do eval {
+		SELECT id AS email
+		FROM   email
+		WHERE  contact = :contact
+		AND    NOT inactive
+	    } {
+		db do eval {
+		    INSERT
+		    INTO   campaign_destination
+		    SELECT NULL, id, :email
+		    FROM   campaign
+		    WHERE  active
+		}
+	    }
+	} else {
+	    # Remove all emails of the contact from all active campaigns.
+	    db do eval {
+		DELETE
+		FROM  campaign_destination
+		WHERE email    IN (SELECT id
+				   FROM   email
+				   WHERE  contact = :contact)
+		AND   campaign IN (SELECT id
+				   FROM   campaign
+				   WHERE  active)
+	    }
+	}
     }
     return
 }
@@ -719,7 +785,7 @@ proc ::cm::db::contact::2name {id} {
     return [label $tag $name]
 }
 
-proc ::cm::db::contact::2nameB {id} {
+proc ::cm::db::contact::2name-plain {id} {
     debug.cm/db/contact {}
     setup
 
@@ -767,7 +833,7 @@ proc ::cm::db::contact::label {tag name} {
 }
 
 
-
+XXXXXXXXXXXXXXXXXXXXX
 
 proc ::cm::db::contact::KnownSelect {} {
     debug.cm/db/contact {}
@@ -949,7 +1015,8 @@ proc ::cm::db::contact::select {p} {
 proc ::cm::db::contact::setup {} {
     debug.cm/db/contact {}
 
-    contact-type setup
+    campaign     setup ; # See: disable-email, squash-email, new-mail, recv=
+    contact-type setup ; # See: all
 
     if {![dbutil initialize-schema ::cm::db::do error contact {
 	{
@@ -1135,7 +1202,7 @@ proc ::cm::db::contact::dump {} {
 	ORDER BY nperson, ncompany
     } {
 	cm dump save \
-	    contact affiliate $nperson $ncompany
+	    contact add-affiliation $nperson $ncompany
     }
 
     cm dump step
@@ -1151,7 +1218,7 @@ proc ::cm::db::contact::dump {} {
 	ORDER BY ncompany, nperson
     } {
 	cm dump save \
-	    contact add-liaison $ncompany $nperson
+	    contact add-representative $ncompany $nperson
     }
     return
 }
