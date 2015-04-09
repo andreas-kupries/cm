@@ -1,0 +1,208 @@
+Conference Management
+    cm conference add [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]       Create a new conference
+    cm conference add-sponsor [<name>...]                                                                    Add one or more sponsoring contacts
+    cm conference add-staff [<role>] [<name>...]                                                             Add one or more staff
+    cm conference add-tutorial <day> <half> <track> [<tutorial>]                                             Add a tutorial to the lineup
+    cm conference committee-ping [<template>]                                                                Send a mail to the program committee
+    cm conference create [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]    Create a new conference
+    cm conference drop-sponsor [<name>]                                                                      Remove one or more sponsoring contacts
+    cm conference drop-staff [<name>]                                                                        Remove one or more staff
+    cm conference drop-tutorial [<tutorial>...]                                                              Remove one or more tutorials from the lineup
+    cm conference facility [<location>]                                                                      Select the location for presentations
+    cm conference hotel [<location>]                                                                         Select the conference hotel
+    cm conference list                                                                                       Show a table of all known conferences
+    cm conference make-website [<destination>]                                                               Create a website from the conference information
+    cm conference new [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]       Create a new conference
+    cm conference rate <rate> <currency> [<decimal>]                                                         Set the room rate information
+    cm conference rates                                                                                      Show the conference rates
+    cm conference registration <status>                                                                      Set the registration status of the conference
+    cm conference select [<conference>]                                                                      Select a specific conference for further operation
+    cm conference show                                                                                       Show the details of the current conference
+    cm conference sponsor-ping [<template>]                                                                  Send a mail to the sponsors
+    cm conference sponsors                                                                                   Show the sponsors of the conference
+    cm conference staff                                                                                      Show the staff of the conference
+    cm conference timeline                                                                                   Show the timeline for the conference
+    cm conference timeline-clear                                                                             Clear the timeline for the conference
+    cm conference timeline-done [<event>]                                                                    Mark an event on the timeline for the conference as done
+    cm conference timeline-init                                                                              Generate a basic timeline for the conference
+    cm conference timeline-set [<event>] [<date>]                                                            Set an event of the timeline for the conference to an exact date
+    cm conference timeline-shift [<event>] [<shift>]                                                         Shift an event of the timeline for the conference
+    cm conference tutorials                                                                                  Show the tutorial lineup for the conference
+    cm conferences                                                                                           Show a table of all known conferences
+
+    Advanced
+        cm conference set-end [<enddate>]    Set/fix the conference end-date
+
+    Mail Campaign
+        cm campaign close                Close the campaign of the current conference
+        cm campaign drop [<entry>...]    Remove one or more mail addresses from the campaign for the crrent conference
+        cm campaign mail <template>      Generate campaign mails
+        cm campaign reset                Reset the campaign to empty
+        cm campaign setup                Initialize the campaign for the current conference
+        cm campaign status               Show the status of the campaign
+        cm campaign test <template>      Check generation of campaign mails
+
+        Template Management
+            cm template add <name>        Create a new template
+            cm template create <name>     Create a new template
+            cm template delete <name>     Remove the named template
+            cm template drop <name>       Remove the named template
+            cm template list              Show a table of all known templates
+            cm template new <name>        Create a new template
+            cm template remove <name>     Remove the named template
+            cm template replace <name>    Update the named template
+            cm template set <name>        Update the named template
+            cm template show <name>       Show the text of the named template
+            cm template update <name>     Update the named template
+            cm templates                  Show a table of all known templates
+
+Backup
+    cm save <destination>    Save database as readable and executable Tcl script
+
+City Management
+    cm cities                                 Show a table of all known cities
+    cm city add <name> <state> <nation>       Create a new city for locations
+    cm city create <name> <state> <nation>    Create a new city for locations
+    cm city delete [<city>]                   Delete the specified city
+    cm city list                              Show a table of all known cities
+    cm city new <name> <state> <nation>       Create a new city for locations
+    cm city remove [<city>]                   Delete the specified city
+
+Configuration
+    cm config list                 Show the current state of all settings
+    cm config set <key> <value>    Change setting
+    cm config unset <key>          Drop setting back to its default
+
+Contact Management
+    cm contact add-affiliate [<name>] [<company>...]       Add one or more companies as the affiliations of the specified person
+    cm contact add-company [<name>] [<company>...]         Add one or more companies as the affiliations of the specified person
+    cm contact add-liaison [<company>] [<name>...]         Add one or more liaisons to the specified company
+    cm contact add-link [<name>]                           Add more links to a contact
+    cm contact add-mail [<name>]                           Add more email address to a contact
+    cm contact add-poc [<company>] [<name>...]             Add one or more liaisons to the specified company
+    cm contact add-rep [<company>] [<name>...]             Add one or more liaisons to the specified company
+    cm contact create-company <name>                       Create a new contact for a company
+    cm contact create-list <name> <mail>                   Create a new contact for a mailing list
+    cm contact create-person <name> [<tag>]                Create a new contact for a person
+    cm contact disable [<name>...]                         Disable the specified contacts
+    cm contact disable-mail [<email>...]                   Disable one or more email addresses
+    cm contact enable [<name>...]                          Enable the specified contacts
+    cm contact list [<pattern>]                            Show all known contacts, possibly filtered
+    cm contact merge [<primary>] [<secondary>...]          Merge the secondary contacts into a primary
+    cm contact remove-affiliate [<name>] [<company>...]    Remove one or more companies from the set of affiliations of the specified person
+    cm contact remove-company [<name>] [<company>...]      Remove one or more companies from the set of affiliations of the specified person
+    cm contact remove-liaison [<company>] [<name>...]      Remove one or more liaisons from the specified company
+    cm contact remove-poc [<company>] [<name>...]          Remove one or more liaisons from the specified company
+    cm contact remove-rep [<company>] [<name>...]          Remove one or more liaisons from the specified company
+    cm contact rename [<name>] [<newname>]                 Rename the specified contact
+    cm contact retype <type> [<name>...]                   Fix the type of the specified contacts
+    cm contact set-bio [<name>]                            Set biography of the specified contact
+    cm contact set-tag [<name>] [<tag>]                    Set tag of the specified contact
+    cm contact show [<name>]                               Show the details of the specified contact
+    cm contact squash-mail [<email>...]                    Fully remove one or more email addresses
+    cm contacts [<pattern>]                                Show all known contacts, possibly filtered
+
+Introspection
+    cm version    Print version and revision of the application
+
+    Command history
+        cm history clear          Clear the saved history
+        cm history limit [<n>]    Limit the size of the history
+        cm history list [<n>]     Show the saved history of commands
+
+Location Management
+    cm facilities                                                                                           Show a table of all known locations
+    cm hotels                                                                                               Show a table of all known locations
+    cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
+    cm location add-staff [<position>] [<name>] [<phone>] [<email>]                                         Add one or more staff to the location
+    cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]    Set the contact information of the current location
+    cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]                                      Create a new location
+    cm location delete [<location>]                                                                         Delete the specified location
+    cm location directions                                                                                  Return the map and other hotel specific data
+    cm location directions-set                                                                              Set the map, directions, transport information of the current location
+    cm location drop-staff [<name>]                                                                         Remove one or more staff
+    cm location list                                                                                        Show a table of all known locations
+    cm location map                                                                                         Return the map and other hotel specific data
+    cm location map-set                                                                                     Set the map, directions, transport information of the current location
+    cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
+    cm location note                                                                                        Return the map and other hotel specific data
+    cm location note-set                                                                                    Set the map, directions, transport information of the current location
+    cm location remove [<location>]                                                                         Delete the specified location
+    cm location select [<location>]                                                                         Select a specific location for further operation
+    cm location show                                                                                        Show the details of the current location
+    cm location staff                                                                                       Show staff for current location
+    cm location transport                                                                                   Return the map and other hotel specific data
+    cm location transport-set                                                                               Set the map, directions, transport information of the current location
+    cm locations                                                                                            Show a table of all known locations
+
+Submission Management
+    cm submission accept [<submission>]                           Accept the specified submission
+    cm submission add <title> [<author>...]                       Submit a paper/talk proposal
+    cm submission add-speaker <submission> [<speaker>...]         Add one or more speakers to an accepted submission
+    cm submission add-submitter <submission> [<submitter>...]     Add one or more submitters to a submission
+    cm submission attach <submission> <type> <mimetype>           Add an attachment to an accepted submission
+    cm submission change-abstract <submission>                    Change abstract of a submission
+    cm submission change-date <submission> [<date>]               Change the submission date of a submission
+    cm submission change-summary <submission>                     Change summary of a submission
+    cm submission change-title <submission> [<text>]              Change title of a submission
+    cm submission detach <submission> [<type>...]                 Remove one or more attachment from an accepted submission
+    cm submission details [<submission>]                          Show the details of the specified submission
+    cm submission drop [<submission>...]                          Remove one or more specified submissions
+    cm submission drop-speaker <submission> [<speaker>...]        Remove one or more speakers from an accepted submission
+    cm submission drop-submitter <submission> [<submitter>...]    Remove one or more submitter from a submission
+    cm submission list                                            Show submissions for the current conference
+    cm submission reject [<submission>...]                        Reject the specified submissions
+    cm submission set-abstract <submission>                       Change abstract of a submission
+    cm submission set-date <submission> [<date>]                  Change the submission date of a submission
+    cm submission set-summary <submission>                        Change summary of a submission
+    cm submission set-title <submission> [<text>]                 Change title of a submission
+    cm submission show [<submission>]                             Show the details of the specified submission
+    cm submission unaccept [<submission>...]                      Reject the specified submissions
+    cm submissions                                                Show submissions for the current conference
+    cm submit <title> [<author>...]                               Submit a paper/talk proposal
+    cm unsubmit [<submission>...]                                 Remove one or more specified submissions
+
+Tutorial Management
+    cm tutorial add <speaker> <tag> [<title>] [<description>]       Create a new tutorial to offer
+    cm tutorial change-description <tutorial> [<text>]              Change description of the named tutorial
+    cm tutorial change-prereq <tutorial> <text>                     Change description of the named tutorial
+    cm tutorial change-tag <tutorial> <text>                        Change tag of the named tutorial
+    cm tutorial change-title <tutorial> <text>                      Change title of the named tutorial
+    cm tutorial create <speaker> <tag> [<title>] [<description>]    Create a new tutorial to offer
+    cm tutorial list                                                Show a table of all known tutorials
+    cm tutorial new <speaker> <tag> [<title>] [<description>]       Create a new tutorial to offer
+    cm tutorial set-description <tutorial> [<text>]                 Change description of the named tutorial
+    cm tutorial set-prereq <tutorial> <text>                        Change description of the named tutorial
+    cm tutorial set-tag <tutorial> <text>                           Change tag of the named tutorial
+    cm tutorial set-title <tutorial> <text>                         Change title of the named tutorial
+    cm tutorial show [<name>]                                       Show the text of the specified tutorial
+    cm tutorials                                                    Show a table of all known tutorials
+
+Advanced
+    Debugging
+        cm debug fix-mails    Force all mail addresses into lower-case
+        cm debug levels       List all the debug levels known to the system, which we can enable to gain a (partial) narrative of the application-internal actions
+
+    Testing
+        cm test mail-address <address>      Parse the specified address into parts, and determine if it is lexically ok for us, or not, and why not in case of the latter
+        cm test mail-setup <destination>    Generate a test mail and send it using the current mail configuration
+
+Miscellaneous
+    cm campaign      Manage the campaign for a conference
+    cm city          Manage the cities containing relevant locations
+    cm conference    Manage conferences
+    cm config        Manage the conference-independent configuration of the application
+    cm contact       Manage the contacts used in campaigns and other contexts
+    cm debug         Various commands to help debugging the system itself and its configuration
+    cm history       
+    cm location      Manage hotels and facilities
+    cm submission    Manage the submissions
+    cm template      Manage the text templates used for mail campaigns
+    cm test          Various commands to test the system and its configuration
+    cm tutorial      Manage the tutorials we can or have offered in conferences
+
+Global Options
+    --color MODE           Set color mode (always|auto|never) of the application. The default of "auto" activates color depending on the environment, active when talking to a tty, and otherwise not.
+    --database DATABASE    Path to the database of managed conferences
+    --db DATABASE          Alias of --database.
+    -D DATABASE            Alias of --database.

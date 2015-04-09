@@ -1,0 +1,197 @@
+cm [OPTIONS]
+    cm campaign
+    cm campaign close
+    cm campaign drop [<entry>...]
+    cm campaign exit
+    cm campaign help [OPTIONS] [<cmdname>...]
+    cm campaign mail <template>
+    cm campaign reset
+    cm campaign setup
+    cm campaign status
+    cm campaign test <template>
+    cm cities
+    cm city
+    cm city add <name> <state> <nation>
+    cm city create <name> <state> <nation>
+    cm city delete [<city>]
+    cm city exit
+    cm city help [OPTIONS] [<cmdname>...]
+    cm city list
+    cm city new <name> <state> <nation>
+    cm city remove [<city>]
+    cm conference
+    cm conference add [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
+    cm conference add-sponsor [<name>...]
+    cm conference add-staff [<role>] [<name>...]
+    cm conference add-tutorial <day> <half> <track> [<tutorial>]
+    cm conference committee-ping [<template>]
+    cm conference create [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
+    cm conference drop-sponsor [<name>]
+    cm conference drop-staff [<name>]
+    cm conference drop-tutorial [<tutorial>...]
+    cm conference exit
+    cm conference facility [<location>]
+    cm conference help [OPTIONS] [<cmdname>...]
+    cm conference hotel [<location>]
+    cm conference list
+    cm conference make-website [<destination>]
+    cm conference new [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
+    cm conference rate [OPTIONS] <rate> <currency> [<decimal>]
+    cm conference rates
+    cm conference registration <status>
+    cm conference select [<conference>]
+    cm conference set-end [<enddate>]
+    cm conference show
+    cm conference sponsor-ping [<template>]
+    cm conference sponsors
+    cm conference staff
+    cm conference timeline
+    cm conference timeline-clear
+    cm conference timeline-done [<event>]
+    cm conference timeline-init
+    cm conference timeline-set [<event>] [<date>]
+    cm conference timeline-shift [<event>] [<shift>]
+    cm conference tutorials
+    cm conferences
+    cm config
+    cm config exit
+    cm config help [OPTIONS] [<cmdname>...]
+    cm config list
+    cm config set <key> <value>
+    cm config unset <key>
+    cm contact
+    cm contact add-affiliate [<name>] [<company>...]
+    cm contact add-company [<name>] [<company>...]
+    cm contact add-liaison [<company>] [<name>...]
+    cm contact add-link [OPTIONS] [<name>]
+    cm contact add-mail [OPTIONS] [<name>]
+    cm contact add-poc [<company>] [<name>...]
+    cm contact add-rep [<company>] [<name>...]
+    cm contact create-company [OPTIONS] <name>
+    cm contact create-list [OPTIONS] <name> <mail>
+    cm contact create-person [OPTIONS] <name> [<tag>]
+    cm contact disable [<name>...]
+    cm contact disable-mail [<email>...]
+    cm contact enable [<name>...]
+    cm contact exit
+    cm contact help [OPTIONS] [<cmdname>...]
+    cm contact list [OPTIONS] [<pattern>]
+    cm contact merge [<primary>] [<secondary>...]
+    cm contact remove-affiliate [<name>] [<company>...]
+    cm contact remove-company [<name>] [<company>...]
+    cm contact remove-liaison [<company>] [<name>...]
+    cm contact remove-poc [<company>] [<name>...]
+    cm contact remove-rep [<company>] [<name>...]
+    cm contact rename [<name>] [<newname>]
+    cm contact retype <type> [<name>...]
+    cm contact set-bio [<name>]
+    cm contact set-tag [<name>] [<tag>]
+    cm contact show [<name>]
+    cm contact squash-mail [<email>...]
+    cm contacts [OPTIONS] [<pattern>]
+    cm debug
+    cm debug exit
+    cm debug fix-mails
+    cm debug help [OPTIONS] [<cmdname>...]
+    cm debug levels
+    cm exit
+    cm facilities
+    cm help [OPTIONS] [<cmdname>...]
+    cm history
+    cm history clear
+    cm history exit
+    cm history help [OPTIONS] [<cmdname>...]
+    cm history limit [<n>]
+    cm history list [<n>]
+    cm hotels
+    cm location
+    cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]
+    cm location add-staff [<position>] [<name>] [<phone>] [<email>]
+    cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]
+    cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]
+    cm location delete [<location>]
+    cm location directions
+    cm location directions-set
+    cm location drop-staff [<name>]
+    cm location exit
+    cm location help [OPTIONS] [<cmdname>...]
+    cm location list
+    cm location map
+    cm location map-set
+    cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
+    cm location note
+    cm location note-set
+    cm location remove [<location>]
+    cm location select [<location>]
+    cm location show
+    cm location staff
+    cm location transport
+    cm location transport-set
+    cm locations
+    cm save <destination>
+    cm submission
+    cm submission accept [OPTIONS] [<submission>]
+    cm submission add [OPTIONS] <title> [<author>...]
+    cm submission add-speaker <submission> [<speaker>...]
+    cm submission add-submitter <submission> [<submitter>...]
+    cm submission attach <submission> <type> <mimetype>
+    cm submission change-abstract <submission>
+    cm submission change-date <submission> [<date>]
+    cm submission change-summary <submission>
+    cm submission change-title <submission> [<text>]
+    cm submission detach <submission> [<type>...]
+    cm submission details [<submission>]
+    cm submission drop [<submission>...]
+    cm submission drop-speaker <submission> [<speaker>...]
+    cm submission drop-submitter <submission> [<submitter>...]
+    cm submission exit
+    cm submission help [OPTIONS] [<cmdname>...]
+    cm submission list
+    cm submission reject [<submission>...]
+    cm submission set-abstract <submission>
+    cm submission set-date <submission> [<date>]
+    cm submission set-summary <submission>
+    cm submission set-title <submission> [<text>]
+    cm submission show [<submission>]
+    cm submission unaccept [<submission>...]
+    cm submissions
+    cm submit [OPTIONS] <title> [<author>...]
+    cm template
+    cm template add <name>
+    cm template create <name>
+    cm template delete <name>
+    cm template drop <name>
+    cm template exit
+    cm template help [OPTIONS] [<cmdname>...]
+    cm template list
+    cm template new <name>
+    cm template remove <name>
+    cm template replace <name>
+    cm template set <name>
+    cm template show <name>
+    cm template update <name>
+    cm templates
+    cm test
+    cm test exit
+    cm test help [OPTIONS] [<cmdname>...]
+    cm test mail-address <address>
+    cm test mail-setup <destination>
+    cm tutorial
+    cm tutorial add [OPTIONS] <speaker> <tag> [<title>] [<description>]
+    cm tutorial change-description <tutorial> [<text>]
+    cm tutorial change-prereq <tutorial> <text>
+    cm tutorial change-tag <tutorial> <text>
+    cm tutorial change-title <tutorial> <text>
+    cm tutorial create [OPTIONS] <speaker> <tag> [<title>] [<description>]
+    cm tutorial exit
+    cm tutorial help [OPTIONS] [<cmdname>...]
+    cm tutorial list
+    cm tutorial new [OPTIONS] <speaker> <tag> [<title>] [<description>]
+    cm tutorial set-description <tutorial> [<text>]
+    cm tutorial set-prereq <tutorial> <text>
+    cm tutorial set-tag <tutorial> <text>
+    cm tutorial set-title <tutorial> <text>
+    cm tutorial show [<name>]
+    cm tutorials
+    cm unsubmit [<submission>...]
+    cm version
