@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::contact
+package require cm::db::contact
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::contact {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::contact
+    namespace import ::cm::db::contact
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
@@ -43,33 +43,15 @@ namespace eval ::cm::validate::contact {
 proc ::cm::validate::contact::default  {p}   { return {} }
 proc ::cm::validate::contact::release  {p x} { return }
 proc ::cm::validate::contact::validate {p x} {
-    set known   [contact known validation]
-    set matches [complete-enum [dict keys $known] 1 $x]
-
-    set n [llength $matches]
-    if {!$n} {
-	fail $p CONTACT "a contact identifier" $x
+    switch -exact -- [util match-substr id [contact known] nocase $x] {
+	ok        { return $id }
+	fail      { fail $p CONTACT "a contact identifier"              $x }
+	ambiguous { fail $p CONTACT "an unambiguous contact identifier" $x }
     }
-
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p CONTACT "an unambigous contact identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
 }
 
 proc ::cm::validate::contact::complete {p x} {
-    complete-enum [dict keys [contact known validation]] 1 $x
+    complete-enum [dict keys [contact known]] 1 $x
 }
 
 # # ## ### ##### ######## ############# ######################
