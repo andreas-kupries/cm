@@ -36,7 +36,7 @@ namespace eval ::cm::db {
 namespace eval ::cm::db::config {
     namespace export \
 	assign drop drop-glob get-list get get* \
-	has has-glob names setup dump
+	has has-glob names setup dump all-internal
     namespace ensemble create
 
     namespace import ::cm::db
@@ -48,6 +48,18 @@ debug level  cm/db/config
 debug prefix cm/db/config {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::config::all-internal {} {
+    debug.cm/db/config {}
+    setup
+
+    return [db do eval {
+	SELECT key, value
+	FROM   config
+	WHERE  key GLOB '@*'
+	ORDER BY key
+    }]
+}
 
 proc ::cm::db::config::assign {key value} {
     debug.cm/db/config {}

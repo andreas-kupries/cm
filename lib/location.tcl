@@ -275,12 +275,7 @@ proc ::cm::location::staff_show {config} {
     puts "Staff of \"[color name [location 2name $location]]\":"
     [table t {Role Staff Phone Email} {
 	set first 1
-	db do eval {
-	    SELECT position, name, phone, email
-	    FROM   location_staff
-	    WHERE  location = :location
-	    ORDER BY position, name
-	} {
+	foreach {position name phone email} [location all-staff $location] {
 	    if {$first} {
 		set lastposition $position
 		set first 0
