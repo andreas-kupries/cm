@@ -64,12 +64,7 @@ proc ::cm::config::listall {config} {
 	    $t add $key $v
 	}
 	# And internals...
-	db do eval {
-	    SELECT key, value
-	    FROM config
-	    WHERE key GLOB '@*'
-	    ORDER BY key
-	} {
+	foreach {key value} [config all-internal] {
 	    $t add $key $value
 	}
     }] show
