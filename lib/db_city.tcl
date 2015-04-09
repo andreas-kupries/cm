@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::city 0
+# Package cm::db::city 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?

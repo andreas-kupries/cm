@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::conference 0
+# Package cm::db::staffrole 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
