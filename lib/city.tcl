@@ -33,7 +33,9 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::city {
-    namespace export create delete show list-all
+    namespace export \
+	create delete show list-all \
+	test-known test-select
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -128,6 +130,22 @@ proc ::cm::city::show {config} {
 	$t add State  $state
 	$t add Nation $nation
     }] show
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::city::test-known {config} {
+    debug.cm/city {}
+    city setup
+    util pdict [city known]
+    return
+}
+
+proc ::cm::city::test-select {config} {
+    debug.cm/city {}
+    city setup
+    util pdict [cm::db::city::Selection]
     return
 }
 

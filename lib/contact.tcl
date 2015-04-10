@@ -1352,7 +1352,7 @@ proc ::cm::contact::KnownLimited {limit} {
 
     # Rekey by names
     set map [util dict-invert $map]
-    set map [util dict-fill-permute $map]
+    set map [util dict-fill-permute* $map]
 
     set known [util dict-drop-ambiguous $map]
 
