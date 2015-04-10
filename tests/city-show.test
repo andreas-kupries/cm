@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## city management - printing citys
+## city management - printing cities
 
 kt check Tcl     8.5
 kt check tcltest 2
