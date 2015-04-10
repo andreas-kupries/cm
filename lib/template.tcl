@@ -23,10 +23,10 @@ package require debug::caller
 package require dbutil
 package require try
 
-package require cm::util
-package require cm::table
 package require cm::db
 package require cm::db::template
+package require cm::table
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -62,7 +62,7 @@ proc ::cm::template::show {config} {
 
     set template [$config @name]
 
-    puts "Template [color name [template 2name $template]]:"
+    puts "Template \"[color name [template 2name $template]]\":"
     puts [template value $template]
     return
 }
@@ -90,12 +90,12 @@ proc ::cm::template::create {config} {
     # try to insert, report failure as user error
 
     set name [$config @name]
-    set text [read stdin]
+    set text [util text-stdin $config @text]
 
     # TODO: compute and show issues with templates (missing place holders)
     # Warn, ask for progress...
 
-    puts -nonewline "Creating template \"[color name $name]\" ... "
+    puts -nonewline "Creating new template \"[color name $name]\" ... "
 
     try {
 	template new $name $text
@@ -119,7 +119,7 @@ proc ::cm::template::remove {config} {
 
     # TODO: prevent removal if used in campaigns
 
-    puts -nonewline "Remove [color name [template 2name $template]] ... "
+    puts -nonewline "Deleting template \"[color name [template 2name $template]]\" ... "
     flush stdout
 
     template delete $template
@@ -134,9 +134,9 @@ proc ::cm::template::update {config} {
     db show-location
 
     set template [$config @name]
-    set text     [read stdin]
+    set text     [util text-stdin $config @text]
 
-    puts -nonewline "Update [color name [template 2name $template]] ... "
+    puts -nonewline "Updating template \"[color name [template 2name $template]]\" ... "
     flush stdout
 
     template update $template $text

@@ -45,7 +45,7 @@ namespace eval ::cm::validate::template {
 proc ::cm::validate::template::default  {p}   { return {} }
 proc ::cm::validate::template::release  {p x} { return }
 proc ::cm::validate::template::validate {p x} {
-    switch -exact -- [util match-substr id [template known] 0 $x] {
+    switch -exact -- [util match-substr id [template known] nocase $x] {
 	ok        { return $id }
 	fail      { fail $p TEMPLATE "a template name"              $x }
 	ambiguous { fail $p TEMPLATE "an unambiguous template name" $x }
@@ -53,7 +53,7 @@ proc ::cm::validate::template::validate {p x} {
 }
 
 proc ::cm::validate::template::complete {p x} {
-    complete-enum [dict keys [template known]] 0 $x
+    complete-enum [dict keys [template known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################

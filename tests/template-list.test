@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## general application configuration - listing
+## template management - listing
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,8 +12,8 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test config-list-1.0 {config list, wrong args, too many} -body {
-    run config list X
+test template-list-1.0 {template list, wrong args, too many} -body {
+    run template list X
 } -setup {
     stage-open
 } -cleanup {
@@ -22,13 +22,22 @@ test config-list-1.0 {config list, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test config-list-2.0 {config list, defaults} -body {
-    run config list
+test template-list-2.0 {template list, defaults, empty} -body {
+    run template list
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/config-list-defaults.txt]
+} -result [viewFile support/template-list-empty.txt]
+
+test template-list-2.1 {template list, not empty} -body {
+    run template list
+} -setup {
+    stage-open
+    run template new foo bar
+} -cleanup {
+    stage-close
+} -result [viewFile support/template-list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

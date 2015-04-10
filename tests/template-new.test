@@ -1,0 +1,61 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## template management - new templates
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test template-new-1.0 {template new, wrong args, not enough} -body {
+    run template new
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test template-new-1.1 {template new, wrong args, too many} -body {
+    run template new NAME DATA X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test template-new-1.2 {template new, duplicate, case-insensitive} -body {
+    run template new Foo
+} -setup {
+    stage-open
+    run template new foo bar
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Found a problem with input "name": A template name named "Foo" already exists. Please use a different name.}
+
+# # ## ### ##### ######## ############# #####################
+
+test template-new-2.0 {template new, argument} -body {
+    run template new foo bar
+    run template list
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/template-list.txt]
+
+test template-new-2.1 {template new, stdin} -body {
+    run template new foo << bar
+    run template list
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/template-list.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
