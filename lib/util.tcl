@@ -44,7 +44,7 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	initials match-substr match-enum select text-stdin
+	dict-join-keys initials match-substr match-enum select text-stdin
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -265,6 +265,19 @@ proc ::cm::util::dict-fill-permute {dict} {
     }
 
     return $dict
+}
+
+proc ::cm::util::dict-join-keys {dict {separator { }}} {
+    debug.cm/util {}
+
+    # Rewrite the dict keys (assumed to be lists) into plain strings
+    # to squash Tcl list syntax.
+
+    set r {}
+    dict for {k v} $dict {
+	dict set r [join $k $separator] $v
+    }
+    return $r
 }
 
 # # ## ### ##### ######## ############# #####################

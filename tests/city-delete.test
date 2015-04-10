@@ -1,0 +1,44 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## city management - deleting citys
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test city-delete-1.0 {city delete, wrong args, too many} -body {
+    run city delete N X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test city-delete-1.1 {city delete, bogus name} -body {
+    run city delete BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a city name for input "city", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test city-delete-2.0 {city delete} -body {
+    run city delete "City, State, Nation"
+    run city list
+} -setup {
+    stage-open
+    run city new City State Nation
+} -cleanup {
+    stage-close
+} -result [viewFile support/city-list-empty.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

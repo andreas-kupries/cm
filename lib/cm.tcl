@@ -363,14 +363,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	# -- name, state, nation
 	# -- (1:n) locations
 
-	private create {
+	private new {
 	    section {City Management}
 	    description { Create a new city for locations }
 	    input name   { description {Name of the city}        }
 	    input state  { description {State the city is in}    }
 	    input nation { description {Nation the state is in}  }
 	} [cm::call city create]
-	alias new
+	alias create
 	alias add
 
 	private delete {
@@ -385,6 +385,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call city delete]
 	alias remove
+	alias drop
+
+	private show {
+	    section {City Management}
+	    description { Show the details for the specified city }
+	    input city {
+		The city to show
+	    } {
+		optional
+		validate [cm::vt city]
+		generate [cm::call-db city select]
+	    }
+	} [cm::call city show]
 
 	private list {
 	    section {City Management}
