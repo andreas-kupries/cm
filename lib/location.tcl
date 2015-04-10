@@ -37,10 +37,11 @@ namespace eval ::cm {
 }
 namespace eval ::cm::location {
     namespace export \
-	create delete list-all select show \
+	create delete list-all select show current current-reset \
 	staff_create staff_delete staff_show \
 	map_set map_get contact_set \
-	test-known test-select
+	test-known test-select \
+	test-staff-known test-staff-select
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -135,23 +136,23 @@ proc ::cm::location::select {config} {
     return
 }
 
+proc ::cm::location::current-reset {config} {
+    debug.cm/location {}
+    location setup
+    db show-location
+
+    puts -nonewline "Unsetting current location ... "
+    location current-reset
+    puts [color good OK]
+    return
+}
+
 proc ::cm::location::current {config} {
     debug.cm/location {}
     location setup
     db show-location
 
-    set location [location current]
-    if {$location == -2} {
-	util user-error \
-	    "Current location is bad, please \"select\" one" \
-	    LOCATION CURRENT BAD
-    } elseif {$location == -1} {
-	util user-error \
-	    "No current location chosen, please \"select\" one"
-	    LOCATION CURRENT MISSING
-    } else {
-	puts [color name [location 2name $location]]
-    }
+    ShowCurrent
     return
 }
 
@@ -371,6 +372,7 @@ proc ::cm::location::staff_delete {config} {
 proc ::cm::location::test-known {config} {
     debug.cm/location {}
     location setup
+
     util pdict [location known]
     return
 }
@@ -378,8 +380,44 @@ proc ::cm::location::test-known {config} {
 proc ::cm::location::test-select {config} {
     debug.cm/location {}
     location setup
+
     util pdict [cm::db::location::Selection]
     return
+}
+
+proc ::cm::location::test-staff-known {config} {
+    debug.cm/location {}
+    location setup
+
+    ShowCurrent
+    util pdict [location known-staff]
+    return
+}
+
+proc ::cm::location::test-staff-select {config} {
+    debug.cm/location {}
+    location setup
+
+    ShowCurrent
+    util pdict [cm::db::location::SelectionStaff [cm::db::location::Current]]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::location::ShowCurrent {} {
+    set location [location current]
+    if {$location == -2} {
+	util user-error \
+	    "Current location is bad, please \"select\" one" \
+	    LOCATION CURRENT BAD
+    } elseif {$location == -1} {
+	util user-error \
+	    "No current location chosen, please \"select\" one"
+	    LOCATION CURRENT MISSING
+    } else {
+	puts [color name [location 2name $location]]
+    }
 }
 
 # # ## ### ##### ######## ############# ######################

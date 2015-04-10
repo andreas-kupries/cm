@@ -39,8 +39,9 @@ namespace eval ::cm::db {
 namespace eval ::cm::db::location {
     namespace export \
 	all new delete 2name 2name* label select known get update \
-	new-staff delete-staff select-staff known-staff \
-	issues current current* current= setup dump
+	new-staff delete-staff select-staff known-staff issues \
+        current current* current= current-reset \
+	setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -290,6 +291,12 @@ proc ::cm::db::location::update {id details} {
 proc ::cm::db::location::current= {location} {
     debug.cm/db/location {}
     config assign @current-location $location
+    return
+}
+
+proc ::cm::db::location::current-reset {} {
+    debug.cm/db/location {}
+    config drop @current-location
     return
 }
 
