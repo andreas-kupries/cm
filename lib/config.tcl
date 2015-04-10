@@ -30,7 +30,7 @@ package require cm::validate::config
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm::config {
-    namespace export update undef listall
+    namespace export update undef get listall
     namespace ensemble create
 
     namespace import ::cm::validate::config
@@ -102,6 +102,18 @@ proc ::cm::config::undef {config} {
     config drop $key
 
     puts [color good OK]
+    return
+}
+
+proc ::cm::config::get {config} {
+    debug.cm/config {}
+    config setup
+    db show-location
+
+    set key [$config @key]
+
+    # Current value, or default.
+    puts [config get* $key [vt-config default-of $key]]
     return
 }
 

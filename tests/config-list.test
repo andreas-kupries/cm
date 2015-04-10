@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## version
+## general application configuration - listing
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,13 +12,21 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test version-1.0 {version, wrong args, too many} -body {
-    run version X
+test config-list-1.0 {config list, wrong args, too many} -body {
+    run config list X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
 
-test version-1.1 {version} -body {
-    run version
-} -match glob -result {cm *}
+test config-list-1.1 {config list, defaults} -body {
+    run config list
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/config-list-defaults.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

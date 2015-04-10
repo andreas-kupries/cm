@@ -255,31 +255,41 @@ cmdr create cm::cm [file tail $::argv0] {
 	}
 	private set {
 	    section Configuration
-	    description {Change setting}
+	    description {
+		Change the value of the specified setting.
+	    }
 	    input key {
 		The name of the setting to change
-	    } {
-		validate [cm::vt config]
-	    }
+	    } { validate [cm::vt config] }
 	    input value {
 		The value to assign
 	    } {}
-	} [cm::call config cmd_set]
+	} [cm::call config update]
 
 	private unset {
 	    section Configuration
-	    description {Drop setting back to its default}
-	    input key {
-		The name of the setting to drop
-	    } {
-		validate [cm::vt config]
+	    description {
+		Drop the value of the specified setting back to its default.
 	    }
-	} [cm::call config cmd_unset]
+	    input key {
+		The name of the setting to drop.
+	    } { validate [cm::vt config] }
+	} [cm::call config undef]
+
+	private get {
+	    section Configuration
+	    description {
+		Print the current value of the specified setting to stdout
+	    }
+	    input key {
+		The name of the setting to print.
+	    } { validate [cm::vt config] }
+	} [cm::call config get]
 
 	private list {
 	    section Configuration
 	    description {Show the current state of all settings}
-	} [cm::call config cmd_list]
+	} [cm::call config listall]
 	default
     }
 

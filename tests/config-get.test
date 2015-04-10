@@ -1,0 +1,48 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## general application configuration - getting values
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test config-get-1.0 {config get, wrong args, not enough} -body {
+    run config get
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test config-get-1.1 {config get, wrong args, too many} -body {
+    run config get K X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test config-get-1.3 {config get, bogus key} -body {
+    run config get BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a CM setting for input "key", got "BOGUS"}
+
+test config-get-2.0 {config get} -body {
+    run config get debug
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/config-get.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
