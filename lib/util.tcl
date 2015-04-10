@@ -32,6 +32,8 @@ package require linenoise
 package require struct::list
 package require textutil::adjust
 
+package require cm::table
+
 # # ## ### ##### ######## ############# #####################
 ## Definition
 
@@ -44,14 +46,17 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	dict-join-keys initials match-substr match-enum select text-stdin \
-	fmt-issues-cli fmt-issues-web
+	dict-fill-permute* dict-join-keys initials select text-stdin \
+	match-substr match-enum fmt-issues-cli fmt-issues-web pdict
     namespace ensemble create
 
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
+
+    namespace import ::cm::table::do
+    rename do table
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -59,6 +64,18 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::pdict {dict} {
+    debug.cm/util {}
+    [table t {Key Value} {
+	foreach k [lsort -dict [dict keys $dict]] {
+	    set v [dict get $dict $k]
+	    $t add $k $v
+	}
+    }] show
+}
 
 # # ## ### ##### ######## ############# #####################
 
@@ -274,6 +291,20 @@ proc ::cm::util::dict-drop-ambiguous {dict} {
 }
 
 proc ::cm::util::dict-fill-permute {dict} {
+    debug.cm/util {}
+
+    # Extend with key permutations which do not clash
+    dict for {k vlist} $dict {
+	foreach p [struct::list permutations $k] {
+	    if {[dict exists $dict $p]} continue
+	    dict set dict $p $vlist
+	}
+    }
+
+    return $dict
+}
+
+proc ::cm::util::dict-fill-permute* {dict} {
     debug.cm/util {}
 
     # Extend with key permutations which do not clash

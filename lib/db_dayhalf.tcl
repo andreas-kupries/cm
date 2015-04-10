@@ -33,7 +33,11 @@ package require cm::util
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm {
-    namespace export db::dayhalf
+    namespace export db
+    namespace ensemble create
+}
+namespace eval ::cm::db {
+    namespace export dayhalf
     namespace ensemble create
 }
 namespace eval ::cm::db::dayhalf {

@@ -1520,6 +1520,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section Advanced Testing
 	}
 
+	# - -- --- ----- -------- -------------
+
 	private mail-address {
 	    description {
 		Parse the specified address into parts, and determine
@@ -1540,6 +1542,18 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private city-known {
+	    description {Print validation dict}
+	} [cm::call city test-known]
+
+	private city-select {
+	    description {Print selection dict}
+	} [cm::call city test-select]
+
+	# - -- --- ----- -------- -------------
     }
 
     # # ## ### ##### ######## ############# ######################
