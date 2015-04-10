@@ -480,6 +480,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Location Management}
 	    description { Print the current location, if any }
 	} [cm::call location current]
+	default
+
+	private current-reset {
+	    section {Location Management}
+	    description { Unset the current location, if any }
+	} [cm::call location current-reset]
 
 	private select {
 	    section {Location Management}
@@ -1562,6 +1568,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	private location-select {
 	    description {Print selection dict}
 	} [cm::call location test-select]
+
+	private location-staff-known {
+	    description {Print validation dict, stafff of current location}
+	} [cm::call location test-staff-known]
+
+	private location-staff-select {
+	    description {Print selection dict, staff of current location}
+	} [cm::call location test-staff-select]
 
 	# - -- --- ----- -------- -------------
     }
