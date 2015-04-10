@@ -33,7 +33,7 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::city {
-    namespace export create delete list-all
+    namespace export create delete show list-all
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -73,9 +73,9 @@ proc ::cm::city::create {config} {
     set name   [$config @name]
     set state  [$config @state]
     set nation [$config @nation]
-    set label  [label $name $state $nation]
+    set label  [city label $name $state $nation]
 
-    puts -nonewline "Creating city \"[color name $label]\" ... "
+    puts -nonewline "Creating new city \"[color name $label]\" ... "
 
     try {
 	city new $name $state $nation
@@ -112,6 +112,22 @@ proc ::cm::city::delete {config} {
     }
 
     puts [color good OK]
+    return
+}
+
+proc ::cm::city::show {config} {
+    debug.cm/city {}
+    city setup
+    db show-location
+
+    set city [$config @city]
+
+    [table t {Property Value} {
+	lassign [city get $city] name state nation
+	$t add Name   [color name $name]
+	$t add State  $state
+	$t add Nation $nation
+    }] show
     return
 }
 

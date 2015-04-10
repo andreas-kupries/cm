@@ -35,7 +35,7 @@ namespace eval ::cm::db {
     namespace ensemble create
 }
 namespace eval ::cm::db::city {
-    namespace export new delete all 2name select label known \
+    namespace export new delete all 2name get select label known \
 	setup dump
     namespace ensemble create
 
@@ -55,10 +55,20 @@ proc ::cm::db::city::new {name state nation} {
     debug.cm/db/city {}
     setup
 
+    # Actual key, list for syntax, lower-case normalized for
+    # case-insensitive uniqueness.
+    lappend csnkey [string tolower $name]
+    lappend csnkey [string tolower $state]
+    lappend csnkey [string tolower $nation]
+
     db do transaction {
 	db do eval {
 	    INSERT INTO city
-	    VALUES (NULL, :name, :state, :nation)
+	    VALUES (NULL,	-- id, automatic
+		    :name,	-- name
+		    :state,	-- state
+		    :nation,	-- nation
+		    :csnkey)	-- csnkey
 	}
     }
     return [db do last_insert_rowid]
@@ -100,6 +110,17 @@ proc ::cm::db::city::2name {city} {
     return [label $name $state $nation]
 }
 
+proc ::cm::db::city::get {city} {
+    debug.cm/db/city {}
+    setup
+
+    return [db do eval {
+	SELECT name, state, nation
+	FROM   city
+	WHERE  id = :city
+    }]
+}
+
 proc ::cm::db::city::label {name state nation} {
     debug.cm/db/city {}
 
@@ -111,45 +132,47 @@ proc ::cm::db::city::label {name state nation} {
 
 proc ::cm::db::city::known {} {
     debug.cm/db/city {}
-    set map {}
     setup
 
+    set map {}
     db do eval {
-	SELECT id, name, state, nation
+	SELECT id, csnkey
 	FROM   city
     } {
-	set display [label $name $state $nation]
+	# csnkey : list (name, state, nation)
+	#        : state may be the empty string.
+	#        : lower-case normalized
 
-	if {$state ne {}} {
-	    set label "$name $state $nation"
-	} else {
-	    set label "$name $nation"
+	if {[lindex $csnkey 1] == {}} {
+	    set csnkey [lreplace $csnkey 1 1]
 	}
-	set label    [string tolower $label]
-	set initials [util initials  $label]
-	set display  [string tolower $display]
 
-	dict lappend map $id $display $label "$initials $label"
+	dict set map $csnkey $id
     }
 
-    set map [util dict-invert         $map]
+    # Permute the key lists, keep those which are still unique.
     set map [util dict-fill-permute   $map]
     set map [util dict-drop-ambiguous $map]
+    set map [util dict-join-keys      $map {, }]
+
+    # Rewrite the keys, join elements into a plain string (*),
+    # separator is comma.
+    # (*) User should not have to write Tcl list syntax!
 
     debug.cm/db/city {==> ($map)}
     return $map
 }
+
+# # ## ### ##### ######## ############# ######################
 
 proc ::cm::db::city::select {p} {
     debug.cm/db/city {}
     return [util select $p city Selection]
 }
 
-# # ## ### ##### ######## ############# ######################
-
 proc ::cm::db::city::Selection {} {
     debug.cm/db/city {}
-    Setup
+    setup
 
     # dict: label -> id
     set selection {}
@@ -164,6 +187,8 @@ proc ::cm::db::city::Selection {} {
     return $selection
 }
 
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::db::city::setup {} {
     debug.cm/db/city {}
 
@@ -176,12 +201,15 @@ proc ::cm::db::city::setup {} {
 	    name	TEXT    NOT NULL,
 	    state	TEXT,
 	    nation	TEXT    NOT NULL,
-	    UNIQUE (name, state, nation)
+	    csnkey	TEXT    NOT NULL,	-- actual key, lower-case
+	    UNIQUE (name, state, nation),
+	    UNIQUE (csnkey)
 	} {
 	    {id     INTEGER 1 {} 1}
 	    {name   TEXT    1 {} 0}
 	    {state  TEXT    0 {} 0}
 	    {nation TEXT    1 {} 0}
+	    {csnkey TEXT    1 {} 0}
 	} {}
     }]} {
 	db setup-error city $error
@@ -196,9 +224,9 @@ proc ::cm::db::city::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/city {}
 
-    foreach {id name state nation} [all] {
+    foreach {_ name state nation} [all] {
 	cm dump save \
-	    city create $name $state $nation
+	    city new $name $state $nation
     }
     return
 }

@@ -1,0 +1,43 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## city management - printing citys
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test city-show-1.0 {city show, wrong args, too many} -body {
+    run city show N X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test city-show-1.1 {city show, bogus name} -body {
+    run city show BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a city name for input "city", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test city-show-2.0 {city show} -body {
+    run city show "C, S, N"
+} -setup {
+    stage-open
+    run city new C S N
+} -cleanup {
+    stage-close
+} -result [viewFile support/city-csn.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
