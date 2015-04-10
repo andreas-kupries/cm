@@ -44,7 +44,8 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	dict-join-keys initials match-substr match-enum select text-stdin
+	dict-join-keys initials match-substr match-enum select text-stdin \
+	fmt-issues-cli fmt-issues-web
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -58,6 +59,26 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::fmt-issues-web {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "* $issue"
+    }
+    return [join $result \n]
+}
+
+proc ::cm::util::fmt-issues-cli {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "- [color bad $issue]"
+    }
+    return [join $result \n]
+}
 
 # # ## ### ##### ######## ############# #####################
 
