@@ -1554,6 +1554,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call city test-select]
 
 	# - -- --- ----- -------- -------------
+
+	private location-known {
+	    description {Print validation dict}
+	} [cm::call location test-known]
+
+	private location-select {
+	    description {Print selection dict}
+	} [cm::call location test-select]
+
+	# - -- --- ----- -------- -------------
     }
 
     # # ## ### ##### ######## ############# ######################

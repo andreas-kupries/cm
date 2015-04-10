@@ -39,7 +39,8 @@ namespace eval ::cm::location {
     namespace export \
 	create delete list-all select show \
 	staff_create staff_delete staff_show \
-	map_set map_get contact_set
+	map_set map_get contact_set \
+	test-known test-select
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -362,6 +363,22 @@ proc ::cm::location::staff_delete {config} {
     location delete-staff $staff
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::location::test-known {config} {
+    debug.cm/location {}
+    location setup
+    util pdict [location known]
+    return
+}
+
+proc ::cm::location::test-select {config} {
+    debug.cm/location {}
+    location setup
+    util pdict [cm::db::location::Selection]
     return
 }
 
