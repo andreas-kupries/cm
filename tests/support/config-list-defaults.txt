@@ -1,0 +1,14 @@
+~/.cm/managed
++-----------+-------------------------+
+| Property  | Value                   |
++-----------+-------------------------+
+| debug     | 0                       |
+| host      | localhost               |
+| limit     | 10                      |
+| password  |                         |
+| port      | 25                      |
+| sender    | *Undefined* Please set. |
+| suspended | 0                       |
+| tls       | 0                       |
+| user      |                         |
++-----------+-------------------------+

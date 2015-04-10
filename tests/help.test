@@ -1,9 +1,11 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
-## (c) 2014 Andreas Kupries
+## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## client help
-## Fixed width 79 chosen to be independent of the terminal width.
-## Expected result were generated with the same setting.
+## help
+#
+# Fixed width 300 (categorized) and 79 (list, short) chosen to be
+# independent of the terminal width. The expected results were
+# generated with the same settings.
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -14,15 +16,15 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test help-1.0 {client help, categorized} -body {
+test help-1.0 {help, categorized} -body {
     run help --width 300
 } -result [viewFile support/h-cat.txt]
 
-test help-1.1 {client help, short} -body {
+test help-1.1 {help, short} -body {
     run help --width 79 --short
 } -result [viewFile support/h-short.txt]
 
-test help-1.2 {client help, list} -body {
+test help-1.2 {help, list} -body {
     run help --width 79 --list
 } -result [viewFile support/h-list.txt]
 
