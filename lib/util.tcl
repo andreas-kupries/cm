@@ -44,7 +44,7 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	initials match-substr match-enum select
+	initials match-substr match-enum select text-stdin
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -58,6 +58,19 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::text-stdin {config attr} {
+    debug.cm/util {}
+
+    if {![$config $attr set?]} {
+	puts {Reading stdin...}
+	return [read stdin]
+    } else {
+	return [$config $attr]
+    }
+}
 
 # # ## ### ##### ######## ############# #####################
 

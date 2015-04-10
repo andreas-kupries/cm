@@ -44,8 +44,9 @@ proc ::cm::validate::nottemplate::complete {p x} { return {} }
 proc ::cm::validate::nottemplate::release  {p x} { return }
 proc ::cm::validate::nottemplate::validate {p x} {
     set known [template known]
-    if {![dict exists $known $x]} {
-	return $x
+    set xnorm [string tolower $x]
+    if {![dict exists $known $xnorm]} {
+	return $xnorm
     }
     fail-known-thing $p NOT-TEMPLATE "template name" $x
 }

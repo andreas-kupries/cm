@@ -298,13 +298,14 @@ cmdr create cm::cm [file tail $::argv0] {
 
     officer template {
 	description {
-	    Manage the text templates used for mail campaigns.
+	    Manage the text templates used for mail campaigns and web-site generation.
 	}
 
 	private list {
 	    section {Conference Management} {Mail Campaign} {Template Management}
 	    description { Show a table of all known templates }
 	} [cm::call template list-all]
+	default
 
 	private show {
 	    section {Conference Management} {Mail Campaign} {Template Management}
@@ -314,32 +315,38 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt template] }
 	} [cm::call template show]
 
-	private create {
+	private new {
 	    section {Conference Management} {Mail Campaign} {Template Management}
-	    description { Create a new template. The text is read from stdin. }
+	    description { Create a new template. }
 	    input name {
-		Name of the template to create
+		Name of the template to create. Normalized to lower-case.
 	    } { validate [cm::vt nottemplate] }
+	    input text {
+		The contents of the template. If not specified stdin is read.		
+	    } { optional }
 	} [cm::call template create]
 	alias add
-	alias new
+	alias create
 
-	private remove {
+	private delete {
 	    section {Conference Management} {Mail Campaign} {Template Management}
 	    description { Remove the named template }
 	    input name {
-		Name of the template to remove
+		Name of the template to delete.
 	    } { validate [cm::vt template] }
 	} [cm::call template remove]
 	alias drop
-	alias delete
+	alias remove
 
 	private update {
 	    section {Conference Management} {Mail Campaign} {Template Management}
-	    description { Update the named template. The text is read from stdin. }
+	    description { Update the contents of the named template. }
 	    input name {
 		Name of the template to update
 	    } { validate [cm::vt template] }
+	    input text {
+		The new contents of the template. If not specified stdin is read.		
+	    } { optional }
 	} [cm::call template update]
 	alias set
 	alias replace

@@ -36,6 +36,8 @@ test config-get-1.3 {config get, bogus key} -body {
     stage-close
 } -returnCodes error -match glob -result {* cmdr: Expected a CM setting for input "key", got "BOGUS"}
 
+# # ## ### ##### ######## ############# #####################
+
 test config-get-2.0 {config get} -body {
     run config get debug
 } -setup {
