@@ -71,8 +71,8 @@ proc ::cm::location::list-all {config} {
 	foreach {id name street zip city state nation} [location all] {
 	    set city    [city label $city $state $nation]
 	    set issues  [location issues [location get $id]]
-	    if {$issues ne {}} {
-		append name \n $issues
+	    if {[llength $issues]} {
+		append name \n [util fmt-issues-cli $issues]
 	    }
 
 	    util highlight-current clocation $id \
@@ -92,11 +92,16 @@ proc ::cm::location::create {config} {
     # try to insert, report failure as user error
 
     set name   [$config @name]
-    set city   [$config @city]
     set street [$config @streetaddress]
     set zip    [$config @zipcode]
+    set city   [$config @city]
 
-    puts -nonewline "Creating location \"[color name $name]\" in \"[color name [city 2name $city]]\" ... "
+    puts "Creating new location \"[color name $name]\" ... "
+    puts "in \"[color name [city 2name $city]]\""
+    puts "at $street"
+    puts "   $zip"
+    puts -nonewline " ... "
+    flush stdout
 
     try {
 	set location [location new $name $city $street $zip]
@@ -129,6 +134,26 @@ proc ::cm::location::select {config} {
     return
 }
 
+proc ::cm::location::current {config} {
+    debug.cm/location {}
+    location setup
+    db show-location
+
+    set location [location current]
+    if {$location == -2} {
+	util user-error \
+	    "Current location is bad, please \"select\" one" \
+	    LOCATION CURRENT BAD
+    } elseif {$location == -1} {
+	util user-error \
+	    "No current location chosen, please \"select\" one"
+	    LOCATION CURRENT MISSING
+    } else {
+	puts [color name [location 2name $location]]
+    }
+    return
+}
+
 proc ::cm::location::delete {config} {
     debug.cm/location {}
     location setup
@@ -150,14 +175,14 @@ proc ::cm::location::show {config} {
     location setup
     db show-location
 
-    set location [location current]
+    set location [$config @location]
     set details  [location get $location]
 
     puts "Details of \"[color name [location 2name $location]]\":"
     [table t {Property Value} {
 	set issues [location issues $details]
-	if {$issues ne {}} {
-	    $t add [color bad Issues] $issues
+	if {[llength $issues]} {
+	    $t add [color bad Issues] [util fmt-issues-cli $issues]
 	    $t add -------- -----
 	}
 
@@ -199,7 +224,7 @@ proc ::cm::location::map_set {config} {
     location setup
     db show-location
 
-    set location [location current]
+    set location [$config @location]
     set details  [location get $location]
 
     puts "Working with location \"[color name [location 2name $location]]\" ..."
@@ -218,7 +243,7 @@ proc ::cm::location::map_get {config} {
     debug.cm/location {}
     location setup
 
-    set location [location current]
+    set location [$config @location]
     set details  [location get $location]
 
     # TODO map-get: wrap into box vs raw
@@ -231,7 +256,7 @@ proc ::cm::location::contact_set {config} {
     location setup
     db show-location
 
-    set location [location current]
+    set location [$config @location]
     set details  [location get $location]
 
     puts "Working with location \"[color name [location 2name $location]]\" ..."
@@ -270,7 +295,7 @@ proc ::cm::location::staff_show {config} {
     location setup
     db show-location
 
-    set location [location current]
+    set location [$config @location]
 
     puts "Staff of \"[color name [location 2name $location]]\":"
     [table t {Role Staff Phone Email} {
@@ -301,7 +326,7 @@ proc ::cm::location::staff_create {config} {
     location setup
     db show-location
 
-    set location [location current]
+    set location [$config @location]
     set position [$config @position]
     set name     [$config @name]
     set phone    [$config @phone]
@@ -327,7 +352,7 @@ proc ::cm::location::staff_delete {config} {
     location setup
     db show-location
 
-    set location [current]
+    set location [$config @location]
     lassign [$config @name] staff position name
 
     puts "Removing staff from location \"[color name [location 2name $location]]\" ... "

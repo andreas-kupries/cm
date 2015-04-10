@@ -199,7 +199,13 @@ proc ::cm::db::location::known {} {
 
 proc ::cm::db::location::select {p} {
     debug.cm/db/location {}
-    return [util select $p location Selection]
+
+    set location [Current]
+    if {$location < 0} {
+	# No current location, or bad - Select a location, make it current
+	set location [util select $p location Selection]
+    }
+    return $location
 }
 
 proc ::cm::db::location::Selection {} {
@@ -294,19 +300,7 @@ proc ::cm::db::location::current* {} {
 
 proc ::cm::db::location::current {} {
     debug.cm/db/location {}
-
-    set location [Current]
-    if {$location == -2} {
-	util user-error \
-	    "Current location is bad, please \"select\" one" \
-	    LOCATION CURRENT BAD
-    } elseif {$location < 0} {
-	util user-error \
-	    "No current location chosen, please \"select\" one"
-	    LOCATION CURRENT MISSING
-    } else {
-	return $location
-    }
+    return [Current]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -398,8 +392,8 @@ proc ::cm::db::location::Current {} {
     } trap {CM CONFIG GET UNKNOWN} {e o} {
 	return -1
     }
-    if {[Has $location]} { return $location }
-    return -2
+    if {![Has $location]} { return -2 }
+    return $location
 }
 
 proc ::cm::db::location::Has {location} {
@@ -432,16 +426,13 @@ proc ::cm::db::location::issues {details} {
     if {($xlocallink  eq {})} { +issue "Local URL missing"   }
     if {($xlocalphone eq {})} { +issue "Local Phone missing" }
 
-    if {[llength $issues]} {
-	set issues [join $issues \n]
-    }
     return $issues
 }
 
 proc ::cm::db::location::+issue {text} {
     debug.cm/db/location {}
     upvar 1 issues issues
-    lappend issues "- [color bad $text]"
+    lappend issues $text
     return
 }
 

@@ -420,7 +420,24 @@ cmdr create cm::cm [file tail $::argv0] {
 	# -- (1:n) location_staff
 	# -- (1:n) conference
 
-	private create {
+	common .justcurrent {
+	    state location {
+		The current location
+	    } {
+		generate [cm::call-db location select]
+	    }
+	}
+	common .location {
+	    input location {
+		The location to work with.
+	    } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call-db location select]
+	    }
+	}
+
+	private new {
 	    section {Location Management}
 	    description { Create a new location }
 
@@ -437,34 +454,43 @@ cmdr create cm::cm [file tail $::argv0] {
 	    # the fact (of creation).
 
 	} [cm::call location create]
-	alias new
+	alias create
 	alias add
+
+	private delete {
+	    section {Location Management}
+	    description { Delete the specified or current location }
+	    use .location
+	} [cm::call location delete]
+	alias remove
+	alias drop
+
+	private show {
+	    section {Location Management}
+	    description { Print the details of the specified or current location }
+	    use .location
+	} [cm::call location show]
 
 	private list {
 	    section {Location Management}
 	    description { Show a table of all known locations }
 	} [cm::call location list-all]
 
+	private current {
+	    section {Location Management}
+	    description { Print the current location, if any }
+	} [cm::call location current]
+
 	private select {
 	    section {Location Management}
 	    description { Select a specific location for further operation }
-	    input location {
-		Location to operate on in the future - The "current" location
-	    } {
-		optional
-		validate [cm::vt location]
-		generate [cm::call-db location select]
-	    }
+	    use .location
 	} [cm::call location select]
-
-	private show {
-	    section {Location Management}
-	    description { Show the details of the current location }
-	} [cm::call location show]
 
 	private contact {
 	    section {Location Management}
 	    description { Set the contact information of the current location }
+	    use .justcurrent
 	    input bookphone  {Phone number for booking rooms} { optional }
 	    input bookfax    {Fax number for booking rooms}   { optional }
 	    input booklink   {Website for booking rooms}      { optional }
@@ -479,6 +505,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Set the map, directions, transport information of the current location.
 		Note: The data is read from stdin.
 	    }
+	    use .location
 	} [cm::call location map_set]
 	alias directions-set
 	alias transport-set
@@ -489,6 +516,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Return the map and other hotel specific data.
 	    }
+	    use .location
 	} [cm::call location map_get]
 	alias directions
 	alias transport
@@ -496,7 +524,10 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private add-staff {
 	    section {Location Management}
-	    description { Add one or more staff to the location }
+	    description {
+		Add one or more staff to the specified or current location
+	    }
+	    use .justcurrent
 	    input position {
 		The role/position to staff
 	    } { optional ; interact }
@@ -509,12 +540,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input email {
 		Staff email
 	    } { optional ; interact ; validate [cm::vt mail-address] }
-
 	} [cm::call location staff_create]
 
 	private drop-staff {
 	    section {Location Management}
-	    description { Remove one or more staff }
+	    description {
+		Remove one or more staff from the specified or current location.
+	    }
+	    use .justcurrent
 	    input name {
 		Position and name of the staff to remove
 	    } { 
@@ -526,23 +559,12 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private staff {
 	    section {Location Management}
-	    description { Show staff for current location }
+	    description {
+		Print staff information for the specified or current location
+	    }
+	    use .location
 	} [cm::call location staff_show]
 
-	private delete {
-	    section {Location Management}
-	    description { Delete the specified location }
-	    input location {
-		Location to delete
-	    } {
-		optional
-		validate [cm::vt location]
-		generate [cm::call location select]
-	    }
-	} [cm::call location delete]
-	alias remove
-
-	# remove - if not used
 	# modify - change name, street, zip, city (rename, relocate/move)
     }
     alias hotels     = location list

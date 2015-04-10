@@ -132,7 +132,7 @@ proc ::cm::conference::cmd_list {config} {
 	    set city    [city label $city $state $nation]
 	    set issues  [issues [details $id]]
 	    if {[llength $issues]} {
-		append title \n [fmt-issues-cli $issues]
+		append title \n [util fmt-issues-cli $issues]
 	    }
 
 	    util highlight-current cid $id current title start end city
@@ -255,7 +255,7 @@ proc ::cm::conference::cmd_show {config} {
     [table t {Property Value} {
 	set issues [issues $details]
 	if {[llength $issues]} {
-	    $t add [color bad Issues] [fmt-issues-cli $issues]
+	    $t add [color bad Issues] [util fmt-issues-cli $issues]
 	    $t add {} {}
 	}
 
@@ -974,7 +974,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    }
 
 	    if {[llength $issues]} {
-		$t add [color bad Issues] [fmt-issues-cli $issues]
+		$t add [color bad Issues] [util fmt-issues-cli $issues]
 		$t add {} {}
 	    }
 
@@ -1099,7 +1099,7 @@ proc ::cm::conference::cmd_submission_list {config} {
 	    }
 
 	    if {[llength $issues]} {
-		append authors \n [fmt-issues-cli $issues]
+		append authors \n [util fmt-issues-cli $issues]
 	    }
 
 	    set title [util adjust $w $title]
@@ -2285,7 +2285,7 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
 	append text [anchor issues] \n
 	append text "# Issues\n\n"
-	append text [fmt-issues-web $issues]
+	append text [util fmt-issues-web $issues]
 	append text \n
     }
 
@@ -3259,24 +3259,6 @@ proc ::cm::conference::known {} {
 
     debug.cm/conference {==> ($known)}
     return $known
-}
-
-proc ::cm::conference::fmt-issues-web {issues} {
-    debug.cm/conference {}
-    set result {}
-    foreach issue $issues {
-	lappend result "* $issue"
-    }
-    return [join $result \n]
-}
-
-proc ::cm::conference::fmt-issues-cli {issues} {
-    debug.cm/conference {}
-    set result {}
-    foreach issue $issues {
-	lappend result "- [color bad $issue]"
-    }
-    return [join $result \n]
 }
 
 proc ::cm::conference::issues {details} {

@@ -1,0 +1,14 @@
+~/.cm/managed
++---+----------------------------+--------+-----+---------+
+|   | Name                       | Street | Zip | City    |
++---+----------------------------+--------+-----+---------+
+| * | N                          | S      | Z   | C, S, N |
+|   | - Staff missing            |        |     |         |
+|   | - Map & directions missing |        |     |         |
+|   | - Booking FAX missing      |        |     |         |
+|   | - Booking URL missing      |        |     |         |
+|   | - Booking Phone missing    |        |     |         |
+|   | - Local FAX missing        |        |     |         |
+|   | - Local URL missing        |        |     |         |
+|   | - Local Phone missing      |        |     |         |
++---+----------------------------+--------+-----+---------+
