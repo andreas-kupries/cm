@@ -1,0 +1,69 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - printing locations
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-show-1.0 {location show, wrong args, too many} -body {
+    run location show N X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test location-show-1.1 {location show, bogus name} -body {
+    run location show BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a location name for input "location", got "BOGUS"}
+
+test location-show-1.2 {location show, ambiguous name} -body {
+    run location show N
+} -setup {
+    stage-open
+    run city new C T X
+    run location new Na Sa Z {C, T, X}
+    run location new Nb Sb Z {C, T, X}
+    run location current-reset
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a location name for input "location", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test location-show-2.0 {location show, current} -body {
+    run location show
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location-nszcsn.txt]
+
+test location-show-2.1 {location show, not current} -body {
+    run location show N
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location current-reset
+} -cleanup {
+    stage-close
+} -result [viewFile support/location-nszcsn.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
