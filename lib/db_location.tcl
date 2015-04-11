@@ -38,8 +38,9 @@ namespace eval ::cm::db {
 }
 namespace eval ::cm::db::location {
     namespace export \
-	all new delete 2name 2name* label select known get update \
-	new-staff delete-staff select-staff known-staff issues \
+	all new delete update get 2name 2name* label \
+	select select-always known issues \
+	new-staff delete-staff select-staff known-staff \
         current current* current= current-reset \
 	setup dump
     namespace ensemble create
@@ -63,8 +64,8 @@ proc ::cm::db::location::all {} {
 
     return [db do eval {
 	    SELECT L.id                   AS id,
-                   L.name                 AS name,
-	           L.streetaddress        AS street,
+                   L.dname                AS name,
+	           L.dstreetaddress       AS street,
 	           L.zipcode              AS zip,
 	           C.name                 AS city,
 	           C.state                AS state,
@@ -76,14 +77,18 @@ proc ::cm::db::location::all {} {
     }]
 }
 
-proc ::cm::db::location::new {name city street zip} {
+proc ::cm::db::location::new {dname city dstreet zip} {
     debug.cm/db/location {}
     setup
+
+    set name   [string tolower $dname]
+    set street [string tolower $dstreet]
+    set zip    [string toupper $zip]
 
     db do transaction {
 	db do eval {
 	    INSERT INTO location
-	    VALUES (NULL, :name, :city, :street, :zip,
+	    VALUES (NULL, :city, :name, :dname, :street, :dstreet, :zip,
 		    NULL, NULL, NULL, -- booking contact (fax, link, phone)
 		    NULL, NULL, NULL, -- local   contact (ditto)
 		    NULL)             -- transportation text block
@@ -98,6 +103,13 @@ proc ::cm::db::location::delete {location} {
     setup
 
     db do transaction {
+	# Clear the current location, if it is the location we are
+	# about to delete.
+
+	if {$location == [current*]} {
+	    current-reset
+	}
+
 	db do eval {
 	    -- First remove dependent information - staff
 	    DELETE
@@ -118,14 +130,14 @@ proc ::cm::db::location::2name {location} {
     setup
 
     lassign [db do eval {
-	SELECT L.name   AS name,
+	SELECT L.dname  AS name,
 	       C.name   AS city,
 	       C.state  AS state,
 	       C.nation AS nation
-	FROM  location L,
-	      city     C
-	WHERE C.id = L.city
-	AND   L.id = :location
+	FROM   location L,
+	       city     C
+	WHERE  C.id = L.city
+	AND    L.id = :location
     }] name city state nation
 
     return [label $name [city label $city $state $nation]]
@@ -136,14 +148,14 @@ proc ::cm::db::location::2name* {location} {
     setup
 
     lassign [db do eval {
-	SELECT L.name   AS name,
+	SELECT L.dname  AS name,
 	       C.name   AS city,
 	       C.state  AS state,
 	       C.nation AS nation
-	FROM  location L,
-	      city     C
-	WHERE C.id = L.city
-	AND   L.id = :location
+	FROM   location L,
+	       city     C
+	WHERE  C.id = L.city
+	AND    L.id = :location
     }] name city state nation
 
     if {$state ne {}} {
@@ -166,31 +178,36 @@ proc ::cm::db::location::known {} {
     set map {}
 
     db do eval {
-	SELECT L.id     AS id,
-	       L.name   AS name,
-	       C.name   AS city,
-	       C.state  AS state,
-	       C.nation AS nation
+	SELECT L.id            AS id,
+	       L.name          AS name,   -- using the various normalized
+	       L.streetaddress AS street, -- columns for input validation
+	       C.csnkey        AS csnkey  -- and completion
 	FROM  location L,
 	      city     C
 	WHERE C.id = L.city
     } {
-	if {$state ne {}} {
-	    set label "$name $city $state $nation"
-	} else {
-	    set label "$name $city $nation"
-	}
-	set initials  [util initials $label]
-	set llabel    [string tolower $label]
-	set linitials [string tolower $initials]
+	# csnkey : list (name, state, nation)
+	#        : state may be the empty string.
+	#        : all lower-case normalized
 
-	dict lappend map $id $label  "$initials $label"
-	dict lappend map $id $llabel "$linitials $llabel"
+	set csn [city label {*}$csnkey]
+	if {[lindex $csnkey 1] == {}} {
+	    set csnkey [lreplace $csnkey 1 1]
+	}
+
+	set a [list {*}[split $name]   {*}$csnkey]
+	set b [list {*}[split $street] {*}$csnkey]
+	set c "$name ($csn)"
+	set d "$street ($csn)"
+
+	dict lappend map $id   $a $b $c $d
     }
 
     # Rekey by names and drop all keys with multiple outcomes. No
-    # permutations. Too slow, with list lengths around 6 and higher
-    # (2-4 city, 2-4 location).
+    # permutations. Too many (Combined name(2-7)+city(3) is 5-10
+    # elements, street+city in the same range) => Several million full
+    # permutations. Might go for simple rotations in the future, or
+    # partial permute (city). Issue is preventing clashes.
     set map [util dict-invert         $map]
     set map [util dict-drop-ambiguous $map]
 
@@ -203,10 +220,15 @@ proc ::cm::db::location::select {p} {
 
     set location [Current]
     if {$location < 0} {
-	# No current location, or bad - Select a location, make it current
+	# No current location, or bad - Select it.
 	set location [util select $p location Selection]
     }
     return $location
+}
+
+proc ::cm::db::location::select-always {p} {
+    debug.cm/db/location {}
+    return [util select $p location Selection]
 }
 
 proc ::cm::db::location::Selection {} {
@@ -218,13 +240,13 @@ proc ::cm::db::location::Selection {} {
 
     db do eval {
 	SELECT L.id     AS id,
-	       L.name   AS name,
+	       L.dname  AS name,
 	       C.name   AS city,
 	       C.state  AS state,
 	       C.nation AS nation
-	FROM  location L,
-	      city     C
-	WHERE C.id = L.city
+	FROM   location L,
+	       city     C
+	WHERE  C.id = L.city
     } {
 	dict set known [label $name [city label $city $state $nation]] $id
     }
@@ -238,9 +260,9 @@ proc ::cm::db::location::get {id} {
     setup
 
     set details [db do eval {
-	SELECT 'xname',       name,
+	SELECT 'xname',       dname,
                'xcity',       city,
-	       'xstreet',     streetaddress,
+	       'xstreet',     dstreetaddress,
 	       'xzipcode',    zipcode,
 	       'xbookfax',    book_fax,
 	       'xbooklink',   book_link,
@@ -272,10 +294,18 @@ proc ::cm::db::location::update {id details} {
     dict with details {}
     # xstaffcount is ignored, derived data.
 
+    # Normalized columns, derived from the display.
+    set name     [string tolower $xname]
+    set street   [string tolower $xstreet]
+    set xzipcode [string toupper $xzipcode]
+
     db do eval {
 	UPDATE location
 	SET    city           = :xcity,
-	       streetaddress  = :xstreet,
+	       dname          = :xname,
+	       dstreetaddress = :xstreet,
+	       name           = :name,
+	       streetaddress  = :street,
 	       zipcode        = :xzipcode,
 	       book_fax       = :xbookfax,
 	       book_link      = :xbooklink,
@@ -454,23 +484,35 @@ proc ::cm::db::location::setup {} {
     if {![dbutil initialize-schema ::cm::db::do error location {
 	{
 	    id			INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    name		TEXT    NOT NULL,
+	    --
 	    city		INTEGER NOT NULL REFERENCES city,
-	    streetaddress	TEXT    NOT NULL,
-	    zipcode		TEXT    NOT NULL,
+	    name		TEXT    NOT NULL,	-- normalized lower-case
+	    dname		TEXT    NOT NULL,
+	    streetaddress	TEXT    NOT NULL,	-- normalized lower-case
+	    dstreetaddress	TEXT    NOT NULL,
+	    zipcode		TEXT    NOT NULL,	-- normalized upper-case
+	    --
 	    book_fax		TEXT,	-- defaults to the local-*
 	    book_link		TEXT,
 	    book_phone		TEXT,
 	    local_fax		TEXT	UNIQUE,
 	    local_link		TEXT	UNIQUE,
 	    local_phone		TEXT	UNIQUE,
+	    --
 	    transportation	TEXT,			-- html block (maps, descriptions, etc)
-	    UNIQUE (city, streetaddress)
+	    --
+	    UNIQUE (city, streetaddress),		-- addresses must be unique within a city
+	    UNIQUE (city, name)				-- location names must be unique within a city
+							--
+							-- uniqueness using the normalized columns
+							-- makes this case-insensitive.
 	} {
 	    {id			INTEGER 1 {} 1}
-	    {name		TEXT    1 {} 0}
 	    {city		INTEGER 1 {} 0}
+	    {name		TEXT    1 {} 0}
+	    {dname		TEXT    1 {} 0}
 	    {streetaddress	TEXT    1 {} 0}
+	    {dstreetaddress	TEXT    1 {} 0}
 	    {zipcode		TEXT    1 {} 0}
 	    {book_fax		TEXT	0 {} 0}
 	    {book_link		TEXT	0 {} 0}
@@ -516,7 +558,7 @@ proc ::cm::db::location::dump {} {
     setup
 
     db do eval {
-	SELECT id, name, city, streetaddress, zipcode,
+	SELECT id, city, dname, dstreetaddress, zipcode,
 	       book_fax, book_link, book_phone,
 	       local_fax, local_link, local_phone,
 	       transportation
@@ -526,7 +568,7 @@ proc ::cm::db::location::dump {} {
 	set city [city 2name $city]
 
 	cm dump save  \
-	    location create $name $streetaddress $zipcode $city
+	    location create $dname $dstreetaddress $zipcode $city
 	# create auto-selects new location as current.
 	cm dump save  \
 	    location contact $book_phone $book_fax $book_link $local_phone $local_fax $local_link
@@ -547,7 +589,10 @@ proc ::cm::db::location::dump {} {
 		< [cm dump write location$id $transportation]
 	}
 
-	cm dump step 
+	cm dump save \
+	    location current-reset
+	# Prevent current location from spilling.
+	cm dump step
     }
     return
 }

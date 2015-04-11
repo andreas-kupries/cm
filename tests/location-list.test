@@ -30,7 +30,7 @@ test location-list-2.0 {location list, defaults, empty} -body {
     stage-close
 } -result [viewFile support/location-list-empty.txt]
 
-test location-list-2.1 {location list, not empty, issues} -body {
+test location-list-2.1 {location list, not empty, issues, current} -body {
     run location list
 } -setup {
     stage-open
@@ -39,6 +39,17 @@ test location-list-2.1 {location list, not empty, issues} -body {
 } -cleanup {
     stage-close
 } -result [viewFile support/location-list.txt]
+
+test location-list-2.2 {location list, not empty, issues, not current} -body {
+    run location list
+} -setup {
+    stage-open
+    run city     new C S N
+    run location new N S Z {C, S, N}
+    run location current-reset
+} -cleanup {
+    stage-close
+} -result [viewFile support/location-list-nc.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
