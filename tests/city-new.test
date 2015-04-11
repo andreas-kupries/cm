@@ -51,7 +51,7 @@ test city-new-1.2 {city new, duplicate, case-insensitive} -body {
     run city new City State Nation
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result {*cm general: column csnkey is not unique}
+} -returnCodes error -match glob -result {*cm general: UNIQUE constraint failed: city.csnkey}
 
 # # ## ### ##### ######## ############# #####################
 

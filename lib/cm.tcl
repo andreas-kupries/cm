@@ -490,7 +490,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	private select {
 	    section {Location Management}
 	    description { Select a specific location for further operation }
-	    use .location
+	    # This command has to ignore the 'current' selection even if there is one.
+	    input location {
+		The new current location.
+	    } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call-db location select-always]
+	    }
 	} [cm::call location select]
 
 	private contact {
