@@ -2411,7 +2411,7 @@ proc ::cm::conference::make_admin_campaign {conference textvar tag} {
 	set reached   [llength $reached]
 
 	if {$unreached} {
-	    set unreached __$unreached__
+	    set unreached __${unreached}__
 	}
 
 	append text | $date | $name | $reached | $unreached |\n
