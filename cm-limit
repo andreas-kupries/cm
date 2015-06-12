@@ -1,0 +1,4 @@
+#!/bin/sh
+thehome="$1"
+shift
+HOME="$thehome" cm "$@"
