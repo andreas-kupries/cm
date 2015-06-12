@@ -147,7 +147,7 @@ proc ::cm::util::match-substr {iv known nocase x} {
     if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
 
     # Check for exact match first, this trumps substring matching,
-    # especially if substring matching would be ambigous.
+    # especially if substring matching would be ambiguous.
     if {[dict exists $known $x]} {
 	set id [dict get $known $x]
 	return ok
@@ -170,7 +170,7 @@ proc ::cm::util::match-substr {iv known nocase x} {
     set n [llength $ids]
 
     if {$n > 1} {
-	return ambiguos
+	return ambiguous
     }
 
     # Uniquely identified, success
