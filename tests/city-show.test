@@ -36,7 +36,7 @@ test city-show-1.2 {city show, ambiguous name} -body {
     run city new Cb S N
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result {* cmdr: Expected a city name for input "city", got "BOGUS"}
+} -returnCodes error -match glob -result {* cmdr: Expected an unambiguous city name for input "city", got "C"}
 
 # # ## ### ##### ######## ############# #####################
 

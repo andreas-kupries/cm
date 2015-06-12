@@ -50,6 +50,9 @@ cm city create <name> <state> <nation>
 cm city delete [<city>]
     Delete the specified city
 
+cm city drop [<city>]
+    Delete the specified city
+
 cm city exit
     Exit the shell. No-op if not in a shell.
 
@@ -65,6 +68,9 @@ cm city new <name> <state> <nation>
 
 cm city remove [<city>]
     Delete the specified city
+
+cm city show [<city>]
+    Show the details for the specified city
 
 cm conference
     Manage conferences
@@ -175,6 +181,9 @@ cm config
 cm config exit
     Exit the shell. No-op if not in a shell.
 
+cm config get <key>
+    Print the current value of the specified setting to stdout
+
 cm config help [OPTIONS] [<cmdname>...]
     Retrieve help for a command or command set. Without arguments help for all
     commands is given. The default format is --full.
@@ -183,10 +192,10 @@ cm config list
     Show the current state of all settings
 
 cm config set <key> <value>
-    Change setting
+    Change the value of the specified setting.
 
 cm config unset <key>
-    Drop setting back to its default
+    Drop the value of the specified setting back to its default.
 
 cm contact
     Manage the contacts used in campaigns and other contexts. I.e. conference
@@ -339,7 +348,7 @@ cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
 cm location add-staff [<position>] [<name>] [<phone>] [<email>]
-    Add one or more staff to the location
+    Add one or more staff to the specified or current location
 
 cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]
     Set the contact information of the current location
@@ -347,18 +356,27 @@ cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<loca
 cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
-cm location delete [<location>]
-    Delete the specified location
+cm location current
+    Print the current location, if any
 
-cm location directions
+cm location current-reset
+    Unset the current location, if any
+
+cm location delete [<location>]
+    Delete the specified or current location
+
+cm location directions [<location>]
     Return the map and other hotel specific data.
 
-cm location directions-set
+cm location directions-set [<location>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
+cm location drop [<location>]
+    Delete the specified or current location
+
 cm location drop-staff [<name>]
-    Remove one or more staff
+    Remove one or more staff from the specified or current location.
 
 cm location exit
     Exit the shell. No-op if not in a shell.
@@ -370,39 +388,39 @@ cm location help [OPTIONS] [<cmdname>...]
 cm location list
     Show a table of all known locations
 
-cm location map
+cm location map [<location>]
     Return the map and other hotel specific data.
 
-cm location map-set
+cm location map-set [<location>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
 cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
-cm location note
+cm location note [<location>]
     Return the map and other hotel specific data.
 
-cm location note-set
+cm location note-set [<location>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
 cm location remove [<location>]
-    Delete the specified location
+    Delete the specified or current location
 
 cm location select [<location>]
     Select a specific location for further operation
 
-cm location show
-    Show the details of the current location
+cm location show [<location>]
+    Print the details of the specified or current location
 
-cm location staff
-    Show staff for current location
+cm location staff [<location>]
+    Print staff information for the specified or current location
 
-cm location transport
+cm location transport [<location>]
     Return the map and other hotel specific data.
 
-cm location transport-set
+cm location transport-set [<location>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
@@ -495,13 +513,13 @@ cm submit [OPTIONS] <title> [<author>...]
     Submit a paper/talk proposal. The abstract is read from stdin.
 
 cm template
-    Manage the text templates used for mail campaigns.
+    Manage the text templates used for mail campaigns and web-site generation.
 
-cm template add <name>
-    Create a new template. The text is read from stdin.
+cm template add <name> [<text>]
+    Create a new template.
 
-cm template create <name>
-    Create a new template. The text is read from stdin.
+cm template create <name> [<text>]
+    Create a new template.
 
 cm template delete <name>
     Remove the named template
@@ -519,23 +537,23 @@ cm template help [OPTIONS] [<cmdname>...]
 cm template list
     Show a table of all known templates
 
-cm template new <name>
-    Create a new template. The text is read from stdin.
+cm template new <name> [<text>]
+    Create a new template.
 
 cm template remove <name>
     Remove the named template
 
-cm template replace <name>
-    Update the named template. The text is read from stdin.
+cm template replace <name> [<text>]
+    Update the contents of the named template.
 
-cm template set <name>
-    Update the named template. The text is read from stdin.
+cm template set <name> [<text>]
+    Update the contents of the named template.
 
 cm template show <name>
     Show the text of the named template
 
-cm template update <name>
-    Update the named template. The text is read from stdin.
+cm template update <name> [<text>]
+    Update the contents of the named template.
 
 cm templates
     Show a table of all known templates
@@ -543,12 +561,30 @@ cm templates
 cm test
     Various commands to test the system and its configuration.
 
+cm test city-known
+    Print validation dict
+
+cm test city-select
+    Print selection dict
+
 cm test exit
     Exit the shell. No-op if not in a shell.
 
 cm test help [OPTIONS] [<cmdname>...]
     Retrieve help for a command or command set. Without arguments help for all
     commands is given. The default format is --full.
+
+cm test location-known
+    Print validation dict
+
+cm test location-select
+    Print selection dict
+
+cm test location-staff-known
+    Print validation dict, stafff of current location
+
+cm test location-staff-select
+    Print selection dict, staff of current location
 
 cm test mail-address <address>
     Parse the specified address into parts, and determine if it is lexically

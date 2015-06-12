@@ -38,7 +38,7 @@ test location-show-1.2 {location show, ambiguous name} -body {
     run location current-reset
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result {* cmdr: Expected a location name for input "location", got "BOGUS"}
+} -returnCodes error -match glob -result {* cmdr: Expected an unambiguous location name for input "location", got "N"}
 
 # # ## ### ##### ######## ############# #####################
 

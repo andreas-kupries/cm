@@ -21,6 +21,8 @@ package require debug::caller
 package require dbutil
 package require try
 
+package provide cm::db::tutorial 0 ;# break circle
+
 package require cm::db
 package require cm::db::dayhalf
 package require cm::contact

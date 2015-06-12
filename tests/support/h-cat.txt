@@ -43,18 +43,18 @@ Conference Management
         cm campaign test <template>      Check generation of campaign mails
 
         Template Management
-            cm template add <name>        Create a new template
-            cm template create <name>     Create a new template
-            cm template delete <name>     Remove the named template
-            cm template drop <name>       Remove the named template
-            cm template list              Show a table of all known templates
-            cm template new <name>        Create a new template
-            cm template remove <name>     Remove the named template
-            cm template replace <name>    Update the named template
-            cm template set <name>        Update the named template
-            cm template show <name>       Show the text of the named template
-            cm template update <name>     Update the named template
-            cm templates                  Show a table of all known templates
+            cm template add <name> [<text>]        Create a new template
+            cm template create <name> [<text>]     Create a new template
+            cm template delete <name>              Remove the named template
+            cm template drop <name>                Remove the named template
+            cm template list                       Show a table of all known templates
+            cm template new <name> [<text>]        Create a new template
+            cm template remove <name>              Remove the named template
+            cm template replace <name> [<text>]    Update the contents of the named template
+            cm template set <name> [<text>]        Update the contents of the named template
+            cm template show <name>                Show the text of the named template
+            cm template update <name> [<text>]     Update the contents of the named template
+            cm templates                           Show a table of all known templates
 
 Backup
     cm save <destination>    Save database as readable and executable Tcl script
@@ -64,14 +64,17 @@ City Management
     cm city add <name> <state> <nation>       Create a new city for locations
     cm city create <name> <state> <nation>    Create a new city for locations
     cm city delete [<city>]                   Delete the specified city
+    cm city drop [<city>]                     Delete the specified city
     cm city list                              Show a table of all known cities
     cm city new <name> <state> <nation>       Create a new city for locations
     cm city remove [<city>]                   Delete the specified city
+    cm city show [<city>]                     Show the details for the specified city
 
 Configuration
+    cm config get <key>            Print the current value of the specified setting to stdout
     cm config list                 Show the current state of all settings
-    cm config set <key> <value>    Change setting
-    cm config unset <key>          Drop setting back to its default
+    cm config set <key> <value>    Change the value of the specified setting
+    cm config unset <key>          Drop the value of the specified setting back to its default
 
 Contact Management
     cm contact add-affiliate [<name>] [<company>...]       Add one or more companies as the affiliations of the specified person
@@ -114,25 +117,28 @@ Location Management
     cm facilities                                                                                           Show a table of all known locations
     cm hotels                                                                                               Show a table of all known locations
     cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
-    cm location add-staff [<position>] [<name>] [<phone>] [<email>]                                         Add one or more staff to the location
+    cm location add-staff [<position>] [<name>] [<phone>] [<email>]                                         Add one or more staff to the specified or current location
     cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]    Set the contact information of the current location
     cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]                                      Create a new location
-    cm location delete [<location>]                                                                         Delete the specified location
-    cm location directions                                                                                  Return the map and other hotel specific data
-    cm location directions-set                                                                              Set the map, directions, transport information of the current location
-    cm location drop-staff [<name>]                                                                         Remove one or more staff
+    cm location current                                                                                     Print the current location, if any
+    cm location current-reset                                                                               Unset the current location, if any
+    cm location delete [<location>]                                                                         Delete the specified or current location
+    cm location directions [<location>]                                                                     Return the map and other hotel specific data
+    cm location directions-set [<location>]                                                                 Set the map, directions, transport information of the current location
+    cm location drop [<location>]                                                                           Delete the specified or current location
+    cm location drop-staff [<name>]                                                                         Remove one or more staff from the specified or current location
     cm location list                                                                                        Show a table of all known locations
-    cm location map                                                                                         Return the map and other hotel specific data
-    cm location map-set                                                                                     Set the map, directions, transport information of the current location
+    cm location map [<location>]                                                                            Return the map and other hotel specific data
+    cm location map-set [<location>]                                                                        Set the map, directions, transport information of the current location
     cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
-    cm location note                                                                                        Return the map and other hotel specific data
-    cm location note-set                                                                                    Set the map, directions, transport information of the current location
-    cm location remove [<location>]                                                                         Delete the specified location
+    cm location note [<location>]                                                                           Return the map and other hotel specific data
+    cm location note-set [<location>]                                                                       Set the map, directions, transport information of the current location
+    cm location remove [<location>]                                                                         Delete the specified or current location
     cm location select [<location>]                                                                         Select a specific location for further operation
-    cm location show                                                                                        Show the details of the current location
-    cm location staff                                                                                       Show staff for current location
-    cm location transport                                                                                   Return the map and other hotel specific data
-    cm location transport-set                                                                               Set the map, directions, transport information of the current location
+    cm location show [<location>]                                                                           Print the details of the specified or current location
+    cm location staff [<location>]                                                                          Print staff information for the specified or current location
+    cm location transport [<location>]                                                                      Return the map and other hotel specific data
+    cm location transport-set [<location>]                                                                  Set the map, directions, transport information of the current location
     cm locations                                                                                            Show a table of all known locations
 
 Submission Management
@@ -184,6 +190,12 @@ Advanced
         cm debug levels       List all the debug levels known to the system, which we can enable to gain a (partial) narrative of the application-internal actions
 
     Testing
+        cm test city-known                  Print validation dict
+        cm test city-select                 Print selection dict
+        cm test location-known              Print validation dict
+        cm test location-select             Print selection dict
+        cm test location-staff-known        Print validation dict, stafff of current location
+        cm test location-staff-select       Print selection dict, staff of current location
         cm test mail-address <address>      Parse the specified address into parts, and determine if it is lexically ok for us, or not, and why not in case of the latter
         cm test mail-setup <destination>    Generate a test mail and send it using the current mail configuration
 
@@ -197,7 +209,7 @@ Miscellaneous
     cm history       
     cm location      Manage hotels and facilities
     cm submission    Manage the submissions
-    cm template      Manage the text templates used for mail campaigns
+    cm template      Manage the text templates used for mail campaigns and web-site generation
     cm test          Various commands to test the system and its configuration
     cm tutorial      Manage the tutorials we can or have offered in conferences
 
