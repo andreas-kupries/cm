@@ -40,5 +40,7 @@ test city-delete-2.0 {city delete} -body {
     stage-close
 } -result [viewFile support/city-list-empty.txt]
 
+# TODO: Deletion of city in use by location and/or conference.
+
 # # ## ### ##### ######## ############# #####################
 cleanupTests
