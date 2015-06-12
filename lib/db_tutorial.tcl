@@ -36,7 +36,7 @@ namespace eval ::cm::db::tutorial {
     namespace export \
 	all new title= desc= req= tag= 2name get update select \
 	known known-tag known-title dayrange trackrange cell speakers \
-	scheduled schedule unschedule
+	scheduled schedule unschedule \
 	issues setup dump
     namespace ensemble create
 
