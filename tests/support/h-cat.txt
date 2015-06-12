@@ -124,21 +124,21 @@ Location Management
     cm location current-reset                                                                               Unset the current location, if any
     cm location delete [<location>]                                                                         Delete the specified or current location
     cm location directions [<location>]                                                                     Return the map and other hotel specific data
-    cm location directions-set [<location>]                                                                 Set the map, directions, transport information of the current location
+    cm location directions-set <location> [<map>]                                                           Set the map, directions, transport information of the current location
     cm location drop [<location>]                                                                           Delete the specified or current location
     cm location drop-staff [<name>]                                                                         Remove one or more staff from the specified or current location
     cm location list                                                                                        Show a table of all known locations
     cm location map [<location>]                                                                            Return the map and other hotel specific data
-    cm location map-set [<location>]                                                                        Set the map, directions, transport information of the current location
+    cm location map-set <location> [<map>]                                                                  Set the map, directions, transport information of the current location
     cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
     cm location note [<location>]                                                                           Return the map and other hotel specific data
-    cm location note-set [<location>]                                                                       Set the map, directions, transport information of the current location
+    cm location note-set <location> [<map>]                                                                 Set the map, directions, transport information of the current location
     cm location remove [<location>]                                                                         Delete the specified or current location
     cm location select [<location>]                                                                         Select a specific location for further operation
     cm location show [<location>]                                                                           Print the details of the specified or current location
     cm location staff [<location>]                                                                          Print staff information for the specified or current location
     cm location transport [<location>]                                                                      Return the map and other hotel specific data
-    cm location transport-set [<location>]                                                                  Set the map, directions, transport information of the current location
+    cm location transport-set <location> [<map>]                                                            Set the map, directions, transport information of the current location
     cm locations                                                                                            Show a table of all known locations
 
 Submission Management

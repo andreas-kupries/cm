@@ -163,11 +163,20 @@ proc ::cm::location::delete {config} {
 
     set location [$config @location]
 
+    puts -nonewline "Delete location \"[color name [location 2name $location]]\" ... "
+
     # TODO: constrain deletion to locations not in use by conferences.
     # TODO: should possibly report/note number of staff deleted as well.
 
-    puts -nonewline "Delete location \"[color name [location 2name $location]]\" ... "
-    location delete $location
+    try {
+	location delete $location
+    } on error {e o} {
+	# Report deletion failure as user error
+	# TODO: trap only proper insert error, if possible.
+	util user-error $e LOCATION DELETE
+	return
+    }
+
     puts [color good OK]
     return
 }
@@ -228,15 +237,14 @@ proc ::cm::location::map_set {config} {
 
     set location [$config @location]
     set details  [location get $location]
+    set map      [util text-stdin $config @map]
 
-    puts "Working with location \"[color name [location 2name $location]]\" ..."
-
-    set map [read stdin]
+    puts -nonewline "Updating map of location \"[color name [location 2name $location]]\" ..."
+    flush stdout
 
     dict set details xtransport $map
-
-    puts -nonewline "Saving ... "
     location update $location $details
+
     puts [color good OK]
     return
 }
@@ -275,7 +283,7 @@ proc ::cm::location::contact_set {config} {
 	locallink  {Local   Url  }
     } {
 	if {[$config @$key set?]} {
-	    set new [$config @$key set?]
+	    set new [$config @$key]
 	    puts "${label}: $new"
 	} else {
 	    set v [dict get $details $key]

@@ -437,6 +437,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	}
 
+	common .rq_location {
+	    input location {
+		The location to work with.
+	    } {
+		validate [cm::vt location]
+	    }
+	}
+
 	private new {
 	    section {Location Management}
 	    description { Create a new location }
@@ -518,7 +526,11 @@ cmdr create cm::cm [file tail $::argv0] {
 		Set the map, directions, transport information of the current location.
 		Note: The data is read from stdin.
 	    }
-	    use .location
+	    use .rq_location
+	    input map {
+		The new contents of the map, etc. information.
+		If not specified stdin is read.		
+	    } { optional }
 	} [cm::call location map_set]
 	alias directions-set
 	alias transport-set
