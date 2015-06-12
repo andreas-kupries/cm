@@ -1,5 +1,6 @@
 ## -*- tcl -*-
 # # ## ### ##### ######## ############# ######################
+## CM - Validation Type - Paper and other submissions.
 
 # @@ Meta Begin
 # Package cm::validate::submission 0
@@ -14,12 +15,14 @@
 # @@ Meta End
 
 # # ## ### ##### ######## ############# ######################
+## Requisites
 
 package require Tcl 8.5
 package require cm::conference
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
+## Definition
 
 namespace eval ::cm {
     namespace export validate
