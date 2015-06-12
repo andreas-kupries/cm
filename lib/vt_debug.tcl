@@ -2,6 +2,19 @@
 # # ## ### ##### ######## ############# #####################
 ## Cm - Validation Type - Client debug levels.
 
+# @@ Meta Begin
+# Package cm::validate::debug 0
+# Meta author      {Andreas Kupries}
+# Meta category    ?
+# Meta description ?
+# Meta location    http:/core.tcl.tk/akupries/cm
+# Meta platform    tcl
+# Meta require     ?
+# Meta subject     ?
+# Meta summary     ?
+# @@ Meta End
+
+# # ## ### ##### ######## ############# #####################
 ## To avoid having to load all packages and then query the debug
 ## package for the registered levels/tags this validation type loads
 ## the information from a generated file.
