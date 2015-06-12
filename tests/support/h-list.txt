@@ -14,11 +14,13 @@ cm [OPTIONS]
     cm city add <name> <state> <nation>
     cm city create <name> <state> <nation>
     cm city delete [<city>]
+    cm city drop [<city>]
     cm city exit
     cm city help [OPTIONS] [<cmdname>...]
     cm city list
     cm city new <name> <state> <nation>
     cm city remove [<city>]
+    cm city show [<city>]
     cm conference
     cm conference add [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
     cm conference add-sponsor [<name>...]
@@ -55,6 +57,7 @@ cm [OPTIONS]
     cm conferences
     cm config
     cm config exit
+    cm config get <key>
     cm config help [OPTIONS] [<cmdname>...]
     cm config list
     cm config set <key> <value>
@@ -109,24 +112,27 @@ cm [OPTIONS]
     cm location add-staff [<position>] [<name>] [<phone>] [<email>]
     cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]
     cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]
+    cm location current
+    cm location current-reset
     cm location delete [<location>]
-    cm location directions
-    cm location directions-set
+    cm location directions [<location>]
+    cm location directions-set [<location>]
+    cm location drop [<location>]
     cm location drop-staff [<name>]
     cm location exit
     cm location help [OPTIONS] [<cmdname>...]
     cm location list
-    cm location map
-    cm location map-set
+    cm location map [<location>]
+    cm location map-set [<location>]
     cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
-    cm location note
-    cm location note-set
+    cm location note [<location>]
+    cm location note-set [<location>]
     cm location remove [<location>]
     cm location select [<location>]
-    cm location show
-    cm location staff
-    cm location transport
-    cm location transport-set
+    cm location show [<location>]
+    cm location staff [<location>]
+    cm location transport [<location>]
+    cm location transport-set [<location>]
     cm locations
     cm save <destination>
     cm submission
@@ -157,23 +163,29 @@ cm [OPTIONS]
     cm submissions
     cm submit [OPTIONS] <title> [<author>...]
     cm template
-    cm template add <name>
-    cm template create <name>
+    cm template add <name> [<text>]
+    cm template create <name> [<text>]
     cm template delete <name>
     cm template drop <name>
     cm template exit
     cm template help [OPTIONS] [<cmdname>...]
     cm template list
-    cm template new <name>
+    cm template new <name> [<text>]
     cm template remove <name>
-    cm template replace <name>
-    cm template set <name>
+    cm template replace <name> [<text>]
+    cm template set <name> [<text>]
     cm template show <name>
-    cm template update <name>
+    cm template update <name> [<text>]
     cm templates
     cm test
+    cm test city-known
+    cm test city-select
     cm test exit
     cm test help [OPTIONS] [<cmdname>...]
+    cm test location-known
+    cm test location-select
+    cm test location-staff-known
+    cm test location-staff-select
     cm test mail-address <address>
     cm test mail-setup <destination>
     cm tutorial
