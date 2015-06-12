@@ -2,6 +2,7 @@
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
 ## general application configuration - dump/restore
+return
 
 kt check Tcl     8.5
 kt check tcltest 2
