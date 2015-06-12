@@ -116,23 +116,23 @@ cm [OPTIONS]
     cm location current-reset
     cm location delete [<location>]
     cm location directions [<location>]
-    cm location directions-set [<location>]
+    cm location directions-set <location> [<map>]
     cm location drop [<location>]
     cm location drop-staff [<name>]
     cm location exit
     cm location help [OPTIONS] [<cmdname>...]
     cm location list
     cm location map [<location>]
-    cm location map-set [<location>]
+    cm location map-set <location> [<map>]
     cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
     cm location note [<location>]
-    cm location note-set [<location>]
+    cm location note-set <location> [<map>]
     cm location remove [<location>]
     cm location select [<location>]
     cm location show [<location>]
     cm location staff [<location>]
     cm location transport [<location>]
-    cm location transport-set [<location>]
+    cm location transport-set <location> [<map>]
     cm locations
     cm save <destination>
     cm submission

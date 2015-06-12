@@ -368,7 +368,7 @@ cm location delete [<location>]
 cm location directions [<location>]
     Return the map and other hotel specific data.
 
-cm location directions-set [<location>]
+cm location directions-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
@@ -391,7 +391,7 @@ cm location list
 cm location map [<location>]
     Return the map and other hotel specific data.
 
-cm location map-set [<location>]
+cm location map-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
@@ -401,7 +401,7 @@ cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
 cm location note [<location>]
     Return the map and other hotel specific data.
 
-cm location note-set [<location>]
+cm location note-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
@@ -420,7 +420,7 @@ cm location staff [<location>]
 cm location transport [<location>]
     Return the map and other hotel specific data.
 
-cm location transport-set [<location>]
+cm location transport-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 

@@ -1,0 +1,26 @@
+~/.cm/managed
+Details of "N (C, S, N)":
++-------------+-------------------------+
+| Property    | Value                   |
++-------------+-------------------------+
+| Issues      | - Staff missing         |
+|             | - Booking FAX missing   |
+|             | - Booking URL missing   |
+|             | - Booking Phone missing |
+|             | - Local FAX missing     |
+|             | - Local URL missing     |
+|             | - Local Phone missing   |
+| --------    | -----                   |
+| Staff       | None                    |
+|             | (=> location add-staff) |
+| Street      | S                       |
+| Zipcode     | Z                       |
+| City        | C, S, N                 |
+| Book/Phone  |                         |
+| Book/Fax    |                         |
+| Book/Url    |                         |
+| Local/Phone |                         |
+| Local/Fax   |                         |
+| Local/Url   |                         |
+| Transport   | NOTE NOTE NOTE NOTE     |
++-------------+-------------------------+
