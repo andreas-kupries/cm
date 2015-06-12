@@ -1,0 +1,43 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## general application configuration - dump/restore
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test config-dump-1.0 {config dump, empty} -body {
+    run dump X
+    glob -directory [thehome] *
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result {}
+
+test config-dump-1.1 {config dump, non-defaults} -body {
+    run dump X
+    glob -directory [thehome] *
+} -setup {
+    stage-open
+    run config set debug     1
+    run config set host      foo
+    run config set limit     999
+    run config set password  no,thank-you
+    run config set port      33
+    run config set sender    myself@me
+    run config set suspended 1
+    run config set tls       1
+    run config set user      anybody@somewhere
+} -cleanup {
+    stage-close
+} -result {}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
