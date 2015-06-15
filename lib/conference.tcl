@@ -1842,14 +1842,46 @@ proc ::cm::conference::cmd_website_make {config} {
     file delete -force $dstdir/pages/blog
 
     # # ## ### ##### ######## #############
-    puts "Filling in..."
-    make_page Overview          index       make_overview
+    ## Data configuration
 
-    lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
-    lappend navbar {*}[make_page Location          location    make_location]
+    if {[rate-have-group-code $conference]} {
+	puts "Groupcode: [color good Yes]"
+    } else {
+	puts "Groupcode: [color bad No]"
+    }
+
+    if {[have-speakers $conference]} {
+	puts "Speakers: [color good Yes]"
+    } else {
+	puts "Speakers: [color bad None]"
+    }
+
+    if {[cm::tutorial have-some $conference]} {
+	puts "Tutorials: [color good Yes]"
+    } else {
+	puts "Tutorials: [color bad None]"
+    }
 
     set rstatus [registration-mode $conference]
     puts "Registration: $rstatus"
+
+    # # ## ### ##### ######## #############
+    puts "Filling in..."
+
+    if {[have-speakers $conference]} {
+	make_page Overview  index  make_overview_speakers $conference
+    } else {
+	make_page Overview  index  make_overview
+    }
+
+    lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers]
+
+    if {[rate-have-group-code $conference]} {
+	lappend navbar {*}[make_page Location  location  make_location]
+    } else {
+	lappend navbar {*}[make_page Location  location  make_location_nogc]
+    }
+
     # The rstatus strings match the contents of table 'rstatus'.
     switch -exact -- $rstatus {
 	pending {
@@ -1865,22 +1897,17 @@ proc ::cm::conference::cmd_website_make {config} {
     }
 
     if {[cm::tutorial have-some $conference]} {
-	puts "Tutorials: [color good Yes]"
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
     } else {
-	puts "Tutorials: [color bad None]"
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
     }
 
-
-    lappend navbar {*}[make_page Schedule          schedule    make_schedule]
-    make_page                    Abstracts         abstracts   make_abstracts
+    lappend navbar {*}[make_page Schedule   schedule   make_schedule]
+    make_page                    Abstracts  abstracts  make_abstracts
 
     if {[have-speakers $conference]} {
-	puts "Speakers: [color good Yes]"
 	make_page  Speakers  bios  make_speakers $conference
     } else {
-	puts "Speakers: [color bad None]"
 	make_page  Speakers  bios  make_speakers_none
     }
 
@@ -2002,6 +2029,13 @@ proc ::cm::conference::make_overview {} {
     return [template use www-main]
 }
 
+proc ::cm::conference::make_overview_speakers {conference} {
+    debug.cm/conference {}
+    return [string map \
+		[list @speakers [speaker-listing $conference]] \
+		[template use www-main-speakers]]
+}
+
 proc ::cm::conference::make_callforpapers {} {
     return [template use www-cfp]
 }
@@ -2009,17 +2043,14 @@ proc ::cm::conference::make_callforpapers {} {
 proc ::cm::conference::make_location {} {
     debug.cm/conference {}
     # make-location - TODO: switch to a different text block when deadline has passed.
-    # Different templates based on having a group code or not.
-
-    if {[rate-have-group-code [current]]} {
-	puts "Groupcode: [color good Yes]"
-	return [template use www-location]
-    } else {
-	puts "Groupcode: [color bad No]"
-	return [template use www-location-without-gcode]
-    }
+    return [template use www-location]
 }
 
+proc ::cm::conference::make_location_nogc {} {
+    debug.cm/conference {}
+    # make-location - TODO: switch to a different text block when deadline has passed.
+    return [template use www-location-without-gcode]
+}
 
 proc ::cm::conference::rate-have-group-code {conference} {
     set details [details $conference]
@@ -2203,6 +2234,43 @@ proc ::cm::conference::make_abstracts {} {
 
 	Please check back after.
     }]
+}
+
+proc ::cm::conference::speaker-listing {conference} {
+
+    # speaker-listing - TODO - keynotes
+    # speaker-listing - TODO - general presenters
+
+    set map  {} ; # name -> (tag, bio)
+    set type {} ; # name -> list(types), type in T, K, P
+
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname $tag
+	dict lappend type $dname T
+    }
+    # general presenters extend the map.
+
+    # speaker-listing TODO : iterate map per type
+    # speaker-listing TODO : alt: simply show readable type info
+    #                          in the data for each contact.
+
+    foreach dname [lsort -dict [dict keys $map]] {
+	set tag   [dict get $map  $dname]
+	set types [dict get $type $dname]
+
+	# get types...
+	append text "  * [link $dname bios.html $tag] &mdash;"
+	if {"T" in $types} {
+	    append text " " [link Tutorials tutorials.html]
+	}
+	append text \n
+	# TODO: link to specific tutorials?
+	# TODO: link to specific keynote
+	# TODO: link to specific presentations
+    }
+
+    return $text
 }
 
 proc ::cm::conference::have-speakers {conference} {
