@@ -2008,8 +2008,28 @@ proc ::cm::conference::make_callforpapers {} {
 
 proc ::cm::conference::make_location {} {
     debug.cm/conference {}
-    # make-location - TODO: Move text into a configurable template
+    # make-location - TODO: Move text into configurable templates
     # make-location - TODO: switch to a different text block when deadline has passed.
+    # make-location - Different templates based on having a group code or not.
+
+    if {[rate-have-group-code [current]]} {
+    return [util undent {
+	We have negotiated a reduced room rate for attendees of the
+	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
+
+	To register for a room at the hotel you can use phone (@h:bookphone@),
+	fax (@h:bookfax@), or their [website](@h:booklink@).
+	Be certain to mention that you are with the Tcl/Tk Conference to
+	get the Tcl/Tk Conference room rate.
+
+	These rooms will be released to the general public after __@r:deadline@__,
+	so be sure to reserve your room before.
+
+	@h:transport@
+    }]
+
+    } else {
+
     return [util undent {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
@@ -2024,6 +2044,22 @@ proc ::cm::conference::make_location {} {
 
 	@h:transport@
     }]
+}
+}
+
+
+proc ::cm::conference::rate-have-group-code {conference} {
+    set details [details $conference]
+    dict with details {}
+    set location $xhotel
+
+    set gcode [db do onecolumn {
+	SELECT groupcode
+	FROM   rate
+	WHERE  conference = :conference
+	AND    location   = :location
+    }]
+    return [expr {$gcode ne {}}]
 }
 
 proc ::cm::conference::registration-mode {conference} {
