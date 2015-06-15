@@ -2012,7 +2012,8 @@ proc ::cm::conference::make_location {} {
     # make-location - TODO: switch to a different text block when deadline has passed.
     # make-location - Different templates based on having a group code or not.
 
-    if {[rate-have-group-code [current]]} {
+    if {![rate-have-group-code [current]]} {
+	puts "Groupcode: NO"
     return [util undent {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
@@ -2029,7 +2030,7 @@ proc ::cm::conference::make_location {} {
     }]
 
     } else {
-
+	puts "Groupcode: YES"
     return [util undent {
 	We have negotiated a reduced room rate for attendees of the
 	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
