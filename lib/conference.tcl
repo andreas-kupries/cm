@@ -1758,7 +1758,7 @@ proc ::cm::conference::cmd_rate_set {config} {
     set dead  [cdefault @deadline        {clock add $begin -14 days}]
     set pdead [cdefault @public-deadline {clock add $dead   -7 days}]
 
-    # Limit to the chosen umber of digits after the decimal point, we
+    # Limit to the chosen number of digits after the decimal point, we
     # will store things as int.
     set factor 10e$decimal
     set rate [expr {int($rate * $factor)}]
@@ -1776,13 +1776,13 @@ proc ::cm::conference::cmd_rate_set {config} {
 	db do eval {
 	    UPDATE rate
 	    SET    rate       = :rate
-	           decimal    = :decimal
-	           currency   = :currency
-	           groupcode  = :group
-	           begindate  = :begin
-	           enddate    = :end
-	           deadline   = :dead
-	           pdeadline  = :pdead
+	    ,      decimal    = :decimal
+	    ,      currency   = :currency
+	    ,      groupcode  = :group
+	    ,      begindate  = :begin
+	    ,      enddate    = :end
+	    ,      deadline   = :dead
+	    ,      pdeadline  = :pdead
 	    WHERE  conference = :conference
 	    AND    location   = :location
 	}
