@@ -2032,7 +2032,7 @@ proc ::cm::conference::make_overview {} {
 proc ::cm::conference::make_overview_speakers {conference} {
     debug.cm/conference {}
     return [string map \
-		[list @speakers [speaker-listing $conference]] \
+		[list @speakers@ [speaker-listing $conference]] \
 		[template use www-main-speakers]]
 }
 
