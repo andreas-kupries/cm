@@ -397,8 +397,8 @@ INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
 INSERT OR IGNORE INTO talk_state VALUES (2,'received');
 -- ---------------------------------------------------------------
 CREATE TABLE schedule (
-	con		INTEGER	REFERENCES conference,
-	day		INTEGER,			-- 2,3,4,... (offset from start of conference, 0-based)
+	conference	INTEGER NOT NULL REFERENCES conference,
+	day		INTEGER NOT NULL,		-- 2,3,4,... (offset from start of conference, 0-based)
 	session		INTEGER,			-- session within the day
 	slot		INTEGER,			-- slot within the session, null => whole session talk (keynotes)
 	talk		INTEGER REFERENCES talk,	-- While setting things up
@@ -407,31 +407,32 @@ CREATE TABLE schedule (
 );
 -- ---------------------------------------------------------------
 CREATE TABLE register ( -- conference registrations <=> attendee register
-	con		INTEGER	REFERENCES conference,
-	contact		INTEGER	REFERENCES contact,		-- can_register
-	walkin		INTEGER,				-- late-register fee
+	conference	INTEGER NOT NULL REFERENCES conference,
+	contact		INTEGER	NOT NULL REFERENCES contact,		-- can_register
+	walkin		INTEGER NOT NULL,				-- late-register fee
 	tut1		INTEGER REFERENCES tutorial_schedule,	-- tutorial selection
 	tut2		INTEGER REFERENCES tutorial_schedule,	-- all nullable
 	tut3		INTEGER REFERENCES tutorial_schedule,
 	tut4		INTEGER REFERENCES tutorial_schedule,
 	talk		INTEGER REFERENCES talk,		-- presenter discount
-	UNIQUE (con, contact)
-	--	constraint: con == tutX->con, if tutX NOT NULL, X in 1-4
+	UNIQUE (conference, contact)
+	--	constraint: conference == tutX->conference, if tutX NOT NULL, X in 1-4
 );
 -- ---------------------------------------------------------------
 CREATE TABLE booked (	-- hotel bookings
-	con		INTEGER	REFERENCES conference,
-	contact		INTEGER	REFERENCES contact,	-- can_book
-	hotel		INTEGER	REFERENCES location,	-- may not be the conference hotel!
-	UNIQUE (con, pcontact)
+	conference	INTEGER NOT NULL REFERENCES conference,
+	contact		INTEGER NOT NULL REFERENCES contact,	-- can_book
+	hotel		INTEGER	NOT NULL REFERENCES location,	-- may not be the conference hotel!
+	UNIQUE (conference, contact)
 );
 -- ---------------------------------------------------------------
 CREATE TABLE notes (
-	con		INTEGER	REFERENCES conference,
+	conference	INTEGER REFERENCES conference,
 	contact		INTEGER REFERENCES contact,
-	text		TEXT
-	-- general notes, and attached to people
-	-- ex: we know that P will not use the con hotel
+	text		TEXT    NOT NULL
+	-- general notes, and notes attached to people
+	-- constraint: only one of "conference" and "contact" is allowed to be NULL.
+	-- example: we know that some contact C will not use the conference hotel
 );
 
 -- ---------------------------------------------------------------
