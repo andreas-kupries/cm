@@ -2236,39 +2236,56 @@ proc ::cm::conference::make_abstracts {} {
     }]
 }
 
-proc ::cm::conference::speaker-listing {conference} {
 
-    # speaker-listing - TODO - keynotes
+proc ::cm::conference::keynotes {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT C.dname AS dname
+	,      C.tag   AS tag
+	FROM contact    C  -- (id)
+	,    talker     TR -- (id, talk, contact)
+	,    talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::speaker-listing {conference} {
+    debug.cm/conference {}
     # speaker-listing - TODO - general presenters
 
-    set map  {} ; # name -> (tag, bio)
-    set type {} ; # name -> list(types), type in T, K, P
+    set count 0
 
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
-	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
-	dict set     map  $dname $tag
-	dict lappend type $dname T
-    }
-    # general presenters extend the map.
-
-    # speaker-listing TODO : iterate map per type
-    # speaker-listing TODO : alt: simply show readable type info
-    #                          in the data for each contact.
-
-    foreach dname [lsort -dict [dict keys $map]] {
-	set tag   [dict get $map  $dname]
-	set types [dict get $type $dname]
-
-	# get types...
-	append text "  * [link $dname bios.html $tag] &mdash;"
-	if {"T" in $types} {
-	    append text " " [link Tutorials tutorials.html]
-	}
+    # Keynotes...
+    foreach {dname tag} [keynotes $conference] {
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
+	append text "  * [link $dname bios.html $tag] &mdash; Keynote"
 	append text \n
-	# TODO: link to specific tutorials?
-	# TODO: link to specific keynote
-	# TODO: link to specific presentations
+	incr count
     }
+
+    # Tutorials...
+    if {$count} { append text \n }
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	# Data is ordered by dname
+
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	append text "  * [link $dname bios.html $tag] &mdash;"
+	append text " " [link Tutorials tutorials.html]
+	append text \n
+    }
+
+    # Presenters...
+    # TODO presenters
 
     return $text
 }

@@ -1056,6 +1056,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option type {
 		Type of talk. Default is based on the invited
 		state of the chosen submission.
+		invited => keynote
+		regular => submitted
 	    } { validate [cm::vt talk-type] }
 	    input submission {
 		The submission to accept.

@@ -540,6 +540,7 @@ proc ::cm::tutorial::speakers {conference} {
 		           tutorial          T
 		     WHERE S.conference = :conference
 		     AND   S.tutorial   = T.id)
+	ORDER BY dname
     }]
 }
 
