@@ -58,7 +58,7 @@ namespace eval ::cm::conference {
 	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
-	cmd_submission_dropsubmitter cmd_tutorial_show cmd_tutorial_link \
+	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
@@ -1099,6 +1099,90 @@ proc ::cm::conference::cmd_submission_list {config} {
 
 	    set title [util adjust $w $title]
 	    $t add [get-submission-handle $id] $submitdate $authors $invited $title $accepted
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_submission_list_accepted {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    set w [string length "| Id | Type | Date | State | Authors | Speakers |  | Title | Attachments |"]
+    set w [util tspace $w 60]
+
+    puts "Submissions for \"[color name [get $conference]]\""
+    [table t {Id Type Date State Authors Speakers {} Title Attachments} {
+	db do eval {
+	    SELECT S.id         AS id
+	    ,      S.title      AS title
+	    ,      S.invited    AS invited
+	    ,      S.submitdate AS submitdate
+	    ,      S.abstract   AS abstract
+	    ,      S.summary    AS summary
+	    ,      TT.text      AS ttype
+	    ,      TS.text      AS tstate
+	    ,      T.id         AS tid
+	    FROM   submission S
+	    ,      talk       T
+	    ,      talk_type  TT
+	    ,      talk_state TS
+	    WHERE  S.conference = :conference
+	    AND    T.submission = S.id
+	    AND    T.type       = TT.id
+	    AND    T.state      = TS.id
+	    ORDER BY S.submitdate, S.id
+	} {
+	    set authors [join [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   submitter
+			      WHERE  submission = :id)
+		ORDER BY dname
+	    }] \n]
+	    set speakers [join [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   talker
+			      WHERE  talk = :tid)
+		ORDER BY dname
+	    }] \n]
+	    set attachments [join [db do eval {
+		SELECT type
+		FROM   attachment
+		WHERE  talk = :tid
+		ORDER BY type
+	    }] \n]
+	    set invited    [expr {$invited ? "Invited" : ""}]
+	    set submitdate [hdate $submitdate]
+
+	    set issues {}
+
+	    if {([string trim $abstract] eq {}) &&
+		([string trim $summary] eq {})} {
+		+issue "Missing abstract/summary"
+	    }
+
+	    # These are issues if speakers or attachments are found missing.
+	    if {$speakers eq {}} {
+		+issue "No speakers"
+	    }
+	    if {$attachments eq {}} {
+		+issue "No materials"
+	    }
+
+	    if {[llength $issues]} {
+		append authors \n [fmt-issues-cli $issues]
+	    }
+
+	    set title [util adjust $w $title]
+	    $t add [get-submission-handle $id] $ttype $submitdate $tstate \
+		$authors $speakers $invited $title $attachments
 	}
     }] show
     return
