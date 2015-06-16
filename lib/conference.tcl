@@ -59,7 +59,7 @@ namespace eval ::cm::conference {
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
-	cmd_tutorial_unlink \
+	cmd_tutorial_unlink cmd_debug_speakers \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
@@ -2320,13 +2320,22 @@ proc ::cm::conference::make_abstracts {} {
     }]
 }
 
+proc ::cm::conference::cmd_debug_speakers {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    puts [speaker-listing [current]]
+    return
+}
 
 proc ::cm::conference::keynotes {conference} {
     debug.cm/conference {}
 
     return [db do eval {
-	SELECT C.dname AS dname
-	,      C.tag   AS tag
+	SELECT C.dname     AS dname
+	,      C.tag       AS tag
+	,      C.biography AS biography
 	FROM contact    C  -- (id)
 	,    talker     TR -- (id, talk, contact)
 	,    talk_type  TT -- (id, text)
@@ -2346,27 +2355,36 @@ proc ::cm::conference::speaker-listing {conference} {
     debug.cm/conference {}
     # speaker-listing - TODO - general presenters
 
-    set count 0
-
     # Keynotes...
-    foreach {dname tag} [keynotes $conference] {
+    set first 1
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$first} {
+	    append text "## Keynotes\n\n"
+	    set first 0
+	}
+
 	# Data is ordered by dname
 	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
-	append text "  * [link $dname bios.html $tag] &mdash; Keynote"
+	append text "  * [link $dname bios.html $tag]"
 	append text \n
-	incr count
     }
+    if {!$first} { append text \n }
 
     # Tutorials...
-    if {$count} { append text \n }
+    set first 1
     foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$first} {
+	    append text "## Tutorials\n\n"
+	    set first 0
+	}
 	# Data is ordered by dname
-
 	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+
 	append text "  * [link $dname bios.html $tag] &mdash;"
 	append text " " [link Tutorials tutorials.html]
 	append text \n
     }
+    if {!$first} { append text \n }
 
     # Presenters...
     # TODO presenters
@@ -2397,7 +2415,6 @@ proc ::cm::conference::make_speakers {conference} {
 
     set text [template use www-speakers]
 
-    # make-speakers - TODO - keynotes
     # make-speakers - TODO - general presenters
 
     set map  {} ; # name -> (tag, bio)
@@ -2409,17 +2426,25 @@ proc ::cm::conference::make_speakers {conference} {
 	dict set     map  $dname [list $tag $bio]
 	dict lappend type $dname T
     }
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$bio eq {}} { set bio "__No biography known__" }
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname [list $tag $bio]
+	dict lappend type $dname K
+    }
+
     # general presenters extend the map.
 
-    # make-speaker TODO : iterate map per type
-    # make-speaker TODO : alt: simply show readable type info
-    #                          in the data for each contact.
-
+    # Generate the page contents from the collected information.
     foreach dname [lsort -dict [dict keys $map]] {
 	lassign [dict get $map $dname] tag bio
 
+	set types [join [lsort -dict [string map \
+					  {T Tutorial K Keynote P Presenter} \
+					  [dict get $type $dname]]] {, }]
+
 	append text [anchor $tag] \n
-	append text "## " $dname \n\n
+	append text "## " $dname " &mdash; " $types \n\n
 	append text $bio \n\n
     }
 

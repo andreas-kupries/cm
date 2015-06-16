@@ -1491,6 +1491,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		Force all mail addresses into lower-case.
 	    }
 	} [cm::call contact cmd_mail_fix]
+
+	private speakers {
+	    description {
+		Show speaker information inserted into the overview page.
+	    }
+	} [cm::call conference cmd_debug_speakers]
     }
 }
 
