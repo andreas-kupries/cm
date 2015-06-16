@@ -931,6 +931,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call conference cmd_tutorial_show]
 
 	# - -- --- ----  -------- ------------- ----------------------
+	# - -- --- ----  -------- ------------- ----------------------
     }
     alias conferences = conference list
 
@@ -1050,6 +1051,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show submissions for the current conference }
 	} [cm::call conference cmd_submission_list]
 
+	private accepted {
+	    section {Submission Management}
+	    description { Show accepted submissions, aka presentations for the current conference }
+	} [cm::call conference cmd_submission_list_accepted]
+
 	private accept {
 	    section {Submission Management}
 	    description { Accept the specified submission }
@@ -1127,6 +1133,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	# talks:       change type, status
     }
     alias submissions = submission list
+    alias accepted    = submission accepted
     alias unsubmit    = submission drop
     alias submit      = submission add
 
