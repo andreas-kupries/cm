@@ -998,13 +998,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    $t add Authors  $authors
 
 	    if {$accepted} {
-		set speakers [db do eval {
-		    SELECT dname
-		    FROM   contact
-		    WHERE  id IN (SELECT contact
-				  FROM   talker
-				  WHERE  talk = :talk)
-		}]
+		set speakers [talk-speakers $talk]
 		if {[llength $speakers]} {
 		    $t add Speakers [join $speakers \n]
 		}
@@ -1144,14 +1138,7 @@ proc ::cm::conference::cmd_submission_list_accepted {config} {
 			      WHERE  submission = :id)
 		ORDER BY dname
 	    }] \n]
-	    set speakers [join [db do eval {
-		SELECT dname
-		FROM   contact
-		WHERE  id IN (SELECT contact
-			      FROM   talker
-			      WHERE  talk = :tid)
-		ORDER BY dname
-	    }] \n]
+	    set speakers [join [talk-speakers $tid] \n]
 	    set attachments [join [db do eval {
 		SELECT type
 		FROM   attachment
@@ -1935,15 +1922,21 @@ proc ::cm::conference::cmd_website_make {config} {
     }
 
     if {[have-speakers $conference]} {
-	puts "Speakers: [color good Yes]"
+	puts "Speakers:  [color good Yes]"
     } else {
-	puts "Speakers: [color bad None]"
+	puts "Speakers:  [color bad None]"
     }
 
     if {[cm::tutorial have-some $conference]} {
 	puts "Tutorials: [color good Yes]"
     } else {
 	puts "Tutorials: [color bad None]"
+    }
+
+    if {[have-talks $conference]} {
+	puts "Talks:     [color good Yes]"
+    } else {
+	puts "Talks:     [color bad None]"
     }
 
     set rstatus [registration-mode $conference]
@@ -1987,7 +1980,11 @@ proc ::cm::conference::cmd_website_make {config} {
     }
 
     lappend navbar {*}[make_page Schedule   schedule   make_schedule]
-    make_page                    Abstracts  abstracts  make_abstracts
+    if {[have-talks $conference]} {
+	make_page   Abstracts  abstracts  make_abstracts $conference
+    } else {
+	make_page   Abstracts  abstracts  make_abstracts_none
+    }
 
     if {[have-speakers $conference]} {
 	make_page  Speakers  bios  make_speakers $conference
@@ -2308,16 +2305,45 @@ proc ::cm::conference::make_schedule {} {
     }]
 }
 
-proc ::cm::conference::make_abstracts {} {
-    # make-abstracts - TODO: Move text into a configurable template
-    # make-abstracts - TODO: data driven on schedule data
-    return [util undent {
-	The paper abstracts will be finalized and put up after
-	all the notifications to authors have been sent out on
-	@c:t:authornote@, as part of creating the schedule.
+proc ::cm::conference::make_abstracts_none {} {
+    debug.cm/conference {}
+    return [template use www-abstracts.none]
+}
 
-	Please check back after.
-    }]
+proc ::cm::conference::make_abstracts {conference} {
+    debug.cm/conference {}
+
+    set text [template use www-abstracts]
+
+    # per talk: title, speakers, abstract ...
+    # keynotes first, then general presentations...
+
+    foreach {talk title abstract} [keynote-abstracts $conference] {
+	if {[string trim $abstract] eq {}} {
+	    set abstract "__Missing abstract__"
+	}
+	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	append text [anchor T$talk] \n
+	append text "\#\# Keynote &mdash; $title\n\n$speakers\n\n$abstract\n\n"
+    }
+
+    foreach {talk title abstract} [general-abstracts $conference] {
+	if {[string trim $abstract] eq {}} {
+	    set abstract "__Missing abstract__" 
+	}
+	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	append text [anchor T$talk] \n
+	append text "\#\# $title\n\n$speakers\n\n$abstract\n\n"
+    }
+    return $text
+}
+
+proc ::cm::conference::link-speakers {speakers} {
+    set r {}
+    foreach {dname tag} $speakers {
+	lappend r [link $dname bios.html $tag]
+    }
+    return $r
 }
 
 proc ::cm::conference::cmd_debug_speakers {config} {
@@ -2351,6 +2377,136 @@ proc ::cm::conference::keynotes {conference} {
     }]
 }
 
+proc ::cm::conference::general-talks {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT C.dname     AS dname
+	,      C.tag       AS tag
+	,      C.biography AS biography
+	FROM contact    C  -- (id)
+	,    talker     TR -- (id, talk, contact)
+	,    talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::talk-speakers {talk} {
+    return [db do eval {
+	SELECT dname, tag
+	FROM   contact
+	WHERE  id IN (SELECT contact
+		      FROM   talker
+		      WHERE  talk = :talk)
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::keynote-abstracts {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	,      S.abstract AS abstract
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::general-abstracts {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	,      S.abstract AS abstract
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::tutorials-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.tag
+	,      T.title
+	FROM tutorial          T
+	,    tutorial_schedule TS
+	,    contact           C
+	WHERE TS.conference = :conference
+	AND   TS.tutorial   = T.id
+	AND   T.speaker     = C.id
+	AND   C.tag         = :speakertag
+	ORDER BY T.title
+    }]
+}
+
+proc ::cm::conference::keynotes-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    talker     TR -- (id, talk, contact)
+	,    submission S  -- (id, conference)
+	,    contact    C  -- (id, tag)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   C.tag        = :speakertag
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::talks-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    talker     TR -- (id, talk, contact)
+	,    submission S  -- (id, conference)
+	,    contact    C  -- (id, tag)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   C.tag        = :speakertag
+	ORDER BY title
+    }]
+}
+
 proc ::cm::conference::speaker-listing {conference} {
     debug.cm/conference {}
     # speaker-listing - TODO - general presenters
@@ -2365,8 +2521,7 @@ proc ::cm::conference::speaker-listing {conference} {
 
 	# Data is ordered by dname
 	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
-	append text "  * [link $dname bios.html $tag]"
-	append text \n
+	append text [fmt-speakers $dname $tag [keynotes-of $conference $tag] T abstracts.html]
     }
     if {!$first} { append text \n }
 
@@ -2378,30 +2533,65 @@ proc ::cm::conference::speaker-listing {conference} {
 	    set first 0
 	}
 	# Data is ordered by dname
-	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
-
-	append text "  * [link $dname bios.html $tag] &mdash;"
-	append text " " [link Tutorials tutorials.html]
-	append text \n
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for tutorial speaker '$dname'"] }
+	append text [fmt-speakers $dname $tag [tutorials-of $conference $tag] ${tag}: tutorials.html]
     }
     if {!$first} { append text \n }
 
     # Presenters...
-    # TODO presenters
+    set first 1
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$first} {
+	    append text "## Keynotes\n\n"
+	    set first 0
+	}
 
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for general speaker '$dname'"] }
+	append text [fmt-speakers $dname $tag [talks-of $conference $tag] T abstracts.html]
+    }
+    if {!$first} { append text \n }
+
+    return $text
+}
+
+proc ::cm::conference::fmt-speakers {dname tag talks tpfx tlink} {
+    # talks = (tag title...)
+
+    append text "  * "
+    append text [link $dname bios.html $tag]
+
+    if {[llength $talks]} {
+	append text " &mdash;"
+	set pre " ("
+	foreach {ttag title} $talks {
+	    append text $pre [link $title $tlink $tpfx$ttag]
+	    set pre ", "
+	}
+	append text ")"
+    }
+    append text \n
     return $text
 }
 
 proc ::cm::conference::have-speakers {conference} {
     debug.cm/conference {}
-    # have-speakers TODO keynotes & presenters
-    return [db do exists {
+    # have-speakers: tutorials or any talks (keynotes, general)
+    return [expr {[db do exists {
 	SELECT T.speaker
 	FROM tutorial_schedule S,
-	     tutorial          T
+	tutorial          T
 	WHERE S.conference = :conference
 	AND   S.tutorial   = T.id
-    }]
+    }] || [db do exists {
+	SELECT TR.contact
+	FROM talker     TR -- (id, talk, contact)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+    }]}]
 }
 
 proc ::cm::conference::make_speakers_none {} {
@@ -2411,11 +2601,12 @@ proc ::cm::conference::make_speakers_none {} {
 
 proc ::cm::conference::make_speakers {conference} {
     debug.cm/conference {}
-    # tutorials, keynotes, general presenters.
+    # bio page for
+    # - tutorials speakers,
+    # - keynote speakers,
+    # - general presenters.
 
     set text [template use www-speakers]
-
-    # make-speakers - TODO - general presenters
 
     set map  {} ; # name -> (tag, bio)
     set type {} ; # name -> list(types), type in T, K, P
@@ -2432,8 +2623,12 @@ proc ::cm::conference::make_speakers {conference} {
 	dict set     map  $dname [list $tag $bio]
 	dict lappend type $dname K
     }
-
-    # general presenters extend the map.
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$bio eq {}} { set bio "__No biography known__" }
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname [list $tag $bio]
+	dict lappend type $dname P
+    }
 
     # Generate the page contents from the collected information.
     foreach dname [lsort -dict [dict keys $map]] {
@@ -2649,7 +2844,9 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	       S.title      AS title
 	FROM   submission S
 	WHERE  conference = :conference
-	AND    0 < (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
+	AND    0 < (SELECT count (T.id)
+		    FROM   talk T
+		    WHERE  T.submission = S.id)
 	ORDER BY submitdate, id
     } {
 	if {$first} {
@@ -2711,7 +2908,9 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	       S.title      AS title
 	FROM   submission S
 	WHERE  conference = :conference
-	AND    0 = (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
+	AND    0 = (SELECT count (T.id)
+		    FROM   talk T
+		    WHERE  T.submission = S.id)
 	ORDER BY submitdate, id
     } {
 	if {$first} {
@@ -2911,14 +3110,15 @@ proc ::cm::conference::sidebar_reg_show {} {
     }
 }
 
-proc ::cm::conference::have-tutorials {conference} {
+proc ::cm::conference::have-talks {conference} {
     debug.cm/conference {}
     Setup
 
     return [db do exists {
-	SELECT id
-	FROM   tutorial_schedule
-	WHERE  conference = :conference
+	SELECT T.id
+	FROM   talk T, submission S
+	WHERE  S.conference = :conference
+	AND    T.submission = S.id
     }]
 }
 
