@@ -1118,7 +1118,7 @@ proc ::cm::conference::cmd_submission_accept {config} {
 	set type [$config @type]
     } else {
 	set invited [db do eval { SELECT invited FROM submission WHERE id = :submission }]
-	set type [expr {$invited ? 1 : 2}]
+	set type [expr {$invited ? 3 : 2}]
     }
 
     puts -nonewline "Accept \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
