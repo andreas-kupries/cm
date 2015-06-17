@@ -30,7 +30,7 @@ namespace eval ::cm::db {
     namespace export registered
     namespace ensemble create
 }
-namespace eval ::cm::registered {
+namespace eval ::cm::db::registered {
     namespace export listing add remove pupil-of
     namespace ensemble create
 
@@ -51,6 +51,7 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
     lappend map @@@ tut$slot
 
     if {($tutorial eq {}) || ($tutorial < 0)} {
+	debug.cm/db/registered {NULL, ($map)}
 	db do eval [string map $map {
 	    UPDATE registered
 	    SET    @@@ = NULL
@@ -59,8 +60,8 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
     } else {
 	set tc [db do onecolumn {
 	    SELECT conference
-	    FROM  tutorial_schedule
-	    WHERE tutorial = :tutorial
+	    FROM   tutorial_schedule
+	    WHERE id = :tutorial
 	}]
 	set rc [db do onecolumn {
 	    SELECT conference
@@ -68,10 +69,14 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
 	    WHERE id = :registration
 	}]
 
+	debug.cm/db/registered {T [format %4d $tutorial] => C $tc}
+	debug.cm/db/registered {R [format %4d $registration] => C $rc}
+
 	if {$tc != $rc} {
 	    return -code error "Conference mismatch for chosen tutorial"
 	}
 
+	debug.cm/db/registered {set ($map)}
 	db do eval [string map $map {
 	    UPDATE registered
 	    SET    @@@ = :tutorial
@@ -81,8 +86,48 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
     return
 }
 
+# MOVE this to the tutorial db layer FUTURE TODO
+proc ::cm::db::registered::get-t-title {id} {
+    if {$id eq {}} { return {} }
+    if {$id < 0} { return {} }
+    return [db do onecolumn {
+	SELECT T.title AS title
+	FROM tutorial_schedule TS
+	,    tutorial          T
+	WHERE TS.id       = :id
+	AND   TS.tutorial = T.id
+    }]
+}
+
 proc ::cm::db::registered::listing {conference} {
     debug.cm/db/registered {}
+
+    set r {}
+    db do eval {
+	SELECT C.dname   AS dname
+	,      R.walkin  AS walkin
+	,      R.tut1    AS ta_id
+	,      R.tut2    AS tb_id
+	,      R.tut3    AS tc_id
+	,      R.tut4    AS td_id
+	FROM registered R
+	,    contact    C
+	WHERE R.conference = :conference
+	AND   R.contact    = C.id
+	ORDER BY dname
+    } {
+	# Explicit left outer join... __HACK__
+	set ta [get-t-title $ta_id]
+	set tb [get-t-title $tb_id]
+	set tc [get-t-title $tc_id]
+	set td [get-t-title $td_id]
+	lappend r $dname $walkin $ta $tb $tc $td
+    }
+    return $r
+
+    # Should be done with left outer join.
+    # Unclear on the syntax for the multiple LOJ.
+    # Doing it explicitly, see above. __HACK__
     return [db do eval {
 	SELECT C.dname   AS dname
 	,      R.walkin  AS walkin
@@ -123,9 +168,9 @@ proc ::cm::db::registered::add {conference contact walkin} {
 		:conference,
 		:contact,
 		:walkin,
-		NULL, NULL, NULL, NULL, NULL) -- tut 1..4, talk
+		NULL, NULL, NULL, NULL) -- tut 1..4
     }
-    return
+    return [db do last_insert_rowid]
 }
 
 proc ::cm::db::registered::remove {conference contact} {
@@ -136,7 +181,7 @@ proc ::cm::db::registered::remove {conference contact} {
 	WHERE conference = :conference
 	AND   contact    = :contact
     }
-    remove
+    return
 }
 
 # # ## ### ##### ######## ############# ######################

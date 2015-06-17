@@ -398,16 +398,17 @@ proc ::cm::tutorial::scheduled {conference} {
     # See also contact.tcl for similar (helper) code.
 
     set map {}
-    # dict: (id,day,half) -> labels. Will be inverted later.
+    # dict: (id,day,half,tutorial) -> labels. Will be inverted later.
 
     db do eval {
 	SELECT S.id    AS id
+	,      T.id    AS tutorial
 	,      C.dname AS speaker
 	,      C.tag   AS stag
 	,      T.tag   AS tag
 	,      T.title AS title
-	,      T.day   AS day
-	,      T.half  AS half
+	,      S.day   AS day
+	,      S.half  AS half
 	FROM  tutorial          T
 	,     contact           C
 	,     tutorial_schedule S
@@ -415,7 +416,7 @@ proc ::cm::tutorial::scheduled {conference} {
 	AND   S.tutorial   = T.id
 	AND   S.conference = :conference
     } {
-	lappend id $day $half
+	lappend id $day $half $tutorial
 
 	dict lappend map $id @${stag}:$tag
 	dict lappend map $id "${speaker}/$title"

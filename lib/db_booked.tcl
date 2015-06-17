@@ -30,7 +30,7 @@ namespace eval ::cm::db {
     namespace export booked
     namespace ensemble create
 }
-namespace eval ::cm::booked {
+namespace eval ::cm::db::booked {
     namespace export listing add remove
     namespace ensemble create
 
@@ -90,7 +90,7 @@ proc ::cm::db::booked::remove {conference contact} {
 	WHERE conference = :conference
 	AND   contact    = :contact
     }
-    remove
+    return
 }
 
 # # ## ### ##### ######## ############# ######################
