@@ -936,8 +936,125 @@ cmdr create cm::cm [file tail $::argv0] {
     alias conferences = conference list
 
     # # ## ### ##### ######## ############# ######################
+    ## Management of registrations for a conference. Own toplevel
+    ## ensemble, although it could be put under 'conference'. Less to
+    ## type.
+
+    officer registration {
+	description {
+	    Manage the registrations
+	}
+
+	# TODO: Reporting - x-ref with speakers, missing speakers are issues.
+
+	private list {
+	    section {Registration Management}
+	    description {
+		Show the set of registered people.
+	    }
+	} [cm::call conference cmd_registration_list]
+
+	private add {
+	    section {Registration Management}
+	    description {
+		Register contact with the conference.
+		Options for setting up presenter discount, taken tutorials, walkin fee, etc.
+	    }
+
+	    option walkin {
+		Mark a walk-in registration -- late fee
+	    } { alias W ; presence }
+
+	    # Presenter flag is automatically determined.
+	    # Simply check against speakers for tutorials, keynotes and general talks.
+	    # Storage is redundant, so don't.
+
+	    option taking {
+		Tutorial taken by the registrant -- fees
+	    } {
+		alias T ; list
+		validate [cm::vt ctutorial]
+	    }
+	    input person {
+		The person getting registered
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	    # FUTURE: Extend with code able to tabulate and compute
+	    # the conference fee taking all discounts and fees into
+	    # account.
+	} [cm::call conference cmd_registration_add]
+
+	private remove {
+	    section {Registration Management}
+	    description {
+		Drop contact from the list of registered people
+	    }
+
+	    input person {
+		The person dropping their registration.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	} [cm::call conference cmd_registration_remove]
+	alias drop
+    }
+    alias registered = registration list
+    alias register   = registration add
+    alias unregister = registration remove
+
+    # # ## ### ##### ######## ############# ######################
+    ## Management of hotel bookings for a conference. Own toplevel
+    ## ensemble, although it could be put under 'conference'. Less to
+    ## type.
+
+    officer booking {
+	description {
+	    Manage the hotel bookings by people.
+	}
+
+	private list {
+	    section {Booking Management}
+	    description {
+		Show the set of people having booked a hotel room for the conference, and where.
+	    }
+	} [cm::call conference cmd_booking_list]
+
+	private add {
+	    section {Booking Management}
+	    description {
+		Add contact as having booked a hotel for the conference.
+		The hotel defaults to the conference hotel.
+	    }
+	    input person {
+		The person booking a room.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	    input hotel { Booked hotel, defaults to conference hotel } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call conference its-hotel]
+	    }
+
+	} [cm::call conference cmd_booking_add]
+
+	private remove {
+	    section {Booking Management}
+	    description {
+		Drop contact from the list of people who booked their hotel for the conference.
+	    }
+
+	    input person {
+		The person dropping their booking.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	} [cm::call conference cmd_booking_remove]
+	alias drop
+    }
+    alias bookings = booking list
+    alias booked   = booking list
+
+    # # ## ### ##### ######## ############# ######################
     ## Submission management. Own toplevel ensemble, although it could
-    ## be put under 'conference'. Less to type.
+    ## be put under 'conference'. Less to type as is.
 
     officer submission {
 	description {
