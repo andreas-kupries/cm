@@ -1905,9 +1905,28 @@ proc ::cm::conference::cmd_registration_list {config} {
     db show-location
 
     set conference [current]
-    [table t {Who Hotel City} {
-	foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
-	    $t add $dname $locname [city label $cityname $state $nation]
+    set speakers   [the-presenters $conference]
+    # Tutorial speakers are not required to register, i.e. they can
+    # teach without attending the tech sessions.
+    set count 0
+
+    puts "Registered for \"[color name [get $conference]]\" ..."
+    [table t {Who Walkin? {Day 1 Morning} {Day 1 Afternoon} {Day 2 Morning} {Day 2 Afternoon}} {
+	# Show the registrations we have.
+	foreach {dname walkin ta tb tc td} [registered listing $conference] {
+	    $t add $dname [hbool $walkin] $ta $tb $tc $td
+	    dict unset speakers $dname
+	    incr count
+	}
+
+	# Now, if we have speakers which are not registered, show
+	# these as well, highlighted as issue.
+
+	if {[dict size $speakers]} {
+	    if {$count} { $t add {} {} {} {} {} {} }
+	    foreach dname [lsort -dict [dict keys $speakers]] {
+		$t add [color bad "MISSING: $dname"] {} {} {} {} {}
+	    }
 	}
     }] show
     return
@@ -1919,19 +1938,21 @@ proc ::cm::conference::cmd_registration_add {config} {
     db show-location
 
     set conference [current]
-    set person     [$config @person]
-    set walkin     [$config @walkin]
-    set tutorials  [$config @taking]
-    # tutorials = ((id,day,half)...)
+    set person     [$config @person] ;    debug.cm/conference {person = $person}
+    set walkin     [$config @walkin] ;    debug.cm/conference {walkin = $walkin}
+    set tutorials  [$config @taking] ;    debug.cm/conference {tut = ([join $tutorials {),(}])}
+    # tutorials = ((id,day,half,tutorial)...)
+    #        id => in the tutorial __schedule__
 
     if {[llength $tutorials] > 4} {
 	error "Too many tutorials, canonly handle 4."
     }
 
     set c [get $conference]
-    set p [contact get $person]
+    set p [cm contact get $person]
 
     puts -nonewline "Register \"[color name $p]\" for \"[color name $c]\" ... "
+    set close 0
 
     try {
 	db do transaction {
@@ -1940,19 +1961,32 @@ proc ::cm::conference::cmd_registration_add {config} {
 	    # ASSUMES day  in (0,1),  |1st two conference days
 	    #         half in (1,2)   |morning,afternoon
 	    # ==> (1..4) ((half+2*day)
+	    # Day 1 morning   0,1 - 1
+	    # Day 1 afternoon 0,2 - 2
+	    # Day 2 morning   1,1 - 3
+	    # Day 2 afternoon 1,2 - 4
 
 	    foreach t $tutorials {
-		lassign $t id day half
+		lassign $t id day half tutorial
+		debug.cm/conference {tutorial s=$id d=$day h=$half t=$tutorial}
+
+		puts -nonewline "\n Taking tutorial \"[color name [cm tutorial get $tutorial]]\""
+
 		set slot [expr {2*$day+$half}]
+		debug.cm/conference {slot = $slot}
+
 		registered pupil-of $r $slot $id
+		set close 1
 	    }
 	}
     } on error {e o} {
 	# TODO: trap only proper insert error, if possible.
+	if {$close} { puts {} }
 	puts [color bad $e]
 	return
     }
 
+    if {$close} { puts {} }
     puts [color good OK]
     return
 }
@@ -1966,7 +2000,7 @@ proc ::cm::conference::cmd_registration_remove {config} {
     set person     [$config @person]
 
     set c [get $conference]
-    set p [contact get $person]
+    set p [cm contact get $person]
 
     puts -nonewline "Unregister \"[color name $p]\" from \"[color name $c]\" ... "
 
@@ -2000,9 +2034,25 @@ proc ::cm::conference::cmd_booking_list {config} {
     db show-location
 
     set conference [current]
+    set speakers   [the-speakers $conference]
+    set count 0
+
+    puts "Booked for \"[color name [get $conference]]\" ..."
     [table t {Who Hotel City} {
 	foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
 	    $t add $dname $locname [city label $cityname $state $nation]
+	    dict unset speakers $dname
+	    incr count
+	}
+
+	# Now, if we have speakers without a booked hotel, show these
+	# as well, highlighted as issue.
+
+	if {[dict size $speakers]} {
+	    if {$count} { $t add {} {} {} }
+	    foreach dname [lsort -dict [dict keys $speakers]] {
+		$t add [color bad "MISSING $dname"] {} {}
+	    }
 	}
     }] show
     return
@@ -2018,7 +2068,7 @@ proc ::cm::conference::cmd_booking_add {config} {
     set hotel      [$config @hotel]
 
     set c [get $conference]
-    set p [contact get $person]
+    set p [cm contact get $person]
     set h [location get $hotel]
 
     puts -nonewline "Booking \"[color name $p]\" at \"[color name $h]\" for \"[color name $c]\" ... "
@@ -2046,7 +2096,7 @@ proc ::cm::conference::cmd_booking_remove {config} {
     set person     [$config @person]
 
     set c [get $conference]
-    set p [contact get $person]
+    set p [cm contact get $person]
 
     puts -nonewline "Unbooking \"[color name $p]\" for \"[color name $c]\" ... "
 
@@ -2680,13 +2730,47 @@ proc ::cm::conference::talks-of {conference speakertag} {
     }]
 }
 
+proc ::cm::conference::the-speakers {conference} {
+    debug.cm/conference {}
+    set map {}
+    foreach {dname tag bio} [keynotes $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [general-talks $conference] {
+	dict set map $dname $tag
+    }
+
+    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    return $map
+}
+
+proc ::cm::conference::the-presenters {conference} {
+    debug.cm/conference {}
+    set map {}
+    foreach {dname tag bio} [keynotes $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [general-talks $conference] {
+	dict set map $dname $tag
+    }
+
+    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    return $map
+}
+
 proc ::cm::conference::speaker-listing {conference} {
     debug.cm/conference {}
     # speaker-listing - TODO - general presenters
 
+    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+
     # Keynotes...
     set first 1
     foreach {dname tag bio} [keynotes $conference] {
+	if {$dname eq $mgmt} continue
 	if {$first} {
 	    append text "## Keynotes\n\n"
 	    set first 0
@@ -2701,6 +2785,7 @@ proc ::cm::conference::speaker-listing {conference} {
     # Tutorials...
     set first 1
     foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$dname eq $mgmt} continue
 	if {$first} {
 	    append text "## Tutorials\n\n"
 	    set first 0
@@ -2714,6 +2799,7 @@ proc ::cm::conference::speaker-listing {conference} {
     # Presenters...
     set first 1
     foreach {dname tag bio} [general-talks $conference] {
+	if {$dname eq $mgmt} continue
 	if {$first} {
 	    append text "## Keynotes\n\n"
 	    set first 0
@@ -2854,6 +2940,9 @@ proc ::cm::conference::make_admin {conference} {
     if {[llength $issues]} {
 	append text "* " [link Issues      {} issues] \n
     }
+
+    append text "* " [link Registered   {} registered] \n
+    append text "* " [link Booked       {} booked] \n
     append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
     append text "* " [link Campaign    {} campaign] \n
@@ -2868,6 +2957,8 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
     }
 
+    make_admin_registered  $conference text registered
+    make_admin_booked      $conference text booked
     make_admin_accepted    $conference text accepted
     make_admin_submissions $conference text submissions
     make_admin_campaign    $conference text campaign
@@ -2875,6 +2966,58 @@ proc ::cm::conference::make_admin {conference} {
 
     # What else ...
     return $text
+}
+
+proc ::cm::conference::make_admin_registered {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # People booked to a hotel
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Registered\n\n"
+
+    set first 1
+    foreach {dname walkin ta tb tc td} [registered listing $conference] {
+	if {$first} {
+	    append text |Who|Walkin|1-Morning|1-Afternoon|2-Morning|2-Afternoon|\n|-|-|-|-|-|-|\n
+	    set first 0
+	}
+	append text | $dname | $walkin | $ta | $tb | $tc | $td |\n
+    }
+
+    if {$first} {
+	append text "__No registrations__"
+    }
+
+    append text \n
+    return
+}
+
+proc ::cm::conference::make_admin_booked {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # People booked to a hotel
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Booked\n\n"
+
+    set first 1
+    foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
+	if {$first} {
+	    append text |Who|Hotel|City|\n|-|-|-|\n
+	    set first 0
+	}
+	append text | $dname | $locname | [city label $cityname $state $nation] |\n
+    }
+
+    if {$first} {
+	append text "__No bookings__"
+    }
+
+    append text \n
+    return
 }
 
 proc ::cm::conference::make_admin_timeline {conference textvar tag} {
@@ -3615,6 +3758,10 @@ proc ::cm::conference::+map {key value} {
     return
 }
 
+proc ::cm::conference::hbool {x} {
+    expr {$x ? "yes" : "no"}
+}
+
 proc ::cm::conference::ifempty {x y} {
     if {$x ne {}} { return $x }
     return $y
@@ -3949,6 +4096,20 @@ proc ::cm::conference::fmt-issues-cli {issues} {
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
+    # xconference 
+    # xyear       
+    # xmanagement 
+    # xsubmission 
+    # xcity       
+    # xhotel      
+    # xfacility   
+    # xstart      
+    # xend        
+    # xalign      
+    # xlength     
+    # xtalklen    
+    # xsesslen    
+    # xrstatus
 
     set issues {}
 
@@ -4043,6 +4204,23 @@ proc ::cm::conference::issues {details} {
 	    break
 	}
     }
+
+    set presenters [the-presenters $xconference]
+    foreach {dname _ _ _ _ _} [registered listing $xconference] {
+	dict unset presenters $dname
+    }
+    foreach dname [lsort -dict [dict keys $presenters]] {
+	+issue "Presenter \"$dname\" not registered"
+    }
+
+    set speakers [the-speakers $xconference]
+    foreach {dname _ _ _ _ _ _ _} [booked listing $xconference] {
+	dict unset speakers $dname
+    }
+    foreach dname [lsort -dict [dict keys $speakers]] {
+	+issue "Speaker \"$dname\" not booked (to a hotel)"
+    }
+
 
     if {![llength $issues]} return
     return $issues
@@ -4512,6 +4690,9 @@ proc ::cm::conference::Setup {} {
     ::cm::city::Setup
     ::cm::location::Setup
     ::cm::contact::Setup
+
+    cm::db::booked::Setup     ;# possible loop, these two refer back to
+    cm::db::registered::Setup ;# conference.
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{

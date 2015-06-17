@@ -972,6 +972,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option taking {
 		Tutorial taken by the registrant -- fees
 	    } {
+		alias T ; list
 		validate [cm::vt ctutorial]
 	    }
 	    input person {
@@ -1049,6 +1050,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias drop
     }
     alias bookings = booking list
+    alias booked   = booking list
 
     # # ## ### ##### ######## ############# ######################
     ## Submission management. Own toplevel ensemble, although it could
