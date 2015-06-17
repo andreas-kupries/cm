@@ -406,7 +406,7 @@ CREATE TABLE schedule (
 	-- constraint: con == talk->con (== talk->submission->con)
 );
 -- ---------------------------------------------------------------
-CREATE TABLE register ( -- conference registrations <=> attendee register
+CREATE TABLE registered ( -- conference registrations <=> attendee register
 	conference	INTEGER NOT NULL REFERENCES conference,
 	contact		INTEGER	NOT NULL REFERENCES contact,		-- can_register
 	walkin		INTEGER NOT NULL,				-- late-register fee
