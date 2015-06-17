@@ -41,7 +41,7 @@ namespace eval ::cm::tutorial {
 	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
 	cmd_settag known known-tag known-title get details select \
 	known-half get-half have-some dayrange trackrange \
-	cell speakers
+	cell speakers scheduled
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -376,6 +376,47 @@ proc ::cm::tutorial::known {} {
 	      contact  C
 	WHERE C.id = T.speaker
     } {
+	dict lappend map $id @${stag}:$tag
+	dict lappend map $id "${speaker}/$title"
+    }
+
+    # Rekey by names
+    set map [util dict-invert       $map]
+    #set map [util dict-fill-permute $map] - Not good for the speaker/title cominbation
+    set known [util dict-drop-ambiguous $map]
+
+    debug.cm/tutorial {==> ($known)}
+    return $known
+}
+
+
+proc ::cm::tutorial::scheduled {conference} {
+    debug.cm/tutorial {}
+    Setup
+
+    # For validation - Tutorials assigned to a specific conference
+    # See also contact.tcl for similar (helper) code.
+
+    set map {}
+    # dict: (id,day,half) -> labels. Will be inverted later.
+
+    db do eval {
+	SELECT S.id    AS id
+	,      C.dname AS speaker
+	,      C.tag   AS stag
+	,      T.tag   AS tag
+	,      T.title AS title
+	,      T.day   AS day
+	,      T.half  AS half
+	FROM  tutorial          T
+	,     contact           C
+	,     tutorial_schedule S
+	WHERE C.id         = T.speaker
+	AND   S.tutorial   = T.id
+	AND   S.conference = :conference
+    } {
+	lappend id $day $half
+
 	dict lappend map $id @${stag}:$tag
 	dict lappend map $id "${speaker}/$title"
     }
