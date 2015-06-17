@@ -28,6 +28,8 @@ package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
 
+package require cm::db::booked
+package require cm::db::registered
 package require cm::city
 package require cm::config::core
 package require cm::contact
@@ -60,18 +62,22 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink cmd_debug_speakers \
+	cmd_booking_list cmd_booking_add cmd_booking_remove \
+	cmd_registration_list cmd_registration_add cmd_registration_remove \
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
-	known-attachment get-attachment known-submitter
+	known-attachment get-attachment known-submitter its-hotel
     namespace ensemble create
 
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::date
     namespace import ::cmdr::validate::weekday
+    namespace import ::cm::db::booked
+    namespace import ::cm::db::registered
     namespace import ::cm::city
     namespace import ::cm::contact
     namespace import ::cm::db
@@ -1886,6 +1892,173 @@ proc ::cm::conference::cmd_end_set {config} {
     flush stdout
 
     write $conference $details
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_registration_list {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    [table t {Who Hotel City} {
+	foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
+	    $t add $dname $locname [city label $cityname $state $nation]
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_registration_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+    set walkin     [$config @walkin]
+    set tutorials  [$config @taking]
+    # tutorials = ((id,day,half)...)
+
+    if {[llength $tutorials] > 4} {
+	error "Too many tutorials, canonly handle 4."
+    }
+
+    set c [get $conference]
+    set p [contact get $person]
+
+    puts -nonewline "Register \"[color name $p]\" for \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    set r [registered add $conference $person $walkin]
+	    # TODO: tutorials - map day/half into slot number.
+	    # ASSUMES day  in (0,1),  |1st two conference days
+	    #         half in (1,2)   |morning,afternoon
+	    # ==> (1..4) ((half+2*day)
+
+	    foreach t $tutorials {
+		lassign $t id day half
+		set slot [expr {2*$day+$half}]
+		registered pupil-of $r $slot $id
+	    }
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_registration_remove {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+
+    set c [get $conference]
+    set p [contact get $person]
+
+    puts -nonewline "Unregister \"[color name $p]\" from \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    registered remove $conference $person
+	}
+    } on error {e o} {
+	# TODO: trap only proper delete error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::its-hotel {p} {
+    # add @hotel - generate callback
+    debug.cm/conference {}
+    set conference [current]
+    set hotel [dict get [details $conference] xhotel]
+    return $hotel
+}
+
+proc ::cm::conference::cmd_booking_list {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    [table t {Who Hotel City} {
+	foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
+	    $t add $dname $locname [city label $cityname $state $nation]
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_booking_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+    set hotel      [$config @hotel]
+
+    set c [get $conference]
+    set p [contact get $person]
+    set h [location get $hotel]
+
+    puts -nonewline "Booking \"[color name $p]\" at \"[color name $h]\" for \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    booked add $conference $person $hotel
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_booking_remove {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+
+    set c [get $conference]
+    set p [contact get $person]
+
+    puts -nonewline "Unbooking \"[color name $p]\" for \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    booked remove $conference $person
+	}
+    } on error {e o} {
+	# TODO: trap only proper delete error, if possible.
+	puts [color bad $e]
+	return
+    }
 
     puts [color good OK]
     return
