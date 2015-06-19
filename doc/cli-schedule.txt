@@ -1,0 +1,110 @@
+
+cli api for specification of schedules
+======================================
+
+2 use cases
+
+(1) restoration of a schedule from a dump
+(2) interactive definition/entry of a schedule.
+
+Different needs:
+
+(Ad 1): Just needs commands to define
+- schedule
+- tracks in schedule
+- items in schedule
+with ability to reference schedule and track (names).
+Replication of schedule and track names is irrelevant.
+
+(Ad 2): Needs to be easy on a user, entering items quickly without
+having to (re-)enter lots of things (schedule, track name, day, time,
+... Commands have to maintain state between them which can be used to
+deduce information, allowing it to be missing.
+
+
+
+Restoration
+===========
+
+cm schedule new|create         ?NAME?
+cm schedule (new|create)-track SCHEDULE ?NAME?
+cm schedule (new|create|-item  ?--in ITEM? SCHEDULE DAY TRACK START LENGTH DESC ?SPEAKER?
+cm schedule (new|create)-hole  ?--in ITEM? SCHEDULE DAY TRACK START LENGTH LABEL
+-- empty string for track ==> NULL, crossing tracks
+
+
+START = integer|(hour:minute)
+
+Interactive
+===========
+
+STATE:
+- current schedule
+- ... day
+- ... track
+- ... time        (per track)
+- last item added (per track)
+- last open flag  (per track)
+
+
+cm schedule new|create         ?NAME?
+=> schedule becomes current
+initialize
+	day	= 0
+	track	= NULL
+	time	@NULL = 0
+-- fail if we have a current schedule open?
+
+cm schedule add-track ?NAME?
+=> added to current schedule
+set	 track	= <new>
+init	 time	@<new> = 0
+
+cm schedule change-track ?--unset? ?TRACK?
+-- change tracks in current schedule
+set	track = <chosen>
+no change to time
+
+cm schedule next
+-- increment day one forward in current schedule
+clear track data
+initialize
+	track	= NULL
+	time	@NULL = 0
+
+cm schedule set-day DAY
+-- switch to specific day
+-- reload state from the known schedule items for that day
+set track = NULL
+
+cm schedule goto   TIME
+cm schedule skip   MINUTES
+cm schedule rewind MINUTES
+-- set time in current track, absolute, or incrementally (for/back)ward
+
+
+4 things
+  placeholder-group
+  placeholder
+  group(-item)
+  item
+
+
+
+
+cm schedule add-item ?--open? LENGTH DESC ?SPEAKER?
+-- add item to current schedule, day, track
+-- first item? => simply add at current time, record as last, record open flag,
+--                increment time by length, if NOT opened
+--                keep time if --open
+
+-- last item is open => add 
+
+-- if last item is 
+
+
+
+cm schedule add-item  LENGTH DESC ?SPEAKER?   -- to open group, or after last item in current track -- null track => max end time in all tracks (current schedule, day)
+cm schedule add-group DESC ?SPEAKER?          -- start at current time, length 0, auto-extended with items.
+cm schedule add-hole  ?--open? LABEL          -- --open makes the placeholder a group as well.
+
