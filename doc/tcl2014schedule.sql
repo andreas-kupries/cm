@@ -28,7 +28,7 @@ VALUES
 ,                           (10, 1, 0, 2,    810, 210, 9,    "@T0a1", NULL,                 NULL)
 ,                           (11, 1, 0, 1,   1170,  60, NULL, NULL,    "Free tutorial",      NULL)
 ,                           (12, 1, 0, 4,   1140, 300, NULL, NULL,    "Social and BOFs",    NULL)
-,                           (13, 1, 0, 4,   1140, 300, 12,   NULL,    "Hospitality suite", "Tcl Commuity Association")
+,                           (13, 1, 0, 4,   1140, 300, 12,   NULL,    "Hospitality suite", "Tcl Community Association")
 -- day 2 tutorials
 ,                           (14, 1, 1, 1,    540, 210, NULL, NULL,    "Tutorials",          NULL)
 ,                           (15, 1, 1, 1,    540, 210, 1,    "@T1m0", NULL,                 NULL)
@@ -42,7 +42,7 @@ VALUES
 ,                           (23, 1, 1, 2,    810, 210, 9,    "@T1a1", NULL,                 NULL)
 ,                           (24, 1, 1, 1,   1170,  60, NULL, "@T2e0", NULL,                 NULL)
 ,                           (25, 1, 1, 4,   1140, 300, NULL, NULL,    "Social and BOFs",    NULL)
-,                           (26, 1, 1, 4,   1140, 300, 25,   NULL,    "Hospitality suite", "Tcl Commuity Association")
+,                           (26, 1, 1, 4,   1140, 300, 25,   NULL,    "Hospitality suite", "Tcl Community Association")
 -- day 3 tech sessions I
 ,                           (27, 1, 2, 3,    540,  90, NULL, NULL,    "Welcome and Keynote",       NULL)
 ,                           (28, 1, 2, 3,    540,  0,  27,   NULL,    "Welcome and Announcements", "Host")
@@ -66,7 +66,7 @@ VALUES
 ,                           (46, 1, 2, 3,    975, 150, NULL, NULL,    "Dinner Break", NULL)
 ,                           (47, 1, 2, 3,    975, 150, NULL, NULL,    "See registration for suggestions", "On your own")
 ,                           (48, 1, 2, 4,   1140, 300, NULL, NULL,    "Social and BOFs",    NULL)
-,                           (49, 1, 2, 4,   1140, 300, 48,   NULL,    "Hospitality suite", "Tcl Commuity Association")
+,                           (49, 1, 2, 4,   1140, 300, 48,   NULL,    "Hospitality suite", "Tcl Community Association")
 -- day 4 tech sessions II
 ,                           (50, 1, 3, 3,    540,  0,  NULL, NULL,    "Welcome", NULL)
 ,                           (51, 1, 3, 3,    540,  0,  50,   NULL,    "Welcome and Announcements", "Host")
@@ -92,9 +92,9 @@ VALUES
 ,                           (71, 1, 3, 3,    945, 30,  NULL,  NULL,   "WIPs", NULL)
 ,                           (72, 1, 3, 3,    945, 30,  71,    NULL,   "Short discussion of an interesting project. Sign up at registration", "Work In Progress")
 ,                           (73, 1, 3, 3,   1080, 90,  NULL,  NULL,   "Banquet", NULL)
-,                           (74, 1, 3, 3,   1080, 90,  73,    NULL,   "Conference Banquet", "Tcl Commuity Association")
+,                           (74, 1, 3, 3,   1080, 90,  73,    NULL,   "Conference Banquet", "Tcl Community Association")
 ,                           (75, 1, 3, 4,   1140, 300, NULL,  NULL,   "Social and BOFs",    NULL)
-,                           (76, 1, 3, 4,   1140, 300, 75,    NULL,   "Hospitality suite", "Tcl Commuity Association")
+,                           (76, 1, 3, 4,   1140, 300, 75,    NULL,   "Hospitality suite", "Tcl Community Association")
 -- day 5 tech sessions III
 ,                           (77, 1, 4, 3,    540,  0,  NULL, NULL,    "Welcome", NULL)
 ,                           (78, 1, 4, 3,    540,  0,  77,   NULL,    "Welcome and Announcements", "Host")
@@ -105,5 +105,5 @@ VALUES
 ,                           (83, 1, 4, 3,    600, 30,  NULL, NULL,    "Tcl Community Association", NULL)
 ,                           (84, 1, 4, 3,    600, 30,  83,   NULL,    "What's going on with TCA", "Townhall")
 ,                           (85, 1, 3, 4,   1140, 300, NULL,  NULL,   "Social and BOFs",    NULL)
-,                           (86, 1, 3, 4,   1140, 300, 85,    NULL,   "Hospitality suite", "Tcl Commuity Association")
+,                           (86, 1, 3, 4,   1140, 300, 85,    NULL,   "Hospitality suite", "Tcl Community Association")
 ;
