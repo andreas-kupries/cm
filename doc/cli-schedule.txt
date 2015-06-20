@@ -39,72 +39,287 @@ Interactive
 ===========
 
 STATE:
-- current schedule
-- ... day
-- ... track
-- ... time        (per track)
-- last item added (per track)
-- last open flag  (per track)
 
+* Much of the state we need can be found in the databvase itself, in
+  the set of already entered items!
+* We need:
 
-cm schedule new|create         ?NAME?
-=> schedule becomes current
-initialize
-	day	= 0
-	track	= NULL
-	time	@NULL = 0
--- fail if we have a current schedule open?
+  - ref to current schedule
+  - ref to current day           (in schedule)
+  - ref to current track         (in schedule, day)
+  - ref to current item          (in schedule, track, day)
+  - flag if current item is open (in schedule, track, day)
 
-cm schedule add-track ?NAME?
-=> added to current schedule
-set	 track	= <new>
-init	 time	@<new> = 0
+  Time data is NOT needed most of the time as it is implied by the
+  current item and openess. It is needed for when we add the first
+  item, because we have nothing to anchor to ... Ideas:
 
-cm schedule change-track ?--unset? ?TRACK?
--- change tracks in current schedule
-set	track = <chosen>
-no change to time
+  - Global default (General start time)
+  - Require start time (option) for first item, reject missing.
+    (and/or ask interactively for it when needed)
 
-cm schedule next
--- increment day one forward in current schedule
-clear track data
-initialize
-	track	= NULL
-	time	@NULL = 0
+Commands (leaving out the prefix 'cm schedule')...
 
-cm schedule set-day DAY
--- switch to specific day
--- reload state from the known schedule items for that day
-set track = NULL
+All commands show the relevant state as their last action before ending ...
+Set is designed for interactive use, either from terminal, or from within
+an interactive shell in the cm cli.
 
-cm schedule goto   TIME
-cm schedule skip   MINUTES
-cm schedule rewind MINUTES
--- set time in current track, absolute, or incrementally (for/back)ward
+	new    ?NAME?
+	create ?NAME?
+	|	create new schedule
+	|	new schedule becomes current
+	|	initialize state for new schedule (day 0 track NULL, no item, no openess)
+	|	<<show state>>
 
+	rename ?NAME?
+	|      rename current schedule
 
-4 things
-  placeholder-group
-  placeholder
-  group(-item)
-  item
+	new-track    ?NAME?
+	create-track ?NAME?
+	+track       ?NAME?
+	|	create new track
+	|	new track becomes current track
+	|	initialize state (no item, no openess)
+	|	<<show state>>
 
+	rename-track   ?NAME?
+	|	rename the current track
 
+	change-track ?--unset? ?NAME?
+	set-track    ?--unset? ?NAME?
+	track=       ?--unset? ?NAME?
+	|	chosen track becomes current, --unset for NULL
+	|	<<show state>>
 
+	tracks
+	|	show list of tracks
 
-cm schedule add-item ?--open? LENGTH DESC ?SPEAKER?
--- add item to current schedule, day, track
--- first item? => simply add at current time, record as last, record open flag,
---                increment time by length, if NOT opened
---                keep time if --open
+	next
+	|	move current day forward by one
+	|	initialize state, if day is new (track NULL, no item, no openess)
+	|	<<show state>>
 
--- last item is open => add 
+	change-day DAY
+	set-day    DAY
+	day=       DAY
+	|	set current day
+	|	<<show state>>
 
--- if last item is 
+	start TIME
+	first TIME
+	|	set a global time to use for the first item in a day/track
 
+	placeholder ?LENGTH? LABEL
+	event       ?LENGTH? DESC ?SPEAKERDESC?
+	|	add an item to the schedule
+	|	<<show state>>
 
+	|	LOGIC
+	|	1st item!
+	|	=>	start = global start time
+	|		length as per spec, default is 0.
+	|	current item is open
+	|	=>	insert new item as child, and set length
+	|		of the parent.
+	|		make new item the current item (is closed)
+	|	current item is closed
+	|	=>	insert new item after current item
+	|		inherit group/parent information.
+	|		extend the parent's length, if any.
+	|
+	|	For track NULL the new item's start is at the end of
+	|	the highest end time across all tracks.
+	|	The new item is placed as current in __all__ tracks.
 
-cm schedule add-item  LENGTH DESC ?SPEAKER?   -- to open group, or after last item in current track -- null track => max end time in all tracks (current schedule, day)
-cm schedule add-group DESC ?SPEAKER?          -- start at current time, length 0, auto-extended with items.
-cm schedule add-hole  ?--open? LABEL          -- --open makes the placeholder a group as well.
+	open
+	|	open the current item
+	|	fail/reject if it has a parent
+	|	fail/reject if its length is > 0, and without children
+	|	(group length is derived from children).
+	|	<<show state>>
 
+	close
+	|	close current group
+	|	ignore if item has no parent
+	|	else:	make parent the current item, note closed.
+	|	<<show state>>
+
+	undo
+	|	remove the current item (and possibly its children)
+	|	make the previous non-child item in time the current item
+	|	NOTE: I.e. after the undo we are adding after a group, not
+	|	      extending the group (no implicit 'open').
+	|	<<show state>>
+
+	retitle ?--speaker?TEXT
+	|	change desc or label of current item, depending on type
+	|	fail if using --speaker for placeholder item
+	|	<<show state>>
+
+	extend LENGTH
+	|	extend length of current item
+	|	fail if it is a group, i.e. parent to children.
+	|		extend the parent's length, if any.
+	|	<<show state>>
+
+	move	TIME
+	|	move current item to the given start time.
+	|	move all children with it
+	|	<<show state>>
+
+	NOTE:
+	-	As given the current item is either the fully last item
+		added, or the last item added excluding children.
+		Regardless, it is the last item in time.
+
+	-	We currently have no command to change the current
+                item to something in the middle of the timeline. This
+                means that moving an item, or extending it does __not__
+		have to care about items coming after it.
+
+	Nav commands to move the current item ?
+	(See WIBNI below)
+	yank, copy commands ?
+
+	yank ?FROM? ?TO?
+	|	Remember current item (and children) in a buffer.
+	|	Or, if specified, all items beginning with FROM to current, or TO
+
+	insert ?--keep-track?
+	|	Insert copy of item in the yank-buffer into
+	|	current day and track, or just current day.
+	|	- Timing data is copied unchanged!
+	|	- Track is kept unchanged when --keep-track is specified.
+	|	Copy will fail if generated item violates constraints.
+
+????	mark REF
+
+	forw(ard)	down	++
+	back(ward)	up	--
+	|	Move the current item
+
+	goto REF
+	|	Make REF the current item
+
+	-	When implementing navigation all commands
+
+		- inserting an item  - event, placeholder
+		- extending an item  - extend
+		- moving an item     - move
+		- removing an item   - undo
+
+		(generally: changing time (start/length) attributes of
+		an item)
+
+		have to be modified to take the items after the
+		current item into account (i.e. move them
+		appropriately to keep the contraints inviolate)
+
+	show
+	|	<<show state>>
+
+Example
+===========
+Tcl 2014 Schedule, entered interactively ...
+
+% cm schedule
+> new Tcl'2014
+> start 9:00
+> +track 'Tutorial A'
+> +track 'Tutorial B'
+> +track 'Tech Session'
+> +track 'Community'
+> track= 'Tutorial A'
+> event Tutorials
+> open
+> placeholder 3:30 @T0m0
+> close
+> track= 'Tutorial B'
+> event Tutorials
+> open
+> placeholder 3:30 @T0m1
+> close
+> track= --unset
+> event 'Lunch Break'
+> open
+> event 60 Lunch Provided
+> close
+> track= 'Tutorial A'
+> event Tutorials
+> open
+> placeholder 3:30 @T0a0
+> close
+> track= 'Tutorial B'
+> event Tutorials
+> open
+> placeholder 3:30 @T0a1
+> close
+> track= 'Tutorial A'
+> event 60 'Free Tutorial'
+> track= Community
+> event 'Social and BOFs'
+> move 19:00
+> open
+> event 5:00 "Hospitality suite" "Tcl Community Association"
+> close
+
+> ;## WIBNI to duplicate this ((group) item) across days
+> yank
+> day= 1
+> insert --keep-track
+> next
+> insert --keep-track
+> next
+> insert --keep-track
+> next
+> insert --keep-track
+> day= 0
+
+> ;## WIBNI to duplicate an entire day
+> ;## COST  -- placeholder uniqueness required auto-modify.
+> ;## COST  -- need command to edit other than current item
+> ;## COST  -- or command to switch current item into middle.
+> ;## COST  -- and either restrict editing to non-time attributes
+> ;## COST  -- or handle movement of items after current one.
+> next
+> ;# -- ENTER day 1 - tutorial day 2
+> next
+> track= 'Tech Session'
+> event 'Welcome and Keynote'
+> open
+> event 'Welcome and Announcements' Host
+> placeholder 1:30 @K1
+> close
+> event Break
+> open
+> event 15 Break
+> close
+> placeholder @S1
+> open
+> event 30 @S1.1
+> event 30 @S1.2
+> event 30 @S1.3
+> close
+> event 'Lunch Break'
+> open
+> event 1:00 'Conference Luncheon' "Tcl Community Association"
+> close
+> placeholder @S2
+> open
+> event 30 @S2.1
+> event 30 @S2.2
+> event 30 @S2.3
+> close
+> placeholder @S3
+> open
+> event 30 @S3.1
+> event 30 @S3.2
+> event 30 @S3.3
+> close
+> event 'Dinner Break'
+> open
+> event 2:30 "See registration for suggestions" "On your own"
+> close
+> ;## -- enter hospitality suite
+> ;# enter day 3 - conference day 4
+> ;# enter day 4 - conference day 5
