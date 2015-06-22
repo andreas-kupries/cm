@@ -58,6 +58,18 @@ STATE:
   - Require start time (option) for first item, reject missing.
     (and/or ask interactively for it when needed)
 
+= Actually, the entire state can be put into the database in some way:
+
+(1) table "pschedule_current" - Ref to current schedule.
+    Reject when more than one entry, or none.
+
+(2) table "pschedule" - Add columns for current track, day, item, and open-state of the latter.
+
+=> All state manipulation can now be done on the database.
+=> Validation, i.e. checking the constraints can be done with suitable queries.
+
+
+
 Commands (leaving out the prefix 'cm schedule')...
 
 All commands show the relevant state as their last action before ending ...
@@ -144,12 +156,19 @@ an interactive shell in the cm cli.
 	|	else:	make parent the current item, note closed.
 	|	<<show state>>
 
-	undo
+	drop
+	remove
 	|	remove the current item (and possibly its children)
 	|	make the previous non-child item in time the current item
 	|	NOTE: I.e. after the undo we are adding after a group, not
 	|	      extending the group (no implicit 'open').
 	|	<<show state>>
+
+	pin
+	|	pin the current item to it start.
+	|	i.e. make it impossible to "move".
+	|	can only pin items outside of a group.
+	|	cannot pin items in a group.
 
 	retitle ?--speaker?TEXT
 	|	change desc or label of current item, depending on type
@@ -163,8 +182,9 @@ an interactive shell in the cm cli.
 	|	<<show state>>
 
 	move	TIME
-	|	move current item to the given start time.
-	|	move all children with it
+	|	move current item to the given start time. Move
+	|	all children with it. Pinned items cannot be
+	|	moved.
 	|	<<show state>>
 
 	NOTE:
