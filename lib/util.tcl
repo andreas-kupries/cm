@@ -55,8 +55,8 @@ namespace eval ::cm::util {
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cm::table::dict
+    rename dict table/d
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -69,12 +69,13 @@ debug prefix cm/util {[debug caller] | }
 
 proc ::cm::util::pdict {dict} {
     debug.cm/util {}
-    [table t {Key Value} {
+    [table/d t {
 	foreach k [lsort -dict [dict keys $dict]] {
 	    set v [dict get $dict $k]
 	    $t add $k $v
 	}
     }] show
+    return
 }
 
 # # ## ### ##### ######## ############# #####################
