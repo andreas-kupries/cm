@@ -33,30 +33,22 @@
 * Each schedule has a unique __name__.
 * Each schedule has zero or more __tracks__.
 * Each schedule has zero or more __items__.
-
 * At most one of all existing schedules is __current__, i.e. the focus
   of interactive operations.
-
 * At most one item in the schedule is __current__ making it the focus
   of interactive operations, if the schedule itself is current.
-
 * The current item, if specified, can __closed__ or __open__,
   influencing how new items are added during interactive editing of
   the schedule.
-
 * Each schedule has one or more days. This has to match the length of
   the conferences using the schedule.
-
 * At most one of the days in a schedule is the __current day__ of that
   schedule, making it the focus of interactive operations, if the
   schedule itself is current.
-
   This day is implied by the __current item__, except when no item is
   current.
-
 * At most one of all existing tracks in a schedule is __current__,
   i.e. the focus of interactive operations if that schedule is current.
-
   This day is implied by the __current item__, except when no item is
   current, or the item belongs to the NULL track.
 
@@ -92,7 +84,6 @@
     (if any).
   * For the children of a parent exactly one child must have the same
     starting time as the parent.
-
 * All items have a length (in minutes).
   * The __range__ of an item is the start time (inclusive) to the end
     time (exclusive), where end time is starting time plus length.

@@ -1551,6 +1551,62 @@ cmdr create cm::cm [file tail $::argv0] {
     alias contacts = contact list
 
     # # ## ### ##### ######## ############# ######################
+    ## Schedule management
+
+    officer schedule {
+	description {
+	    Manage conference schedules.
+	}
+	common *all* -extend {
+	    section {Conference Management} Schedules
+	}
+
+	private add {
+	    description { Create a new, empty named schedule }
+	    input name {
+		The name of the new schedule.
+	    } { validate [cm::vt notpschedule] }
+	} [cm::call schedule add]
+	alias create
+
+	private remove {
+	    description { Destroy the named schedule }
+	    input name {
+		The name of the schedule to destroy.
+	    } { validate [cm::vt pschedule] }
+	} [cm::call schedule remove]
+	alias drop
+
+	private rename {
+	    description { Rename the named schedule }
+	    input name {
+		The name of the schedule to rename
+	    } { validate [cm::vt pschedule] }
+	    input newname {
+		The new name of the schedule
+	    } { validate [cm::vt notpschedule] }
+	} [cm::call schedule rename]
+
+	# TODO: Duplicate an entire schedule under a new name.
+
+	private show {
+	    description { Show information about the named schedule }
+	    input name {
+		The name of the schedule to look at.
+	    } { validate [cm::vt pschedule] }
+	} [cm::call schedule show]
+	default
+
+	private list {
+	    description { Show a table of all known schedules }
+	} [cm::call schedule listing]
+
+	# TODO : Track and item handling
+	# TODO : Interactive operations.
+    }
+    alias schedules = schedule list
+
+    # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.
 
     officer test {
@@ -1560,6 +1616,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	common *all* -extend {
 	    section Advanced Testing
 	}
+
+	# - -- --- ----- -------- -------------
 
 	private mail-address {
 	    description {
@@ -1581,6 +1639,18 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private schedule-known {
+	    description {Print validation dictionary}
+	} [cm::call schedule test-known]
+
+	private schedule-select {
+	    description {Print selection dictionary}
+	} [cm::call schedule test-select]
+
+	# - -- --- ----- -------- -------------
     }
 
     # # ## ### ##### ######## ############# ######################

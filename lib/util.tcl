@@ -23,12 +23,16 @@
 ## Requisites
 
 package require Tcl 8.5
+package require cmdr::ask
 package require cmdr::color
+package require cmdr::validate::common
 package require debug
 package require debug::caller
 package require linenoise
 package require struct::list
 package require textutil::adjust
+
+package require cm::table
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -42,10 +46,17 @@ namespace eval ::cm::util {
     namespace export padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	initials
+	dict-fill-permute* dict-join-keys initials select text-stdin \
+	match-substr match-enum fmt-issues-cli fmt-issues-web pdict
     namespace ensemble create
 
+    namespace import ::cmdr::ask
     namespace import ::cmdr::color
+    namespace import ::cmdr::validate::common::complete-substr
+    namespace import ::cmdr::validate::common::complete-enum
+
+    namespace import ::cm::table::do
+    rename do table
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -56,8 +67,161 @@ debug prefix cm/util {[debug caller] | }
 
 # # ## ### ##### ######## ############# #####################
 
+proc ::cm::util::pdict {dict} {
+    debug.cm/util {}
+    [table t {Key Value} {
+	foreach k [lsort -dict [dict keys $dict]] {
+	    set v [dict get $dict $k]
+	    $t add $k $v
+	}
+    }] show
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::fmt-issues-web {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "* $issue"
+    }
+    return [join $result \n]
+}
+
+proc ::cm::util::fmt-issues-cli {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "- [color bad $issue]"
+    }
+    return [join $result \n]
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::text-stdin {config attr} {
+    debug.cm/util {}
+
+    if {![$config $attr set?]} {
+	puts {Reading stdin...}
+	return [read stdin]
+    } else {
+	return [$config $attr]
+    }
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::select {p label mapcmd} {
+    debug.cm/util {}
+
+    if {![cmdr interactive?]} {
+	$p undefined!
+    }
+
+    # map: label -> id
+    set map     [uplevel 1 $mapcmd]
+    set choices [lsort -dict [dict keys $map]]
+
+    switch -exact [llength $choices] {
+	0 { $p undefined! }
+	1 {
+	    # Single choice, return
+	    # TODO: print note about single choice
+	    return [lindex $map 1]
+	}
+    }
+
+    set choice [ask menu "" "Which ${label}: " $choices]
+
+    return [dict get $map $choice]
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::match-substr {iv known nocase x} {
+    debug.cm/util {}
+
+    upvar 1 $iv id
+
+    if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
+
+    # Check for exact match first, this trumps substring matching,
+    # especially if substring matching would be ambiguous.
+    if {[dict exists $known $x]} {
+	set id [dict get $known $x]
+	return ok
+    }
+
+    # Check for substring matches. Convert to ids and deplicate before
+    # deciding if the mismatch was due to ambiguity of the input.
+
+    set matches [complete-substr [dict keys $known] $nocase $x]
+    set n [llength $matches]
+    if {!$n} {
+	return fail
+    }
+
+    set ids {}
+    foreach m $matches {
+	lappend ids [dict get $known $m]
+    }
+    set ids [lsort -unique $ids]
+    set n [llength $ids]
+
+    if {$n > 1} {
+	return ambiguous
+    }
+
+    # Uniquely identified, success
+    set id [lindex $ids 0]
+    return ok
+}
+
+proc ::cm::util::match-enum {iv known nocase x} {
+    debug.cm/util {}
+
+    upvar 1 $iv id
+
+    if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
+
+    # Check for exact match first, this trumps prefix matching,
+    # especially if prefix matching would be ambigous.
+    if {[dict exists $known $x]} {
+	set id [dict get $known $x]
+	return ok
+    }
+
+    # Check for prefix matches. Convert to ids and deplicate before
+    # deciding if the mismatch was due to ambiguity of the input.
+
+    set matches [complete-enum [dict keys $known] $nocase $x]
+    set n [llength $matches]
+    if {!$n} {
+	return fail
+    }
+
+    set ids {}
+    foreach m $matches {
+	lappend ids [dict get $known $m]
+    }
+    set ids [lsort -unique $ids]
+    set n [llength $ids]
+
+    if {$n > 1} {
+	return ambiguous
+    }
+
+    # Uniquely identified, success
+    set id [lindex $ids 0]
+    return ok
+}
+
+# # ## ### ##### ######## ############# #####################
+
 proc ::cm::util::tspace {sub {tmax -1}} {
     debug.cm/util {}
+
     set max [linenoise columns]
     incr max -$sub
     if {$max < 0} {
@@ -131,6 +295,20 @@ proc ::cm::util::dict-fill-permute {dict} {
 
     # Extend with key permutations which do not clash
     dict for {k vlist} $dict {
+	foreach p [struct::list permutations $k] {
+	    if {[dict exists $dict $p]} continue
+	    dict set dict $p $vlist
+	}
+    }
+
+    return $dict
+}
+
+proc ::cm::util::dict-fill-permute* {dict} {
+    debug.cm/util {}
+
+    # Extend with key permutations which do not clash
+    dict for {k vlist} $dict {
 	foreach p [struct::list permutations [split $k]] {
 	    set p [join $p]
 	    if {[dict exists $dict $p]} continue
@@ -139,6 +317,19 @@ proc ::cm::util::dict-fill-permute {dict} {
     }
 
     return $dict
+}
+
+proc ::cm::util::dict-join-keys {dict {separator { }}} {
+    debug.cm/util {}
+
+    # Rewrite the dict keys (assumed to be lists) into plain strings
+    # to squash Tcl list syntax.
+
+    set r {}
+    dict for {k v} $dict {
+	dict set r [join $k $separator] $v
+    }
+    return $r
 }
 
 # # ## ### ##### ######## ############# #####################
