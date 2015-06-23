@@ -1,0 +1,51 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - printing schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-show-1.0 {schedule show, wrong args, not enough} -body {
+    run schedule show
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-show-1.1 {schedule show, wrong args, too many} -body {
+    run schedule show NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-show-1.2 {schedule show, unknown schedule} -body {
+    run schedule show BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a schedule name for input "name", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-show-2.0 {schedule show} -body {
+    run schedule show fox
+} -setup {
+    stage-open
+    run schedule add fox
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/fox.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,52 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - new schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-add-1.0 {schedule add, wrong args, not enough} -body {
+    run schedule add
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-add-1.1 {schedule add, wrong args, too many} -body {
+    run schedule add NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-add-1.2 {schedule add, duplicate, case-insensitive} -body {
+    run schedule add Foo
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Found a problem with input "name": A schedule name named "Foo" already exists. Please use a different name.}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-add-2.0 {schedule add} -body {
+    run schedule add foo
+    run schedule list
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

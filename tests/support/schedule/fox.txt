@@ -1,0 +1,6 @@
+~/.cm/managed
+
+Schedule fox:
++------+-----+
+| Name | fox |
++------+-----+
