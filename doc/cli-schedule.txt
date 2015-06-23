@@ -1,4 +1,322 @@
 
+# Specification of schedules
+
+## Use cases
+
+(1) Non-interactive bulk insertion of a schedule (like from a state dump)
+(2) (Semi-)interactive entry and editing of a schedule.
+
+### Case 1 Notes
+
+* Replication of data in the command line arguments is of no
+  consequence.  I.e. each command can repeat schedule, day, track,
+  etc. information.
+
+* Need only a minimal set of commands: creation of schedules, tracks,
+  and items.
+
+### Case 2 Notes
+
+* Avoid re-entry of data as much as possible
+
+  * Implies storage of state information which persists between
+    commands.
+
+* Need rich set of commands to create, edit, and delete schedules,
+  tracks, and items. Plus additional commands to navigate and select
+  items.
+
+## Entities and concepts
+
+### Schedules
+
+* Each schedule has a unique __name__.
+* Each schedule has zero or more __tracks__.
+* Each schedule has zero or more __items__.
+
+* At most one of all existing schedules is __current__, i.e. the focus
+  of interactive operations.
+
+* At most one item in the schedule is __current__ making it the focus
+  of interactive operations, if the schedule itself is current.
+
+* The current item, if specified, can __closed__ or __open__,
+  influencing how new items are added during interactive editing of
+  the schedule.
+
+* Each schedule has one or more days. This has to match the length of
+  the conferences using the schedule.
+
+* At most one of the days in a schedule is the __current day__ of that
+  schedule, making it the focus of interactive operations, if the
+  schedule itself is current.
+
+  This day is implied by the __current item__, except when no item is
+  current.
+
+* At most one of all existing tracks in a schedule is __current__,
+  i.e. the focus of interactive operations if that schedule is current.
+
+  This day is implied by the __current item__, except when no item is
+  current, or the item belongs to the NULL track.
+
+### Tracks
+
+* Tracks are timelines running in parallel, consisting of __items__.
+* Each track belongs to a __schedule__.
+* Each track has a __name__, unique within the schedule it belongs to.
+* The tracks of a schedule belong to all days of a conference.
+* The NULL track is implicit within each schedule, i.e. it does not
+  exist physically, but can be selected as the current track.
+
+### Items
+
+* Items are the fundamental parts of a schedule, organized as a table
+  by day, track, and starting time.
+* Implied in the above, each item belongs to a __schedule__.
+* Implied in the above, each item belongs to a __track__.  This may be
+  the NULL track.  The latter indicates an item which exists across /
+  belongs to __all__ tracks of the schedule.
+* Items can be __events__ or __placeholders__.
+* Events have a fixed major description and possibly a minor
+  description (like speaker, or other notes).
+* Placeholders have no descriptions, but a __label__ instead, which
+  identifies them uniquely, within the schedule they belong to.
+* Items can be nested in each other, but only one level deep. IOW an
+  item may have a parent item, but only if that parent has no parent
+  of its own.
+* A parent item may have multiple children.
+* An item without a parent is called __toplevel__.
+* All items have a starting time.
+  * This starting time identifies the item within its track and parent
+    (if any).
+  * For the children of a parent exactly one child must have the same
+    starting time as the parent.
+
+* All items have a length (in minutes).
+  * The __range__ of an item is the start time (inclusive) to the end
+    time (exclusive), where end time is starting time plus length.
+  * The ranges of all items within a track and parent (if any) must
+    not overlap.
+    __Reminder__: items with the NULL track are part of __all__ tracks.
+  * The length of a parent to a set of children must be the sum of the
+    length of all its children.
+    This implies that there must be __no gaps__ between the children
+    of a parent.
+    Toplevel items on the other hand may have gaps between them.
+* Toplevel items can be __pinned__, i.e. locked against movement in
+  time. This becomes important during interactive editing, as it
+  determines how items move as their environment changes and/or they
+  may block changes to said environment.
+
+
+## Schema
+
+### pschedule
+
+* id      -- row-id
+* name    -- text, unique
+* citem   -- integer, references pschedule_item   -- current item
+* cday    -- integer,                             -- current day, ignored for citem NOT NULL
+* ctrack  -- integer, references pschedule_track, -- current track, ignored for citem NOT NULL
+* copen   -- integer (bool) -- open-status if citem
+
+### pschedule_global
+
+* key      -- text, unique -- 1 row, key "current"
+* schedule -- integer, references pschedule -- current schedule
+
+* key      -- text, unique -- 1 row, key "start"
+* schedule -- integer, global starting time for schedules (minutes from midnight).
+
+### pschedule_track
+
+* id        -- row-id
+* pschedule -- integer, references pschedule -- owner
+* name      -- name, unique (schdeule, name)
+
+### pschedule_item
+
+* id        -- row-id
+* pschedule -- integer, references pschedule -- owner
+* day       -- integer
+* track     -- integer, references pschedule_track (within same schedule)
+* parent    -- integer, references pschedule_item
+* pinned    -- integer (bool)
+* start     -- integer, offset from midnight, in minutes
+* length    -- integer, minutes
+* label     -- text NULL => event, NOT NULL => placeholder
+* desc1     -- text
+* desc2     -- text
+
+## Constraint checks
+
+###
+###
+###
+###
+###
+
+### VALIDATE (schedule)
+
+```
+```
+
+
+## Item operations, and checks
+
+### OVERLAP_PINNED (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __pinned__ items overlapping
+the range
+
+  [start, start+length)
+
+within the ```schedule```.
+
+Return these items (sorted by start time, ascending).
+For good error reporting.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+### OVERLAP_BEFORE (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __unpinned__ items
+overlapping the range
+
+  [start, start+length)
+
+within the ```schedule```, with a start time less than ```start```.
+Return these items (sorted by start time, ascending).
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+### OVERLAP_AFTER (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __unpinned__ items
+overlapping the range
+
+  [start, start+length)
+
+within the ```schedule```, with a start time greater than ```start```.
+Return these items (sorted by start time, descending).
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## SIBLINGS_BEFORE (item)
+
+Find and return the siblings of ```item``` with a starting time less
+than item itself.
+
+Return these items (sorted by start time, ascending).
+
+Siblings are items with the same parent and track as the item itself.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## SIBLINGS_AFTER (item)
+
+Find and return the siblings of ```item``` with a starting time
+greater than item itself.
+
+Return these items (sorted by start time, descending).
+
+Siblings are items with the same parent and track as the item itself.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## CHILDREN (item)
+
+Find and return the children of ```item```.
+Return these items (sorted by start time, ascending).
+
+Children are items which have this item as their parent.
+
+### EXTEND (item, delta)
+
+Extend the length of the specified ```item``` by ```delta```, a positive number
+
+```
+SELECT (item) => schedule, start, length, parent, track)
+
+conflictors = OVERLAP_PINNED (schedule, start, length + delta, parent, track)
+if NOT EMPTY (conflictors)
+then FAIL (conflictors)
+
+foreach conflictor
+in OVERLAP_AFTER (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+UPDATE item : length += delta
+
+VALIDATE
+COMMIT
+```
+
+-- conflictor returned in descending order (see OVERLAP_AFTER) means
+   that the items farther away get moved first, making room for the
+   nearer items. This ensures that the movement of the nearer items
+   will not trigger further (recursive) movement.
+
+-- As we extend at towards the end OVERLAP_BEFORE cannot trigger.
+
+-- For a toplevel with children the extension opens a gap at the end
+   which must be filled immediately with a new item to avoid
+   constraint violation for groups.
+
+### SHRINK (item, delta)
+
+Reduce the length of the specified ```item``` by ```delta```, a positive number.
+
+-- TODO: move siblings up to close gap
+-- TODO: move parent siblings up (if a child), to close gap, until finding a pinned item.
+
+### MOVE (item, delta)
+
+Move the starting time specified ```item``` by ```delta```.
+
+```
+SELECT (item) => schedule, start, length, parent, track
+
+conflictors = OVERLAP_PINNED (schedule, start, length + delta, parent, track)
+if NOT EMPTY (conflictors)
+then FAIL (conflictors)
+
+foreach conflictor
+in OVERLAP_BEFORE (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+foreach conflictor
+in OVERLAP_AFTER (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+UPDATE item : start += delta
+
+VALIDATE
+COMMIT
+```
+
+### INSERT (schedule, item, start, length)
+
+-- match schedule with item -- 
+-- open? toplevel ?
+-- where to insert, what to extend
+
+### ADD (track, day, start, length, parent)
+
+
+### REMOVE (item)
+
+-- toplevel ? - shrink? move?
+
+
+
+
 cli api for specification of schedules
 ======================================
 
