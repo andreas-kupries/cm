@@ -32,8 +32,9 @@ namespace eval ::cm::db {
 }
 namespace eval ::cm::db::pschedule {
     namespace export \
-        validate known start_set start_get \
-	new remove rename
+        setup validate \
+	start_set start_get current_set current_get \
+	new remove rename all known selection details
 
     # new_track remove_track rename_track
     # select select_track select_day select_item
@@ -66,7 +67,7 @@ proc ::cm::db::pschedule::known {} {
     # dict: label -> id
     set known {}
 
-    # Validation uses the case-insensitive name for matching
+    # Validation uses the case-insensitive name for matching.
     db do eval {
         SELECT id
 	,      name
@@ -76,6 +77,62 @@ proc ::cm::db::pschedule::known {} {
     }
 
     return $known
+}
+
+proc ::cm::db::pschedule::selection {} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # dict: label -> id
+    set known {}
+
+    # Selection uses the display name.
+    db do eval {
+        SELECT dname
+	,      id
+        FROM   pschedule
+	ORDER BY dname
+    } {
+        lappend known $dname $id
+    }
+
+    return $known
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::details {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT 'xid',           id
+	,      'xdname',        dname
+	,      'xname',         name
+	,      'xcurrentday',   current_day
+	,      'xcurrenttrack', current_track
+	,      'xcurrentitem',  current_item
+	,      'xcurrentopen',  current_open
+	FROM   pschedule
+	WHERE id = :pschedule
+    }]
+}
+
+proc ::cm::db::pschedule::all {} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT id
+	,      dname
+	,      name
+	,      current_day
+	,      current_track
+	,      current_item
+	,      current_open
+	FROM   pschedule
+	ORDER BY name
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -112,16 +169,16 @@ proc ::cm::db::pschedule::new {dname} {
     # Uniqueness is case-insensitive
     set name [string tolower $dname]
 
-    do db eval {
+    db do eval {
 	INSERT
 	INTO pschedule
-	VALUES (NULL,
-		:dname,
-		:name,
-		NULL, -- current_day
-		NULL, --     ..._track
-		NULL, --     ..._item
-		NULL) --     ..._open
+	VALUES (NULL,   -- id
+		:dname, -- dname
+		:name,  -- name
+		NULL,   -- current_day
+		NULL,   --     ..._track
+		NULL,   --     ..._item
+		NULL)   --     ..._open
     }
     return [db do last_insert_rowid]
 }
@@ -252,8 +309,8 @@ proc ::cm::db::pschedule::setup {} {
 	} {
 	    {id            INTEGER 1 {} 1}
 	    {pschedule     INTEGER 1 {} 0}
-	    {name          TEXT    1 {} 0}
 	    {dname         TEXT    1 {} 0}
+	    {name          TEXT    1 {} 0}
 	} {}
     }]} {
 	db setup-error pschedule_track $error
@@ -321,7 +378,7 @@ proc ::cm::db::pschedule::setup {} {
 	} {
 	    {id            INTEGER 1 {} 1}
 	    {pschedule     INTEGER 1 {} 0}
-	    {day           INTEGER 0 {} 0}
+	    {day           INTEGER 1 {} 0}
 	    {track         INTEGER 0 {} 0}
 	    {start         INTEGER 1 {} 0}
 	    {length        INTEGER 1 {} 0}
@@ -348,14 +405,14 @@ proc ::cm::db::pschedule::setup {} {
 	} {
 	    {id    INTEGER 1 {} 1}
 	    {key   TEXT    1 {} 0}
-	    {vale  TEXT    1 {} 0}
+	    {value TEXT    1 {} 0}
 	} {}
     }]} {
 	db setup-error pschedule_global $error
     } else {
 	db do eval {
 	    -- Default start at 09:00 = 9*60 = 540
-	    INSERT INTO pschedule_global VALUES (NULL, 'start', 540)
+	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'start', 540)
 	}
     }
 

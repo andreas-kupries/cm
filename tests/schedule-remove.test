@@ -1,0 +1,52 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - deleting schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-remove-1.0 {schedule remove, wrong args, not enough} -body {
+    run schedule remove
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-remove-1.1 {schedule remove, wrong args, too many} -body {
+    run schedule remove NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-remove-1.2 {schedule remove, unknown schedule} -body {
+    run schedule remove BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a schedule name for input "name", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-remove-2.0 {schedule remove} -body {
+    run schedule remove foo
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-empty.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -46,7 +46,9 @@ proc ::cm::validate::notpschedule::validate {p x} {
     set known [pschedule known]
     set xnorm [string tolower $x]
     if {![dict exists $known $xnorm]} {
-	return $xnorm
+	# Note: Returning input as is. Normalization for
+	# case-insensitivity happens on storage.
+	return $x
     }
     fail-known-thing $p NOT-SCHEDULE "schedule name" $x
 }

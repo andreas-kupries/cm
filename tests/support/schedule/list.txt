@@ -1,0 +1,8 @@
+~/.cm/managed
+
+Schedules:
++------+
+| Name |
++------+
+| foo  |
++------+
