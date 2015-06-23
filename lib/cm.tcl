@@ -27,6 +27,8 @@ package require debug
 package require debug::caller
 package require lambda
 
+cmdr color define heading =bold ;# Table header color.
+
 #package require cm::seen  ; # set-progress
 
 # # ## ### ##### ######## ############# ######################
