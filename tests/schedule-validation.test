@@ -53,4 +53,27 @@ test schedule-tests-2.1 {test schedule-select} -body {
 } -result [viewFile support/schedule/select.txt]
 
 # # ## ### ##### ######## ############# #####################
+
+test schedule-tests-3.0 {schedule validate, detect dangling current schedule} -body {
+    run schedule validate
+} -setup {
+    stage-open
+    run schedule add fox
+    #puts [run-sql {SELECT * FROM pschedule}]
+    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'current'}]
+
+    run schedule select fox
+    #puts [run-sql {SELECT * FROM pschedule}]
+    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'current'}]
+
+    run-sql {DELETE FROM pschedule WHERE name = 'fox'}
+    # current schedule is now a dangling reference.
+
+    #puts [run-sql {SELECT * FROM pschedule}]
+    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'current'}]
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: Failed:\n:: Current schedule is specified and dangling."
+
+# # ## ### ##### ######## ############# #####################
 cleanupTests

@@ -1559,8 +1559,29 @@ cmdr create cm::cm [file tail $::argv0] {
 	description {
 	    Manage conference schedules.
 	}
+
 	common *all* -extend {
 	    section {Conference Management} Schedules
+	}
+
+	common .opt_schedule {
+	    input name {
+		The name of the schedule to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule current-or-select]
+	    }
+	}
+
+	common .opt_schedule_select {
+	    input name {
+		The name of the schedule to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule just-select]
+	    }
 	}
 
 	private add {
@@ -1573,29 +1594,30 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private remove {
 	    description { Destroy the named schedule }
-	    input name {
-		The name of the schedule to destroy.
-	    } { validate [cm::vt pschedule] }
+	    use .opt_schedule
 	} [cm::call schedule remove]
 	alias drop
 
 	private rename {
 	    description { Rename the named schedule }
 	    input name {
-		The name of the schedule to rename
+		The name of the schedule to modify
 	    } { validate [cm::vt pschedule] }
 	    input newname {
 		The new name of the schedule
 	    } { validate [cm::vt notpschedule] }
 	} [cm::call schedule rename]
 
+	private select {
+	    description { Select the named schedule as current }
+	    use .opt_schedule_select
+	} [cm::call schedule select]
+
 	# TODO: Duplicate an entire schedule under a new name.
 
 	private show {
 	    description { Show information about the named schedule }
-	    input name {
-		The name of the schedule to look at.
-	    } { validate [cm::vt pschedule] }
+	    use .opt_schedule
 	} [cm::call schedule show]
 	default
 
@@ -1603,8 +1625,53 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show a table of all known schedules }
 	} [cm::call schedule listing]
 
-	# TODO : Track and item handling
+	private validate {
+	    description { Validate schedule information }
+	} [cm::call schedule validate]
+
+	# TODO : Item handling
 	# TODO : Interactive operations.
+
+	common .schedule-context {
+	    option schedule {
+		The schedule to operate on.
+	    } {
+		alias S
+		validate [cm::vt pschedule]
+		generate [cm::call schedule current-or-select]
+	    }
+	}
+
+	officer track {
+	    private add {
+		description { Create a new track for the schedule }
+		use .schedule-context
+		input name {
+		    The name of the new track.
+		} { validate [cm::vt notpschedule-track] }
+	    } [cm::call schedule track-add]
+	    alias create
+
+	    private remove {
+		description { Destroy the named track in the schedule }
+		use .schedule-context
+		input name {
+		    The name of the track to destroy.
+		} { validate [cm::vt pschedule-track] }
+	    } [cm::call schedule track-remove]
+	    alias drop
+
+	    private rename {
+		description { Rename the named track }
+		use .schedule-context
+		input name {
+		    The name of the track to rename
+		} { validate [cm::vt pschedule-track] }
+		input newname {
+		    The new name of the track
+		} { validate [cm::vt notpschedule-track] }
+	    } [cm::call schedule track-rename]
+	}
     }
     alias schedules = schedule list
 
@@ -1651,6 +1718,22 @@ cmdr create cm::cm [file tail $::argv0] {
 	private schedule-select {
 	    description {Print selection dictionary}
 	} [cm::call schedule test-select]
+
+	common .schedule {
+	    input schedule {
+		Name of the schedule to inspect
+	    } { validate [cm::vt pschedule] }
+	}
+
+	private schedule-track-known {
+	    description {Print validation dictionary}
+	    use .schedule
+	} [cm::call schedule test-track-known]
+
+	private schedule-track-select {
+	    description {Print selection dictionary}
+	    use .schedule
+	} [cm::call schedule test-track-select]
 
 	# - -- --- ----- -------- -------------
     }

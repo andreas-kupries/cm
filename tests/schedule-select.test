@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - deleting schedules
+## schedule management - selecting current schedule
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,8 +12,8 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-remove-1.0 {schedule remove, wrong args, not enough} -body {
-    run schedule remove
+test schedule-select-1.0 {schedule select, wrong args, not enough} -body {
+    run schedule select
     # Note: name is optional.
     #       - No current schedule to fall back to.
     #       - No schedules to select either.
@@ -24,16 +24,16 @@ test schedule-remove-1.0 {schedule remove, wrong args, not enough} -body {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: Undefined: name"
 
-test schedule-remove-1.1 {schedule remove, wrong args, too many} -body {
-    run schedule remove NAME X
+test schedule-select-1.1 {schedule select, wrong args, too many} -body {
+    run schedule select NAME X
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
 
-test schedule-remove-1.2 {schedule remove, unknown schedule} -body {
-    run schedule remove BOGUS
+test schedule-select-1.2 {schedule select, unknown schedule} -body {
+    run schedule select BOGUS
 } -setup {
     stage-open
 } -cleanup {
@@ -42,15 +42,36 @@ test schedule-remove-1.2 {schedule remove, unknown schedule} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-remove-2.0 {schedule remove} -body {
-    run schedule remove foo
-    run schedule list
+test schedule-select-2.0 {schedule select} -body {
+    run schedule select fox
+} -setup {
+    stage-open
+    run schedule add fox
+} -cleanup {
+    stage-close
+} -result {~/.cm/managed
+
+Schedule "fox": Make current ... OK}
+
+test schedule-select-2.1 {schedule select, persistent} -body {
+    run schedule select foo
+    run schedules
 } -setup {
     stage-open
     run schedule add foo
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-empty.txt]
+} -result [viewFile support/schedule/list-current.txt]
+
+test schedule-select-2.2 {schedule select, persistent} -body {
+    run schedule select foo
+    run schedule show foo
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/foo-current.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
