@@ -1,0 +1,7 @@
+~/.cm/managed
+
+Schedule "SCHEDULE":
++--------+----------+
+| Name   | SCHEDULE |
+| Tracks | fox      |
++--------+----------+

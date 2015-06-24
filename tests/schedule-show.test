@@ -14,11 +14,15 @@ kt source support/common.tcl
 
 test schedule-show-1.0 {schedule show, wrong args, not enough} -body {
     run schedule show
+    # Note: name is optional.
+    #       - No current schedule to fall back to.
+    #       - No schedules to select either.
+    # => undefined
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
 
 test schedule-show-1.1 {schedule show, wrong args, too many} -body {
     run schedule show NAME X

@@ -36,7 +36,9 @@ namespace eval ::cm {
 }
 namespace eval ::cm::schedule {
     namespace export \
-	add remove rename show listing test-known test-select
+	current-or-select just-select validate \
+	add remove rename select show listing test-known test-select \
+	track-add track-remove track-rename test-track-known test-track-select
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -55,6 +57,63 @@ namespace eval ::cm::schedule {
 
 debug level  cm/schedule
 debug prefix cm/schedule {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::current-or-select {p} {
+    debug.cm/schedule {}
+    pschedule setup
+
+    # Return the current schedule
+    # Fall back to user selection of the schedule to work with.
+    # Ask user if they wish to make that schedule current as well.
+
+    set pschedule [pschedule current_get]
+    if {$pschedule ne {}} {
+	return $pschedule
+    }
+
+    set pschedule [util select $p schedule {pschedule selection}]
+    if {$pschedule eq {}} {
+	$p undefined!
+    }
+
+    set pslabel [dict get [pschedule details $pschedule] xdname]
+    if {[ask yn "Make schedule \"[color name $pslabel]\" current ?" yes]} {
+	pschedule current_set $pschedule
+    }
+
+    return $pschedule
+}
+
+proc ::cm::schedule::just-select {p} {
+    debug.cm/schedule {}
+    pschedule setup
+
+    set pschedule [util select $p schedule {pschedule selection}]
+    if {$pschedule eq {}} {
+	$p undefined!
+    }
+
+    return $pschedule
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::validate {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    try {
+	pschedule validate
+    } on error {e o} {
+	util user-error Failed:\n$e SCHEDULE VALIDATE
+    }
+
+    puts [color good OK]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 
@@ -96,7 +155,10 @@ proc ::cm::schedule::remove {config} {
     flush stdout
 
     # TODO: prevent removal if used in conferences
-    pschedule remove $pschedule
+    db do transaction {
+	pschedule remove $pschedule
+	pschedule validate
+    }
 
     puts [color good OK]
     return
@@ -113,7 +175,9 @@ proc ::cm::schedule::rename {config} {
     puts -nonewline "Rename schedule \"[color name [$config @name string]]\" to \"[color name $new]\" ... "
     flush stdout
 
-    pschedule rename $pschedule $new
+    db do transaction {
+	pschedule rename $pschedule $new
+    }
 
     puts [color good OK]
     return
@@ -121,21 +185,44 @@ proc ::cm::schedule::rename {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::schedule::select {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @name]
+
+    puts -nonewline "\nSchedule \"[color name [$config @name string]]\": Make current ... "
+    flush stdout
+
+    db do transaction {
+	pschedule current_set $pschedule
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
 proc ::cm::schedule::show {config} {
     debug.cm/schedule {}
     pschedule setup
     db show-location
 
     set pschedule [$config @name]
-    puts "\nSchedule [color name [$config @name string]]:"
+    puts "\nSchedule \"[color name [$config @name string]]\":"
 
-    set psd [pschedule details $pschedule]
+    set current_ps [pschedule current_get]
+    set psd        [pschedule details $pschedule]
     dict with psd {} ;# xid, xdname, xname, xcurrent{day,track,item,open}
 
     [table/d t {
-	$t add Name $xdname
-	# Extensions: Track list, Day range, #Items.
-	# Extension: Mark the current schedule, current track, current day.
+	if {$current_ps == $pschedule} { $t add [color note Current] }
+	$t add Name   $xdname
+	$t add Tracks [join [pschedule track-names $xid] \n]
+
+	# Extensions: Day range, #Items.
+	# Extension: Mark the current track, current day.
     }] show
     return
 }
@@ -145,12 +232,17 @@ proc ::cm::schedule::listing {config} {
     pschedule setup
     db show-location
 
+    set current_ps [pschedule current_get]
+
     puts "\nSchedules:"
-    [table t {Name} {
-	foreach {_ name _ _ _ _ _} [pschedule all] {
-	    $t add $name
-	    # Extensions: Track list, Day range, #Items.
-	    # Extension: Mark the current schedule, current track, current day.
+    [table t {{} Name Tracks} {
+	foreach {pschedule name _ _ _ _ _} [pschedule all] {
+	    set tracks [join [pschedule track-names $pschedule] \n]
+	    set mark   [expr {$current_ps == $pschedule ? "->" : ""}]
+
+	    $t add $mark $name $tracks
+	    # Extensions: Day range, #Items.
+	    # Extension: Mark the current track, current day.
 	}
     }] show
     return
@@ -171,6 +263,96 @@ proc ::cm::schedule::test-select {config} {
     pschedule setup
     db show-location
     util pdict [pschedule selection]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::track-add {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    # try to insert, report failure as user error
+
+    set pslabel   [$config @schedule string]
+    set pschedule [$config @schedule]
+    set name      [$config @name]
+
+    puts -nonewline "Schedule \"[color name $pslabel]\": Creating track \"[color name $name]\" ... "
+    flush stdout
+
+    try {
+	db do transaction {
+	    set track [pschedule track-new $pschedule $name]
+	    pschedule validate
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	util user-error $e SCHEDULE-TRACK CREATE
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-remove {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pslabel [$config @schedule string]
+    set track   [$config @name]
+
+    puts -nonewline "Schedule \"[color name $pslabel]\": Remove track \"[color name [$config @name string]]\" ... "
+    flush stdout
+
+    # TODO: prevent removal if (its schedule is) used in conferences
+    db do transaction {
+	pschedule track-remove $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-rename {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pslabel [$config @schedule string]
+    set track   [$config @name]
+    set new     [$config @newname]
+
+    puts -nonewline "Schedule \"[color name $pslabel]\": Rename track \"[color name [$config @name string]]\" to \"[color name $new]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-rename $track $new
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::test-track-known {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+    util pdict [pschedule track-known [$config @schedule]]
+    return
+}
+
+proc ::cm::schedule::test-track-select {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+    util pdict [pschedule track-selection [$config @schedule]]
     return
 }
 

@@ -34,9 +34,10 @@ namespace eval ::cm::db::pschedule {
     namespace export \
         setup validate \
 	start_set start_get current_set current_get \
-	new remove rename all known selection details
+	new remove rename all known selection details \
+	track-new track-remove track-rename track-all \
+	track-names track-known track-selection track-details
 
-    # new_track remove_track rename_track
     # select select_track select_day select_item
     namespace ensemble create
 
@@ -53,8 +54,84 @@ debug prefix cm/db/pschedule {[debug caller] | }
 proc ::cm::db::pschedule::validate {} {
     debug.cm/db/pschedule {}
     setup
+    Vstart
 
-    # I. pschedules - All constraints are enforced by the database.
+    # I.  pschedules - Most constraints are enforced by the database.
+    V-schedule-current-dangling
+
+    # II.  ..._track - Most constraints are enforced by the database.
+    # II.a. Assert ("Current track is not dangling")
+    # II.b. Assert ("No tracks are dangling")
+
+    # III. ..._item - Most constraints require separate checks.
+    # III.a. Assert ("Current item is not dangling")
+    # III.b. Assert ("No item are dangling")
+    # III.todo - nesting constraints
+    # III.todo - timing constraints
+
+    Vreport
+    return
+}
+
+proc ::cm::db::pschedule::Vstart {} {
+    variable vissues {}
+    return
+}
+
+proc ::cm::db::pschedule::Vfail {args} {
+    variable vissues
+    lappend vissues [join $args]
+    return
+}
+
+proc ::cm::db::pschedule::Vreport {args} {
+    variable vissues
+    if {![llength $vissues]} return
+    return -code error \
+	-errorcode {CM SCHEDULE VALIDATION} \
+	":: [join $vissues "\n:: "]"
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::V-schedule-current-dangling {} {
+    debug.cm/db/pschedule {}
+    # Assert ("Current schedule is NOT NULL => Current schedule is not dangling")
+
+    if 0 {
+puts PRE=[db do exists {
+	SELECT value
+	FROM pschedule_global
+	WHERE key = 'current'
+	AND   value IS NOT NULL
+	AND   value != ''
+    }]
+
+puts POST=[db do onecolumn {
+	-- post condition -- check the value against existing schedules.
+	SELECT count(*)
+	FROM   pschedule
+	WHERE  id = (SELECT value
+		     FROM   pschedule_global
+		     WHERE  key = 'current')
+    }]
+}
+
+    if {[db do exists {
+	-- pre condition -- current schedule must be set, not null, not empty
+	SELECT value
+	FROM   pschedule_global
+	WHERE  key = 'current'
+	AND    value IS NOT NULL
+	AND    value != ''
+    }] && ![db do onecolumn {
+	-- post condition -- check the value against existing schedules.
+	SELECT count(*)
+	FROM   pschedule
+	WHERE  id = (SELECT value
+		     FROM   pschedule_global
+		     WHERE  key = 'current')
+    }]} { Vfail "Current schedule is specified and dangling." }
     return
 }
 
@@ -137,31 +214,6 @@ proc ::cm::db::pschedule::all {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::start_set {minutes} {
-    debug.cm/db/pschedule {}
-    setup
-
-    db do eval {
-	INSERT OR REPLACE
-	INTO pschedule_global
-	VALUES (NULL, 'start', :minutes)
-    }
-    return
-}
-
-proc ::cm::db::pschedule::start_get {} {
-    debug.cm/db/pschedule {}
-    setup
-
-    return [db do onecolumn {
-	SELECT value
-	FROM pschedule_global
-	WHERE key = 'start'
-    }]
-}
-
-# # ## ### ##### ######## ############# ######################
-
 proc ::cm::db::pschedule::new {dname} {
     debug.cm/db/pschedule {}
     setup
@@ -226,6 +278,201 @@ proc ::cm::db::pschedule::rename {pschedule dname} {
 	WHERE  id    = :pschedule
     }
     return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::track-known {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # dict: label -> id
+    set known {}
+
+    # Validation uses the case-insensitive name for matching.
+    db do eval {
+        SELECT id
+	,      name
+        FROM   pschedule_track
+	WHERE  pschedule = :pschedule
+    } {
+        dict set known $name $id
+    }
+
+    return $known
+}
+
+proc ::cm::db::pschedule::track-selection {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # dict: label -> id
+    set known {}
+
+    # Selection uses the display name.
+    db do eval {
+        SELECT dname
+	,      id
+        FROM   pschedule_track
+	WHERE  pschedule = :pschedule
+	ORDER BY dname
+    } {
+        lappend known $dname $id
+    }
+
+    return $known
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::track-details {track} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT 'xid',    id
+	,      'xdname', dname
+	,      'xname',  name
+	FROM   pschedule_track
+	WHERE  id = :track
+    }]
+}
+
+proc ::cm::db::pschedule::track-all {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT id
+	,      dname
+	,      name
+	FROM   pschedule_track
+	WHERE  pschedule = :pschedule
+	ORDER BY name
+    }]
+}
+
+proc ::cm::db::pschedule::track-names {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT dname
+	FROM   pschedule_track
+	WHERE  pschedule = :pschedule
+	ORDER BY name
+    }]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::track-new {pschedule dname} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # Uniqueness is case-insensitive
+    set name [string tolower $dname]
+
+    db do eval {
+	INSERT
+	INTO pschedule_track
+	VALUES (NULL,       -- id
+		:pschedule, -- pschedule
+		:dname,     -- dname
+		:name)      -- name
+
+    }
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::db::pschedule::track-remove {track} {
+    debug.cm/db/pschedule {}
+    setup
+
+    db do eval {
+	-- Drop items referencing the track.
+	-- The affect schedule is implied in the track.
+	DELETE
+	FROM   pschedule_item
+	WHERE  track = :track
+	;
+	-- Drop current track in the schedule, if it is the removed track
+	UPDATE pschedule
+	SET    current_track = NULL
+	WHERE  current_track = :track
+	;
+	-- Drop track itself.
+	DELETE
+	FROM   pschedule_track
+	WHERE  id = :track
+    }
+    return
+}
+
+proc ::cm::db::pschedule::track-rename {track dname} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # Uniqueness is case-insensitive
+    set name [string tolower $dname]
+
+    db do eval {
+	UPDATE pschedule_track
+	SET    dname = :dname
+	,      name  = :name
+	WHERE  id    = :track
+    }
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::start_set {minutes} {
+    debug.cm/db/pschedule {}
+    setup
+
+    db do eval {
+	INSERT OR REPLACE
+	INTO   pschedule_global
+	VALUES (NULL, 'start', :minutes)
+    }
+    return
+}
+
+proc ::cm::db::pschedule::start_get {} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do onecolumn {
+	SELECT value
+	FROM   pschedule_global
+	WHERE  key = 'start'
+    }]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::current_set {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    db do eval {
+	INSERT OR REPLACE
+	INTO   pschedule_global
+	VALUES (NULL, 'current', :pschedule)
+    }
+    return
+}
+
+proc ::cm::db::pschedule::current_get {} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do onecolumn {
+	SELECT value
+	FROM   pschedule_global
+	WHERE  key = 'current'
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
