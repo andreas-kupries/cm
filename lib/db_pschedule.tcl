@@ -33,7 +33,7 @@ namespace eval ::cm::db {
 namespace eval ::cm::db::pschedule {
     namespace export \
         setup validate \
-	start_set start_get current_set current_get \
+	start_set start_get active_set active_get \
 	new remove rename all known selection details \
 	track-new track-remove track-rename track-all \
 	track-names track-known track-selection track-details \
@@ -59,14 +59,14 @@ proc ::cm::db::pschedule::validate {} {
     Vstart
 
     # I.  pschedules - Most constraints are enforced by the database.
-    V-schedule-current-dangling
+    V-schedule-active-missing
 
     # II.  ..._track - Most constraints are enforced by the database.
-    # II.a. Assert ("Current track is not dangling")
+    # II.a. Assert ("Active track is not dangling")
     # II.b. Assert ("No tracks are dangling")
 
     # III. ..._item - Most constraints require separate checks.
-    # III.a. Assert ("Current item is not dangling")
+    # III.a. Assert ("Active item is not dangling")
     # III.b. Assert ("No items are dangling")
     # III.c. Assert ("item.pschedule == item.track.pschedule f.a item: item.track != NULL")
     # III.d. Assert ("item.label  != NULL => item.desc_* == NULL f.a item")
@@ -108,25 +108,18 @@ proc ::cm::db::pschedule::Vreport {args} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::V-schedule-current-dangling {} {
+proc ::cm::db::pschedule::V-schedule-active-missing {} {
     debug.cm/db/pschedule {}
-    # Assert ("Current schedule is NOT NULL => Current schedule is not dangling")
+    # Assert ("Active schedule X is NOT NULL => Schedule X exists")
 
-    if {[db do exists {
-	-- pre condition -- current schedule must be set, not null, not empty
-	SELECT value
-	FROM   pschedule_global
-	WHERE  key = 'current'
-	AND    value IS NOT NULL
-	AND    value != ''
-    }] && ![db do onecolumn {
-	-- post condition -- check the value against existing schedules.
+    if {[db do onecolumn {
 	SELECT count(*)
-	FROM   pschedule
-	WHERE  id = (SELECT value
-		     FROM   pschedule_global
-		     WHERE  key = 'current')
-    }]} { Vfail "Current schedule is specified and dangling." }
+	FROM            pschedule_global G --
+	LEFT OUTER JOIN pschedule        S --
+	ON              G.value = S.id     -- G-->S reference
+	WHERE G.key = 'schedule/active'            -- limit to active schedules
+	AND   S.id IS NULL                 -- and keep only deref failures
+    }]} { Vfail "The active schedule does not exist." }
     return
 }
 
@@ -178,13 +171,13 @@ proc ::cm::db::pschedule::details {pschedule} {
     setup
 
     return [db do eval {
-	SELECT 'xid',           id
-	,      'xdname',        dname
-	,      'xname',         name
-	,      'xcurrentday',   current_day
-	,      'xcurrenttrack', current_track
-	,      'xcurrentitem',  current_item
-	,      'xcurrentopen',  current_open
+	SELECT 'xid',          id
+	,      'xdname',       dname
+	,      'xname',        name
+	,      'xactiveday',   active_day
+	,      'xactivetrack', active_track
+	,      'xactiveitem',  active_item
+	,      'xactiveopen',  active_open
 	FROM   pschedule
 	WHERE id = :pschedule
     }]
@@ -198,10 +191,10 @@ proc ::cm::db::pschedule::all {} {
 	SELECT id
 	,      dname
 	,      name
-	,      current_day
-	,      current_track
-	,      current_item
-	,      current_open
+	,      active_day
+	,      active_track
+	,      active_item
+	,      active_open
 	FROM   pschedule
 	ORDER BY name
     }]
@@ -222,7 +215,7 @@ proc ::cm::db::pschedule::new {dname} {
 	VALUES (NULL,   -- id
 		:dname, -- dname
 		:name,  -- name
-		NULL,   -- current_day
+		NULL,   -- active_day
 		NULL,   --     ..._track
 		NULL,   --     ..._item
 		NULL)   --     ..._open
@@ -235,11 +228,11 @@ proc ::cm::db::pschedule::remove {pschedule} {
     setup
 
     db do eval {
-	-- Drop current schedule, if referencing the deleted one.
+	-- Drop active schedule, if referencing the deleted one.
 	-- Ignored if referencing a different schedule.
 	DELETE
 	FROM pschedule_global
-	WHERE key   = 'current'
+	WHERE key   = 'schedule/active'
 	AND   value = :pschedule
 	;
 	-- Drop dependent information (items, tracks) first ...
@@ -415,10 +408,10 @@ proc ::cm::db::pschedule::track-remove {track} {
 	FROM   pschedule_item
 	WHERE  track = :track
 	;
-	-- Drop current track in the schedule, if it is the removed track
+	-- Drop active track in the schedule, if it is the removed track
 	UPDATE pschedule
-	SET    current_track = NULL
-	WHERE  current_track = :track
+	SET    active_track = NULL
+	WHERE  active_track = :track
 	;
 	-- Drop track itself.
 	DELETE
@@ -471,26 +464,26 @@ proc ::cm::db::pschedule::start_get {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::current_set {pschedule} {
+proc ::cm::db::pschedule::active_set {pschedule} {
     debug.cm/db/pschedule {}
     setup
 
     db do eval {
 	INSERT OR REPLACE
 	INTO   pschedule_global
-	VALUES (NULL, 'current', :pschedule)
+	VALUES (NULL, 'schedule/active', :pschedule)
     }
     return
 }
 
-proc ::cm::db::pschedule::current_get {} {
+proc ::cm::db::pschedule::active_get {} {
     debug.cm/db/pschedule {}
     setup
 
     return [db do onecolumn {
 	SELECT value
 	FROM   pschedule_global
-	WHERE  key = 'current'
+	WHERE  key = 'schedule/active'
     }]
 }
 
@@ -515,41 +508,41 @@ proc ::cm::db::pschedule::setup {} {
 	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
 	    ,   dname		TEXT	NOT NULL
 	    ,   name		TEXT	NOT NULL UNIQUE	-- normalized to lowercase
-	    ,   current_day	INTEGER					-- Ignore if current_item
-	    ,   current_track	INTEGER REFERENCES pschedule_track	-- is NOT NULL.
-	    ,   current_item	INTEGER REFERENCES pschedule_item
-	    ,   current_open	INTEGER
+	    ,   active_day	INTEGER					-- Ignore if active_item
+	    ,   active_track	INTEGER REFERENCES pschedule_track	-- is NOT NULL.
+	    ,   active_item	INTEGER REFERENCES pschedule_item
+	    ,   active_open	INTEGER
 	    --
 	    -- Notes
 	    -- * Each schedule has a unique __name__.
 	    -- * Each schedule has zero or more __tracks__.
 	    -- * Each schedule has zero or more __items__.
-	    -- * At most one of all existing schedules is __current__, i.e. the focus
+	    -- * At most one of all existing schedules is __active__, i.e. the focus
 	    --   of interactive operations.
-	    -- * At most one item in the schedule is __current__ making it the focus
-	    --   of interactive operations, if the schedule itself is current.
-	    -- * The current item, if specified, can __closed__ or __open__,
+	    -- * At most one item in the schedule is __active__ making it the focus
+	    --   of interactive operations, if the schedule itself is active.
+	    -- * The active item, if specified, can __closed__ or __open__,
 	    --   influencing how new items are added during interactive editing of
 	    --   the schedule.
 	    -- * Each schedule has one or more days. This has to match the length of
 	    --   the conferences using the schedule.
-	    -- * At most one of the days in a schedule is the __current day__ of that
+	    -- * At most one of the days in a schedule is the __active day__ of that
 	    --   schedule, making it the focus of interactive operations, if the
-	    --   schedule itself is current.
-	    --   This day is implied by the __current item__, except when no item is
-	    --   current.
-	    -- * At most one of all existing tracks in a schedule is __current__,
-	    --   i.e. the focus of interactive operations if that schedule is current.
-	    --   This day is implied by the __current item__, except when no item is
-	    --   current, or the item belongs to the NULL track.
+	    --   schedule itself is active.
+	    --   This day is implied by the __active item__, except when no item is
+	    --   active.
+	    -- * At most one of all existing tracks in a schedule is __active__,
+	    --   i.e. the focus of interactive operations if that schedule is active.
+	    --   This day is implied by the __active item__, except when no item is
+	    --   active, or the item belongs to the NULL track.
 	} {
-	    {id            INTEGER 1 {} 1}
-	    {dname         TEXT    1 {} 0}
-	    {name          TEXT    1 {} 0}
-	    {current_day   INTEGER 0 {} 0}
-	    {current_track INTEGER 0 {} 0}
-	    {current_item  INTEGER 0 {} 0}
-	    {current_open  INTEGER 0 {} 0}
+	    {id           INTEGER 1 {} 1}
+	    {dname        TEXT    1 {} 0}
+	    {name         TEXT    1 {} 0}
+	    {active_day   INTEGER 0 {} 0}
+	    {active_track INTEGER 0 {} 0}
+	    {active_item  INTEGER 0 {} 0}
+	    {active_open  INTEGER 0 {} 0}
 	} {}
     }]} {
 	db setup-error pschedule $error
@@ -571,7 +564,7 @@ proc ::cm::db::pschedule::setup {} {
 	    -- * Each track has a __name__, unique within the schedule it belongs to.
 	    -- * The tracks of a schedule belong to all days of a conference.
 	    -- * The NULL track is implicit within each schedule, i.e. it does not
-	    --   exist physically, but can be selected as the current track.
+	    --   exist physically, but can be selected as the active track.
 	} {
 	    {id            INTEGER 1 {} 1}
 	    {pschedule     INTEGER 1 {} 0}
@@ -666,8 +659,8 @@ proc ::cm::db::pschedule::setup {} {
 	    ,	value	TEXT	NOT NULL		-- configuration variable, data
 
 	    --
-	    -- key == "current" : value INTEGER REFERENCES pschedule "current schedule"
-	    -- key == "start"   : value INTEGER "start time, offset from midnight [min]"
+	    -- key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
+	    -- key == "start"           : value INTEGER "start time, offset from midnight [min]"
 	} {
 	    {id    INTEGER 1 {} 1}
 	    {key   TEXT    1 {} 0}

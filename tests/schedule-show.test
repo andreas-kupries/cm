@@ -15,7 +15,7 @@ kt source support/common.tcl
 test schedule-show-1.0 {schedule show, wrong args, not enough} -body {
     run schedule show
     # Note: name is optional.
-    #       - No current schedule to fall back to.
+    #       - No active schedule to fall back to.
     #       - No schedules to select either.
     # => undefined
 } -setup {
