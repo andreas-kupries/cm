@@ -36,7 +36,9 @@ namespace eval ::cm::db::pschedule {
 	start_set start_get current_set current_get \
 	new remove rename all known selection details \
 	track-new track-remove track-rename track-all \
-	track-names track-known track-selection track-details
+	track-names track-known track-selection track-details \
+	item-add-event item-add-placeholder \
+	day-max
 
     # select select_track select_day select_item
     namespace ensemble create
@@ -65,9 +67,21 @@ proc ::cm::db::pschedule::validate {} {
 
     # III. ..._item - Most constraints require separate checks.
     # III.a. Assert ("Current item is not dangling")
-    # III.b. Assert ("No item are dangling")
-    # III.todo - nesting constraints
-    # III.todo - timing constraints
+    # III.b. Assert ("No items are dangling")
+    # III.c. Assert ("item.pschedule == item.track.pschedule f.a item: item.track != NULL")
+    # III.d. Assert ("item.label  != NULL => item.desc_* == NULL f.a item")
+    # III.e. Assert ("item.desc_* != NULL => item.label  == NULL f.a item")
+    # III.f. Assert ("item.parent.parent = NULL f.a [0] item: item.parent != NULL")
+    # III.g. Assert ("item1.start != item2.start f.a [1] item1, item2: item1 !== item2 && item1.{schedule,track,day,parent} == item2.{schedule,track,day,parent}, Note: include items with track == NULL (part of all tracks)")
+    # III.h. Assert ("item.length == sum(child.length) f.a. item: f.a. child: child.parent == item")
+    # III.i. Assert ("nil = intersect(range(item1),range(item2)) f.a [1]") - no overlaps
+    # III.j. Assert ("ranges of children in a parent have no gaps")
+    # III.k. Assert ("item.parent.track     == item.track     f.a [0]")
+    # III.l. Assert ("item.parent.day       == item.day       f.a [0]")
+    # III.m. Assert ("item.parent.pschedule == item.pschedule f.a [0]")
+    # III.n. Assert ("item.pinned         => item.parent == NULL f.a item")
+    # III.o. Assert ("item.parent != NULL => !item.pinned        f.a item")
+    # III.p. Assert ("covered days of schedule have no gaps f.a schedule")
 
     Vreport
     return
@@ -97,25 +111,6 @@ proc ::cm::db::pschedule::Vreport {args} {
 proc ::cm::db::pschedule::V-schedule-current-dangling {} {
     debug.cm/db/pschedule {}
     # Assert ("Current schedule is NOT NULL => Current schedule is not dangling")
-
-    if 0 {
-puts PRE=[db do exists {
-	SELECT value
-	FROM pschedule_global
-	WHERE key = 'current'
-	AND   value IS NOT NULL
-	AND   value != ''
-    }]
-
-puts POST=[db do onecolumn {
-	-- post condition -- check the value against existing schedules.
-	SELECT count(*)
-	FROM   pschedule
-	WHERE  id = (SELECT value
-		     FROM   pschedule_global
-		     WHERE  key = 'current')
-    }]
-}
 
     if {[db do exists {
 	-- pre condition -- current schedule must be set, not null, not empty
@@ -278,6 +273,30 @@ proc ::cm::db::pschedule::rename {pschedule dname} {
 	WHERE  id    = :pschedule
     }
     return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::day-max {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # Determine stored max day for the schedule.
+    set max [db do onecolumn {
+        SELECT MAX (day)
+        FROM   pschedule_item
+	WHERE  pschedule = :pschedule
+    }]
+
+    # And derive the max day the user is able to enter, one more than
+    # stored.
+    if {$max eq {}} {
+	set max 0
+    } else {
+	incr max
+    }
+
+    return $max
 }
 
 # # ## ### ##### ######## ############# ######################

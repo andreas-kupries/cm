@@ -27,6 +27,7 @@ package require cm::util
 package require cm::table
 package require cm::db
 package require cm::db::pschedule
+package require cm::validate::pschedule-day
 
 # # ## ### ##### ######## ############# ######################
 
@@ -38,7 +39,9 @@ namespace eval ::cm::schedule {
     namespace export \
 	current-or-select just-select validate \
 	add remove rename select show listing test-known test-select \
-	track-add track-remove track-rename test-track-known test-track-select
+	track-add track-remove track-rename test-track-known test-track-select \
+	item-add-event item-add-placeholder test-item-day-known
+    #item-remove item-rename
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -46,6 +49,7 @@ namespace eval ::cm::schedule {
     namespace import ::cm::db
     namespace import ::cm::db::pschedule
     namespace import ::cm::util
+    namespace import ::cm::validate::pschedule-day
 
     namespace import ::cm::table::do
     namespace import ::cm::table::dict
@@ -353,6 +357,97 @@ proc ::cm::schedule::test-track-select {config} {
     pschedule setup
     db show-location
     util pdict [pschedule track-selection [$config @schedule]]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::item-add-event {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set track     [$config @track]
+    set day       [$config @day]
+    set start     [$config @start-time]
+    set length    [$config @length]
+    set desc      [$config @description]
+    set note      [$config @note]
+
+    # try to insert, report failure as user error
+
+    set pslabel   [$config @schedule string]
+
+    puts "Schedule \"[color name $pslabel]\": Creating event \"$description\" ... "
+    puts "* Track:  [color name [$config @track string]]"
+    puts "* Day:    $day"
+    puts "* Start:  [pschedule-day 2external $start]"
+    puts "* Length: $length"
+    puts "* Note:   $note"
+
+    try {
+	db do transaction {
+	    set track [pschedule item-new-event $pschedule $track $day $start $length $desc $note]
+	    pschedule validate
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	util user-error $e SCHEDULE-ITEM CREATE
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::item-add-placeholder {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set track     [$config @track]
+    set day       [$config @day]
+    set start     [$config @start-time]
+    set length    [$config @length]
+    set label     [$config @label]
+
+    # try to insert, report failure as user error
+
+    set pslabel   [$config @schedule string]
+
+    puts "Schedule \"[color name $pslabel]\": Creating placeholder \"$label\" ... "
+    puts "* Track:       [color name [$config @track string]]"
+    puts "* Day:         $day"
+    puts "* Start:       [pschedule-day 2external $start]"
+    puts "* Length:      $length"
+    puts "* Description: $description"
+
+    try {
+	db do transaction {
+	    set track [pschedule item-new-placeholder $pschedule $track $day $start $length $label]
+	    pschedule validate
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	util user-error $e SCHEDULE-ITEM CREATE
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::test-item-day-known {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+    util pdict \
+	[dict create \
+	     max [pschedule day-max [$config @schedule]]]
     return
 }
 
