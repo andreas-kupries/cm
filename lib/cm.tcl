@@ -1630,7 +1630,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call schedule validate]
 
 	# TODO : Item handling
-	# TODO : Interactive operations.
 
 	common .schedule-context {
 	    option schedule {
@@ -1639,6 +1638,45 @@ cmdr create cm::cm [file tail $::argv0] {
 		alias S
 		validate [cm::vt pschedule]
 		generate [cm::call schedule current-or-select]
+	    }
+	}
+
+	common .full-context {
+	    option schedule {
+		The schedule to use.
+	    } {
+		alias S
+		validate [cm::vt pschedule]
+		generate [cm::call schedule current-or-select]
+	    }
+	    option track {
+		The track to use.
+	    } {
+		alias T
+		# TODO: validation, selection
+	    }
+	    option day {
+		The day to use
+	    } {
+		alias D
+		# TODO: validation, selection
+	    }
+	    option start-time {
+		The start time of the item
+	    } {
+		alias B
+		# TODO: validation, selection
+	    }
+	    option length {
+		The length of the item
+	    } {
+		alias L
+		# TODO: validation, selection
+	    }
+	    option in {
+		The parent of the item, if any.
+	    } {
+		# TODO: validation
 	    }
 	}
 
@@ -1672,6 +1710,74 @@ cmdr create cm::cm [file tail $::argv0] {
 		} { validate [cm::vt notpschedule-track] }
 	    } [cm::call schedule track-rename]
 	}
+
+	officer item {
+	    private event {
+		description { Create a new fixed event for the schedule }
+		use .full-context
+		input description {
+		    The description of the new event
+		} { validate str }
+		input note {
+		    Additional notes for the new event
+		} { optional ; validate str }
+	    } [cm::call schedule item-add-event]
+
+	    private placeholder {
+		description { Create a new placeholder for the schedule }
+		use .full-context
+		input label {
+		    The label of the placeholder.
+		} { validate str }
+	    } [cm::call schedule item-add-placeholder]
+
+	    # edit operations -- interactive, item via current context.
+	    private remove {
+		description { Destroy the item in the schedule }
+		use .schedule-context
+		input ref {
+		    The identifier of the item to work with.
+		} { validate [cm::vt pschedule-item] }
+	    } [cm::call schedule item-remove]
+	    alias drop
+
+	    private rename {
+		description { Rename the specified item }
+		use .schedule-context
+		input ref {
+		    The identifier of the item to work with.
+		} { validate [cm::vt pschedule-item] }
+		input newname {
+		    The new description or label of the item
+		} { validate str }
+	    } [cm::call schedule item-rename]
+	}
+	alias event       = item event
+	alias placeholder = item placeholder
+
+	# TODO : Interactive operations.
+	##
+	# Navigation - Active/Current item, day, track
+	# - Three axes: day, time, track
+	# - Day-axis:
+	#   - f(irst), l(ast),
+	#   - p(rev(ious)), n(ext)
+	# - Time-axis:
+	#   - t(op), b(ottom),
+	#   - u(p)/f(orw(ard)), d(own)/back(ward)
+	# - Track-axis:
+	#   - g(o) "name" (no inherent ordering)
+	##
+	# Selection
+	# - SetMark, FromMark, Include, Exclude
+	# - Copy, Cut, Paste
+	# = Selection limits: Single day, track ?
+	# Enter/Close
+	##
+	# Pinning
+	# - Interactive entry of new items - movable by default ?!
+	# - Bulk        entry of new items - pinned  by default !?
+
     }
     alias schedules = schedule list
 
