@@ -37,7 +37,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::schedule {
     namespace export \
-	current-or-select just-select validate \
+	active-or-select just-select validate \
 	add remove rename select show listing test-known test-select \
 	track-add track-remove track-rename test-track-known test-track-select \
 	item-add-event item-add-placeholder test-item-day-known
@@ -64,15 +64,15 @@ debug prefix cm/schedule {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::schedule::current-or-select {p} {
+proc ::cm::schedule::active-or-select {p} {
     debug.cm/schedule {}
     pschedule setup
 
-    # Return the current schedule
+    # Return the active schedule
     # Fall back to user selection of the schedule to work with.
-    # Ask user if they wish to make that schedule current as well.
+    # Ask user if they wish to make that schedule active as well.
 
-    set pschedule [pschedule current_get]
+    set pschedule [pschedule active_get]
     if {$pschedule ne {}} {
 	return $pschedule
     }
@@ -83,8 +83,8 @@ proc ::cm::schedule::current-or-select {p} {
     }
 
     set pslabel [dict get [pschedule details $pschedule] xdname]
-    if {[ask yn "Make schedule \"[color name $pslabel]\" current ?" yes]} {
-	pschedule current_set $pschedule
+    if {[ask yn "Activate schedule \"[color name $pslabel]\" ?" yes]} {
+	pschedule active_set $pschedule
     }
 
     return $pschedule
@@ -196,11 +196,11 @@ proc ::cm::schedule::select {config} {
 
     set pschedule [$config @name]
 
-    puts -nonewline "\nSchedule \"[color name [$config @name string]]\": Make current ... "
+    puts -nonewline "\nSchedule \"[color name [$config @name string]]\": Activating ... "
     flush stdout
 
     db do transaction {
-	pschedule current_set $pschedule
+	pschedule active_set $pschedule
 	pschedule validate
     }
 
@@ -216,17 +216,17 @@ proc ::cm::schedule::show {config} {
     set pschedule [$config @name]
     puts "\nSchedule \"[color name [$config @name string]]\":"
 
-    set current_ps [pschedule current_get]
+    set active_ps [pschedule active_get]
     set psd        [pschedule details $pschedule]
-    dict with psd {} ;# xid, xdname, xname, xcurrent{day,track,item,open}
+    dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
 
     [table/d t {
-	if {$current_ps == $pschedule} { $t add [color note Current] }
+	if {$active_ps == $pschedule} { $t add [color note Active] }
 	$t add Name   $xdname
 	$t add Tracks [join [pschedule track-names $xid] \n]
 
 	# Extensions: Day range, #Items.
-	# Extension: Mark the current track, current day.
+	# Extension: Mark the active track and day.
     }] show
     return
 }
@@ -236,17 +236,18 @@ proc ::cm::schedule::listing {config} {
     pschedule setup
     db show-location
 
-    set current_ps [pschedule current_get]
+    set active_ps [pschedule active_get]
 
     puts "\nSchedules:"
     [table t {{} Name Tracks} {
 	foreach {pschedule name _ _ _ _ _} [pschedule all] {
 	    set tracks [join [pschedule track-names $pschedule] \n]
-	    set mark   [expr {$current_ps == $pschedule ? "->" : ""}]
 
+	    util highlight-current active_ps $pschedule mark name tracks
 	    $t add $mark $name $tracks
+
 	    # Extensions: Day range, #Items.
-	    # Extension: Mark the current track, current day.
+	    # Extension: Mark the active track, and day.
 	}
     }] show
     return

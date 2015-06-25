@@ -1,0 +1,8 @@
+~/.cm/managed
+
+Schedule "foo":
++--------+-----+
+| Active |     |
+| Name   | foo |
+| Tracks |     |
++--------+-----+

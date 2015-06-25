@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - selecting current schedule
+## schedule management - selecting the active schedule
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -15,7 +15,6 @@ kt source support/common.tcl
 test schedule-select-1.0 {schedule select, wrong args, not enough} -body {
     run schedule select
     # Note: name is optional.
-    #       - No current schedule to fall back to.
     #       - No schedules to select either.
     # => undefined
 } -setup {
@@ -51,7 +50,7 @@ test schedule-select-2.0 {schedule select} -body {
     stage-close
 } -result {~/.cm/managed
 
-Schedule "fox": Make current ... OK}
+Schedule "fox": Activating ... OK}
 
 test schedule-select-2.1 {schedule select, persistent} -body {
     run schedule select foo
@@ -61,7 +60,7 @@ test schedule-select-2.1 {schedule select, persistent} -body {
     run schedule add foo
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-current.txt]
+} -result [viewFile support/schedule/list-active.txt]
 
 test schedule-select-2.2 {schedule select, persistent} -body {
     run schedule select foo
@@ -71,7 +70,7 @@ test schedule-select-2.2 {schedule select, persistent} -body {
     run schedule add foo
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/foo-current.txt]
+} -result [viewFile support/schedule/foo-active.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

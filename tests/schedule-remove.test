@@ -15,7 +15,7 @@ kt source support/common.tcl
 test schedule-remove-1.0 {schedule remove, wrong args, not enough} -body {
     run schedule remove
     # Note: name is optional.
-    #       - No current schedule to fall back to.
+    #       - No active schedule to fall back to.
     #       - No schedules to select either.
     # => undefined
 } -setup {

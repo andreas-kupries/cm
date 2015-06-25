@@ -1,0 +1,60 @@
+
+A, elements refer to B
+B, elements refer to A
+
+
+[0] "cross join"
+
+    FROM A CROSS JOIN B
+
+    cartesian product A x B, no filtering.
+
+    FROM A, B
+
+    implicit cross join.
+
+[1] match up A and B, leaving out the rows which do not exist in the
+    other
+
+    "equi-join" (intersection)
+
+    cross-join, plus filter conditions
+
+    WHERE A.ref_b = B.id
+    WHERE A.id    = B.ref_a
+
+[2] "inner join"
+
+    FROM A INNER JOIN B ON A.ref_b = B.id
+    FROM A INNER JOIN B ON A.id = B.ref_a
+
+    ignores rows where A.ref_b == NULL, B.id == NULL,
+    etc.
+
+    Equivalent to [1] equi-join.
+
+
+
+[3] "left outer join"
+
+    FROM A LEFT OUTER JOIN B ON A.ref_b = B.id
+
+    inner join, plus rows of A without a matching B
+    i.e. A.ref_b is NULL, or has no matching B.id
+
+    filtering on some B.* = NULL
+    => find the rows of A without matching B
+
+    <=> A - B
+
+    FROM A LEFT OUTER JOIN B ON A.id = B.ref_a
+
+
+
+[4] "right outer join"
+
+
+[5] "full outer join"
+
+
+

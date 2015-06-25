@@ -1570,7 +1570,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {
 		optional
 		validate [cm::vt pschedule]
-		generate [cm::call schedule current-or-select]
+		generate [cm::call schedule active-or-select]
 	    }
 	}
 
@@ -1609,7 +1609,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call schedule rename]
 
 	private select {
-	    description { Select the named schedule as current }
+	    description { Activate the named schedule }
 	    use .opt_schedule_select
 	} [cm::call schedule select]
 
@@ -1637,7 +1637,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {
 		alias S
 		validate [cm::vt pschedule]
-		generate [cm::call schedule current-or-select]
+		generate [cm::call schedule active-or-select]
 	    }
 	}
 
@@ -1647,7 +1647,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {
 		alias S
 		validate [cm::vt pschedule]
-		generate [cm::call schedule current-or-select]
+		generate [cm::call schedule active-or-select]
 	    }
 	    option track {
 		The track to use.
@@ -1738,7 +1738,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		} { validate str }
 	    } [cm::call schedule item-add-placeholder]
 
-	    # edit operations -- interactive, item via current context.
+	    # edit operations -- interactive, item via active context.
 	    private remove {
 		description { Destroy the item in the schedule }
 		use .schedule-context
@@ -1764,7 +1764,7 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# TODO : Interactive operations.
 	##
-	# Navigation - Active/Current item, day, track
+	# Navigation - Active item, day, track, time
 	# - Three axes: day, time, track
 	# - Day-axis:
 	#   - f(irst), l(ast),

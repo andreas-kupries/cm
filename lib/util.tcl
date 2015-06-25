@@ -244,7 +244,7 @@ proc ::cm::util::highlight-current {xvar id args} {
 	set current {}
 	return 
     }
-    set current *
+    set current ->
     foreach v $args {
 	upvar 1 $v str
 	set str [color bold $str]
