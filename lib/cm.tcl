@@ -1653,30 +1653,37 @@ cmdr create cm::cm [file tail $::argv0] {
 		The track to use.
 	    } {
 		alias T
-		# TODO: validation, selection
+		validate [cm::vt pschedule-track]
+		# TODO: selection
 	    }
 	    option day {
 		The day to use
 	    } {
 		alias D
-		# TODO: validation, selection
+		validate [cm::vt pschedule-day]
+		# TODO: selection
 	    }
 	    option start-time {
 		The start time of the item
 	    } {
 		alias B
-		# TODO: validation, selection
+		validate [cm::cvt time::minute]
+		# TODO: selection
 	    }
 	    option length {
-		The length of the item
+		The length of the item in minutes
 	    } {
 		alias L
+		validate [cm::cvt time::minute]
+		default 0
 		# TODO: validation, selection
 	    }
 	    option in {
 		The parent of the item, if any.
 	    } {
-		# TODO: validation
+		# -- might simply use last item, or parent of last, auto-choice.
+		alias P
+		#TODO:validate [cm::vt pschedule-item]
 	    }
 	}
 
@@ -1840,6 +1847,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Print selection dictionary}
 	    use .schedule
 	} [cm::call schedule test-track-select]
+
+	private schedule-item-day-max {
+	    description {Print day validation information}
+	    use .schedule
+	} [cm::call schedule test-item-day-max]
 
 	# - -- --- ----- -------- -------------
     }
