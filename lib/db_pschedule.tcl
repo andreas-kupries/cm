@@ -58,8 +58,11 @@ proc ::cm::db::pschedule::validate {} {
     setup
     Vstart
 
-    # I.  pschedules - Most constraints are enforced by the database.
-    V-schedule-active-missing
+    # <S1> enforced by database (pschedule.name UNIQUE)
+    # <S2> ditto                (pschedule_track.pschedule)
+    # <S3> ditto                (pschedule_item.pschedule)
+    # <S4> ditto                (pschedule_global.key UNIQUE)
+    V-S5-schedule-active-exists
 
     # II.  ..._track - Most constraints are enforced by the database.
     # II.a. Assert ("Active track is not dangling")
@@ -108,9 +111,9 @@ proc ::cm::db::pschedule::Vreport {args} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::V-schedule-active-missing {} {
+proc ::cm::db::pschedule::V-S5-schedule-active-exists {} {
     debug.cm/db/pschedule {}
-    # Assert ("Active schedule X is NOT NULL => Schedule X exists")
+    # Assert ("S5: Active schedule X is NOT NULL => Schedule X exists")
 
     if {[db do onecolumn {
 	SELECT count(*)
@@ -174,10 +177,10 @@ proc ::cm::db::pschedule::details {pschedule} {
 	SELECT 'xid',          id
 	,      'xdname',       dname
 	,      'xname',        name
+	,      'xactiveitem',  active_item
 	,      'xactiveday',   active_day
 	,      'xactivetrack', active_track
-	,      'xactiveitem',  active_item
-	,      'xactiveopen',  active_open
+	,      'xactivetime',  active_time
 	FROM   pschedule
 	WHERE id = :pschedule
     }]
@@ -191,10 +194,10 @@ proc ::cm::db::pschedule::all {} {
 	SELECT id
 	,      dname
 	,      name
+	,      active_item
 	,      active_day
 	,      active_track
-	,      active_item
-	,      active_open
+	,      active_time
 	FROM   pschedule
 	ORDER BY name
     }]
@@ -500,25 +503,28 @@ proc ::cm::db::pschedule::setup {} {
     if {![dbutil initialize-schema ::cm::db::do error pschedule {
 	{
 	    -- Common information for physical schedules:
-	    -- - Names.
-	    -- - The main scheduling information is found in the
-	    --   "pschedule_item"s instead.
-	    -- - State information for interactive editing.
+	    -- % Name
+	    -- % Focus point for interactive editing.
 	    --
 	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
 	    ,   dname		TEXT	NOT NULL
-	    ,   name		TEXT	NOT NULL UNIQUE	-- normalized to lowercase
-	    ,   active_day	INTEGER					-- Ignore if active_item
-	    ,   active_track	INTEGER REFERENCES pschedule_track	-- is NOT NULL.
+	    ,   name		TEXT	NOT NULL UNIQUE	-- <S1> normalized to
+	                                                -- lowercase for case-
+	                                                -- insensitive matching
 	    ,   active_item	INTEGER REFERENCES pschedule_item
-	    ,   active_open	INTEGER
+	    ,   active_day	INTEGER
+	    ,   active_track	INTEGER REFERENCES pschedule_track
+	    ,   active_time	INTEGER
 	    --
-	    -- Notes
-	    -- * Each schedule has a unique __name__.
-	    -- * Each schedule has zero or more __tracks__.
-	    -- * Each schedule has zero or more __items__.
-	    -- * At most one of all existing schedules is __active__, i.e. the focus
-	    --   of interactive operations.
+	    -- Notes, Constraints, Assertions, and Invariants.
+	    --
+	    -- [S1] Each schedule has a unique __name__ under case-insensitive comparison.
+	    -- [S2] Each schedule has zero or more __tracks__.
+	    -- [S3] Each schedule has zero or more __items__.
+	    -- [S4] At most one schedule is __active__, i.e. the focus of
+	    --      interactive operations.
+	    -- [S5] An active schedule exists.
+	    --
 	    -- * At most one item in the schedule is __active__ making it the focus
 	    --   of interactive operations, if the schedule itself is active.
 	    -- * The active item, if specified, can __closed__ or __open__,
@@ -539,10 +545,10 @@ proc ::cm::db::pschedule::setup {} {
 	    {id           INTEGER 1 {} 1}
 	    {dname        TEXT    1 {} 0}
 	    {name         TEXT    1 {} 0}
+	    {active_item  INTEGER 0 {} 0}
 	    {active_day   INTEGER 0 {} 0}
 	    {active_track INTEGER 0 {} 0}
-	    {active_item  INTEGER 0 {} 0}
-	    {active_open  INTEGER 0 {} 0}
+	    {active_time  INTEGER 0 {} 0}
 	} {}
     }]} {
 	db setup-error pschedule $error
@@ -550,21 +556,27 @@ proc ::cm::db::pschedule::setup {} {
 
     if {![dbutil initialize-schema ::cm::db::do error pschedule_track {
 	{
-	    -- Information for the tracks of a physical schedule: Names.
+	    -- Information for the tracks of a physical schedule:
+	    -- % Name
+	    -- These are timelines which run in parallel during a day.
 	    --
-	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT	-- track identifier
-	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- schedule the track belongs to.
+	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
+	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule	-- <T1><S2> owning schedule
 	    ,	dname		TEXT	NOT NULL
-	    ,	name		TEXT	NOT NULL				-- track name, unique within schedule.
-	    ,	UNIQUE (pschedule, name)					-- normalized to lower-case
+	    ,	name		TEXT	NOT NULL			-- <T2> normalized to  
+	    ,	UNIQUE (pschedule, name)				-- lowercase for case- 
+	                                                                -- insensitive matching
 	    --
-	    -- Notes
-	    -- * Tracks are timelines running in parallel, consisting of __items__.
-	    -- * Each track belongs to a __schedule__.
-	    -- * Each track has a __name__, unique within the schedule it belongs to.
-	    -- * The tracks of a schedule belong to all days of a conference.
-	    -- * The NULL track is implicit within each schedule, i.e. it does not
-	    --   exist physically, but can be selected as the active track.
+	    -- Notes, constraints, Assertions, and Invariants.
+	    --
+	    -- [T1] Each track belongs to a __schedule__. (<==> [S2])
+	    -- [T2] Each track has a unique __name__ under case-insensitive comparison, within the owning schedule.
+	    -- [T3] Each track has zero or more __items__.
+	    --
+	    -- % The tracks of a schedule form an axis orthogonal to the days of the schedule.
+	    -- % The tracks of a schedule form an axis orthogonal to the item times of the schedule.
+	    -- % The NULL track is implicit within each schedule
+	    --   While it does not exist physically, it can be chosen as the active track.
 	} {
 	    {id            INTEGER 1 {} 1}
 	    {pschedule     INTEGER 1 {} 0}
@@ -584,8 +596,8 @@ proc ::cm::db::pschedule::setup {} {
 	    -- The logical schedule of a specific conference will then reference
 	    -- and fill the placeholders with the missing information.
 	    --
-	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT	-- item identifier
-	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- schedule the item is part of
+	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
+	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- <I1><S3> owning schedule
 	    ,	day		INTEGER NOT NULL				-- day of the event (0-based)
 	    ,	track		INTEGER		 REFERENCES pschedule_track	-- track the item belongs to. NULL is for items spanning tracks.
 	    ,	start		INTEGER NOT NULL				-- start of the item, offset in minutes from midnight
@@ -597,7 +609,10 @@ proc ::cm::db::pschedule::setup {} {
 	    ,	UNIQUE (pschedule, day, track, start, length, parent)
 	    ,	UNIQUE (pschedule, label)
 	    --
-	    -- Notes
+	    -- Notes, constraints, Assertions, and Invariants.
+	    --
+	    -- [I1] Each item belongs to a __schedule__. (<==> [S3])
+	    --
 	    -- * Items are the fundamental parts of a schedule, organized as a table
 	    --   by day, track, and starting time.
 	    -- * Implied in the above, each item belongs to a __schedule__.
@@ -659,8 +674,8 @@ proc ::cm::db::pschedule::setup {} {
 	    ,	value	TEXT	NOT NULL		-- configuration variable, data
 
 	    --
-	    -- key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
-	    -- key == "start"           : value INTEGER "start time, offset from midnight [min]"
+	    -- <S4> key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
+	    --      key == "start"           : value INTEGER "start time, offset from midnight [min]"
 	} {
 	    {id    INTEGER 1 {} 1}
 	    {key   TEXT    1 {} 0}
