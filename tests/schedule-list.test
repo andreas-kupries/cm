@@ -22,7 +22,7 @@ test schedule-list-1.0 {schedule list, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-list-2.0 {schedule list, defaults, empty} -body {
+test schedule-list-2.0-IV_S_0002-IV_T_0001 {schedule list, defaults, empty <IV_S_0002><IV_T_0001>} -body {
     run schedule list
 } -setup {
     stage-open
@@ -30,7 +30,7 @@ test schedule-list-2.0 {schedule list, defaults, empty} -body {
     stage-close
 } -result [viewFile support/schedule/list-empty.txt]
 
-test schedule-list-2.1 {schedule list, not empty} -body {
+test schedule-list-2.1-IV_S_0002-IV_T_0001 {schedule list, not empty <IV_S_0002><IV_T_0001>} -body {
     run schedule list
 } -setup {
     stage-open

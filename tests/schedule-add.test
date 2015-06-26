@@ -28,7 +28,9 @@ test schedule-add-1.1 {schedule add, wrong args, too many} -body {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
 
-test schedule-add-1.2 {schedule add, duplicate, case-insensitive} -body {
+# # ## ### ##### ######## ############# #####################
+
+test schedule-add-2.0-IV_S_0001 {schedule add, duplicate, case-insensitive <IV_S_0001>} -body {
     run schedule add Foo
 } -setup {
     stage-open
@@ -39,7 +41,7 @@ test schedule-add-1.2 {schedule add, duplicate, case-insensitive} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-add-2.0 {schedule add} -body {
+test schedule-add-3.0 {schedule add} -body {
     run schedule add foo
     run schedule list
 } -setup {
