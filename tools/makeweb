@@ -1,0 +1,7 @@
+#!/bin/bash
+clear
+echo
+cd ..
+cm conference make-website web
+exit
+
