@@ -37,7 +37,7 @@ namespace eval ::cm::db::pschedule {
 	new remove rename all known selection details \
 	track-new track-remove track-rename track-all \
 	track-names track-known track-selection track-details \
-	item-add-event item-add-placeholder \
+	item-new-event item-new-placeholder \
 	day-max
 
     # select select_track select_day select_item
@@ -58,15 +58,24 @@ proc ::cm::db::pschedule::validate {} {
     setup
     Vstart
 
-    # <S1> enforced by database (pschedule.name UNIQUE)
-    # <S2> ditto                (pschedule_track.pschedule)
-    # <S3> ditto                (pschedule_item.pschedule)
-    # <S4> ditto                (pschedule_global.key UNIQUE)
-    V-S5-schedule-active-exists
+    # <IV_S_0001> database (pschedule.name UNIQUE)
+    # <IV_S_0002> database (pschedule_track.pschedule)
+    # <IV_S_0003> database (pschedule_item.pschedule)
+    # <IV_S_0004> database (pschedule_global.key UNIQUE)
+    IV-S0005-schedule-active-exists
+
+    # <IV_T_0001> == <IV_S_0002>
+    # <IV_T_0002> database (pschedule_item.name UNIQUE)
+    # <IV_T_0003> database (pschedule_item.track)
+    # <IV_T_0004> TODO code - owning schedule exists for all tracks
+
+    # <IV_I_0001> == <IV_S_0003>
+    # <IV_I_0002> TODO code
+    # <IV_I_0003> == <IV_T_0003>
+    # <IV_I_0004> TODO code
 
     # II.  ..._track - Most constraints are enforced by the database.
     # II.a. Assert ("Active track is not dangling")
-    # II.b. Assert ("No tracks are dangling")
 
     # III. ..._item - Most constraints require separate checks.
     # III.a. Assert ("Active item is not dangling")
@@ -111,7 +120,7 @@ proc ::cm::db::pschedule::Vreport {args} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::V-S5-schedule-active-exists {} {
+proc ::cm::db::pschedule::IV-S0005-schedule-active-exists {} {
     debug.cm/db/pschedule {}
     # Assert ("S5: Active schedule X is NOT NULL => Schedule X exists")
 
@@ -209,7 +218,7 @@ proc ::cm::db::pschedule::new {dname} {
     debug.cm/db/pschedule {}
     setup
 
-    # Uniqueness is case-insensitive
+    # <IV_S_0001> Uniqueness is case-insensitive
     set name [string tolower $dname]
 
     db do eval {
@@ -259,7 +268,7 @@ proc ::cm::db::pschedule::rename {pschedule dname} {
     debug.cm/db/pschedule {}
     setup
 
-    # Uniqueness is case-insensitive
+    # <IV_S_0001> Uniqueness is case-insensitive
     set name [string tolower $dname]
 
     db do eval {
@@ -385,7 +394,7 @@ proc ::cm::db::pschedule::track-new {pschedule dname} {
     debug.cm/db/pschedule {}
     setup
 
-    # Uniqueness is case-insensitive
+    # <IV_S_0001> Uniqueness is case-insensitive
     set name [string tolower $dname]
 
     db do eval {
@@ -428,7 +437,7 @@ proc ::cm::db::pschedule::track-rename {track dname} {
     debug.cm/db/pschedule {}
     setup
 
-    # Uniqueness is case-insensitive
+    # <IV_S_0001> Uniqueness is case-insensitive
     set name [string tolower $dname]
 
     db do eval {
@@ -438,6 +447,63 @@ proc ::cm::db::pschedule::track-rename {track dname} {
 	WHERE  id    = :track
     }
     return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::item-new-event {pschedule track day start length desc note} {
+    debug.cm/db/pschedule {}
+    setup
+    # desc should not be empty string! - IV_I_TODO
+
+    # track, note nullable.
+    set map {}
+    if {$track eq {}} { lappend map :track NULL }
+    if {$note  eq {}} { lappend map :note  NULL }
+
+    # dynamically modify the sql code for the nullable elements.
+    db do eval [string map $map {
+	INSERT
+	INTO pschedule_item
+	VALUES (NULL,       -- id
+		:pschedule,
+		:day,
+		:track,     -- track nullable
+		:start,
+		:length,
+		NULL,       -- label
+		:desc,      -- desc_major
+		:note)      -- desc_minor nullable
+    }]
+
+    return [db do last_insert_rowid]
+}
+
+proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length label} {
+    debug.cm/db/pschedule {}
+    setup
+    # label should not be empty string! - IV_I_TODO
+
+    set map {}
+    # track nullable.
+    if {$track eq {}} { lappend map :track NULL }
+
+    # dynamically modify the sql code for the nullable element.
+    db do eval [string map $map {
+	INSERT
+	INTO pschedule_item
+	VALUES (NULL,       -- id
+		:pschedule,
+		:day,
+		:track,     -- track nullable
+		:start,
+		:length,
+		:label,
+		NULL,       -- desc_major
+		NULL)       -- desc_minor
+    }]
+
+    return [db do last_insert_rowid]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -508,22 +574,28 @@ proc ::cm::db::pschedule::setup {} {
 	    --
 	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
 	    ,   dname		TEXT	NOT NULL
-	    ,   name		TEXT	NOT NULL UNIQUE	-- <S1> normalized to
-	                                                -- lowercase for case-
-	                                                -- insensitive matching
+	    ,   name		TEXT	NOT NULL UNIQUE	-- <IV_S_0001>
+	    -- <IV_S_0001> note: normalized to lower-case for case-insensitive
+	    -- <IV_S_0001>       matching
+
 	    ,   active_item	INTEGER REFERENCES pschedule_item
 	    ,   active_day	INTEGER
 	    ,   active_track	INTEGER REFERENCES pschedule_track
 	    ,   active_time	INTEGER
 	    --
-	    -- Notes, Constraints, Assertions, and Invariants.
+	    -- (IV_) Data structure invariants...
 	    --
-	    -- [S1] Each schedule has a unique __name__ under case-insensitive comparison.
-	    -- [S2] Each schedule has zero or more __tracks__.
-	    -- [S3] Each schedule has zero or more __items__.
-	    -- [S4] At most one schedule is __active__, i.e. the focus of
-	    --      interactive operations.
-	    -- [S5] An active schedule exists.
+	    -- [IV_S_0001] Each schedule has a unique __name__ ...
+	    -- [IV_S_0001] ... under case-insensitive comparison.
+	    --
+	    -- [IV_S_0002] Each schedule has zero or more __tracks__ <IV_T_0001>.
+	    --
+	    -- [IV_S_0003] Each schedule has zero or more __items__ <IV_I_0001>.
+	    --
+	    -- [IV_S_0004] At most one schedule is __active__, i.e. ...
+	    -- [IV_S_0004] ... the focus of interactive operations.
+	    --
+	    -- [IV_S_0005] An active schedule exists.
 	    --
 	    -- * At most one item in the schedule is __active__ making it the focus
 	    --   of interactive operations, if the schedule itself is active.
@@ -561,17 +633,25 @@ proc ::cm::db::pschedule::setup {} {
 	    -- These are timelines which run in parallel during a day.
 	    --
 	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
-	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule	-- <T1><S2> owning schedule
+	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule	-- <IV_T_0001><IV_S_0002>
+	    -- <IV_T_0001><IV_S_0002> owning schedule
 	    ,	dname		TEXT	NOT NULL
-	    ,	name		TEXT	NOT NULL			-- <T2> normalized to  
-	    ,	UNIQUE (pschedule, name)				-- lowercase for case- 
-	                                                                -- insensitive matching
+	    ,	name		TEXT	NOT NULL			-- <IV_T_0002>
+	    ,	UNIQUE (pschedule, name)				-- <IV_T_0002>
+	    -- <IV_T_0002> note: normalized to lower-case for case-insensitive
+	    -- <IV_T_0002>       matching
 	    --
-	    -- Notes, constraints, Assertions, and Invariants.
+	    -- (IV_) Data structure invariants...
 	    --
-	    -- [T1] Each track belongs to a __schedule__. (<==> [S2])
-	    -- [T2] Each track has a unique __name__ under case-insensitive comparison, within the owning schedule.
-	    -- [T3] Each track has zero or more __items__.
+	    -- [IV_T_0001] Each track belongs to a __schedule__ <IV_S_0002>.
+	    --
+	    -- [IV_T_0002] Each track has a unique __name__ under ...
+	    -- [IV_T_0002] ... case-insensitive comparison, within ...
+	    -- [IV_T_0002] ... the owning schedule.
+	    --
+	    -- [IV_T_0003] Each track has zero or more __items__.
+	    --
+	    -- [IV_T_0004] The owning schedule of a track exists.
 	    --
 	    -- % The tracks of a schedule form an axis orthogonal to the days of the schedule.
 	    -- % The tracks of a schedule form an axis orthogonal to the item times of the schedule.
@@ -597,7 +677,8 @@ proc ::cm::db::pschedule::setup {} {
 	    -- and fill the placeholders with the missing information.
 	    --
 	        id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
-	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- <I1><S3> owning schedule
+	    ,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- <IV_I_0001><IV_S_0003>
+	    -- <IV_I_0001><IV_S_0003> owning schedule
 	    ,	day		INTEGER NOT NULL				-- day of the event (0-based)
 	    ,	track		INTEGER		 REFERENCES pschedule_track	-- track the item belongs to. NULL is for items spanning tracks.
 	    ,	start		INTEGER NOT NULL				-- start of the item, offset in minutes from midnight
@@ -609,15 +690,22 @@ proc ::cm::db::pschedule::setup {} {
 	    ,	UNIQUE (pschedule, day, track, start, length, parent)
 	    ,	UNIQUE (pschedule, label)
 	    --
-	    -- Notes, constraints, Assertions, and Invariants.
+	    -- (IV_) Data structure invariants...
 	    --
-	    -- [I1] Each item belongs to a __schedule__. (<==> [S3])
+	    -- [IV_I_0001] Each item belongs to a __schedule__ <IV_S_0003>.
+	    --
+	    -- [IV_I_0002] The owning schedule of an item exists.
+	    --
+	    -- [IV_I_0003] Each item belongs to a __track__ <IV_T_0003>.
+	    --
+	    -- [IV_I_0004] The owning track of an item exists (if != NULL).
+	    --
+	    -- [IV_I_0005] The owning schedule of the owning track of an ...
+	    -- [IV_I_0005] ... item is the owning schedule of the item.
 	    --
 	    -- * Items are the fundamental parts of a schedule, organized as a table
 	    --   by day, track, and starting time.
-	    -- * Implied in the above, each item belongs to a __schedule__.
-	    -- * Implied in the above, each item belongs to a __track__.  This may be
-	    --   the NULL track.  The latter indicates an item which exists across /
+	    -- * Owning track == NULL indicates an item which exists across /
 	    --   belongs to __all__ tracks of the schedule.
 	    -- * Items can be __events__ or __placeholders__.
 	    -- * Events have a fixed major description and possibly a minor
@@ -674,7 +762,7 @@ proc ::cm::db::pschedule::setup {} {
 	    ,	value	TEXT	NOT NULL		-- configuration variable, data
 
 	    --
-	    -- <S4> key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
+	    -- <IV_S_0004> key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
 	    --      key == "start"           : value INTEGER "start time, offset from midnight [min]"
 	} {
 	    {id    INTEGER 1 {} 1}

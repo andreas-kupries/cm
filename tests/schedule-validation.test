@@ -54,23 +54,16 @@ test schedule-tests-2.1 {test schedule-select} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-tests-3.0 {schedule validate, missing active schedule} -body {
+test schedule-tests-3.0-IV_S_0005 {schedule validate, missing active schedule <IV_S_0005>} -body {
     run schedule validate
 } -setup {
     stage-open
-    run schedule add fox
-    #puts [run-sql {SELECT * FROM pschedule}]
-    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'schedule/active'}]
-
+    run schedule add    fox
     run schedule select fox
-    #puts [run-sql {SELECT * FROM pschedule}]
-    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'schedule/active'}]
 
     run-sql {DELETE FROM pschedule WHERE name = 'fox'}
-    # active schedule is now gone, with global config referencing nothing
-
-    #puts [run-sql {SELECT * FROM pschedule}]
-    #puts [run-sql {SELECT * FROM pschedule_global WHERE key = 'schedule/active'}]
+    # The active schedule is now gone, with the global config
+    # referencing nothing anymore.
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "*cm general: Failed:\n:: The active schedule does not exist."

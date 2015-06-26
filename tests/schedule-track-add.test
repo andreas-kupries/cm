@@ -28,7 +28,9 @@ test schedule-track-add-1.1 {schedule track add, wrong args, too many} -body {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
 
-test schedule-track-add-1.2 {schedule track add, duplicate, case-insensitive} -body {
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-add-2.0-IV_T_0002 {schedule track add, duplicate, case-insensitive <IV_T_0002>} -body {
     run schedule track add --schedule SCHEDULE Foo
 } -setup {
     stage-open
@@ -40,7 +42,7 @@ test schedule-track-add-1.2 {schedule track add, duplicate, case-insensitive} -b
 
 # # ## ### ##### ######## ############# #####################
 
-test schedule-track-add-2.0 {schedule track add} -body {
+test schedule-track-add-3.0 {schedule track add} -body {
     run schedule track add --schedule SCHEDULE foo
     run schedule list
 } -setup {
