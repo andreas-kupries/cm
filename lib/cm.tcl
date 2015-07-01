@@ -1613,6 +1613,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .opt_schedule_select
 	} [cm::call schedule select]
 
+	private clear-select {
+	    description { Clear active schedule }
+	} [cm::call schedule select-clear]
+
+	private selected {
+	    description { Tell which schedule is active }
+	} [cm::call schedule selected]
+
 	# TODO: Duplicate an entire schedule under a new name.
 
 	private show {

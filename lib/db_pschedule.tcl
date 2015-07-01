@@ -36,9 +36,10 @@ namespace eval ::cm::db::pschedule {
 	start_set start_get active_set active_get \
 	new remove rename all known selection details \
 	track-new track-remove track-rename track-all \
-	track-names track-known track-selection track-details \
+	track-name-counts track-names track-known \
+	track-selection track-details \
 	item-new-event item-new-placeholder \
-	day-max
+	day-max day-cover
 
     # select select_track select_day select_item
     namespace ensemble create
@@ -282,6 +283,18 @@ proc ::cm::db::pschedule::rename {pschedule dname} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::db::pschedule::day-cover {pschedule} {
+    debug.cm/db/pschedule {}
+    set max [day-max $pschedule]
+
+    if {$max > 0} {
+	incr max -1
+	return "0...$max"
+    }
+    # Nothing covered yet.
+    return {}
+}
+
 proc ::cm::db::pschedule::day-max {pschedule} {
     debug.cm/db/pschedule {}
     setup
@@ -366,6 +379,8 @@ proc ::cm::db::pschedule::track-all {pschedule} {
     debug.cm/db/pschedule {}
     setup
 
+    # List of tracks with enough information for both internal
+    # identification and user display.
     return [db do eval {
 	SELECT id
 	,      dname
@@ -376,10 +391,29 @@ proc ::cm::db::pschedule::track-all {pschedule} {
     }]
 }
 
+proc ::cm::db::pschedule::track-name-counts {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # List of tracks, just names and number of associated
+    # items. Intended for display only.
+    return [db do eval {
+	SELECT T.dname      AS dname
+	,      count (I.id) AS itemcount
+	FROM   pschedule_track T
+	,      pschedule_item  I
+	WHERE  T.pschedule = :pschedule
+	AND    T.id        = I.track
+	GROUP BY dname
+	ORDER BY dname
+    }]
+}
+
 proc ::cm::db::pschedule::track-names {pschedule} {
     debug.cm/db/pschedule {}
     setup
 
+    # List of just the track names, display only.
     return [db do eval {
 	SELECT dname
 	FROM   pschedule_track
@@ -537,11 +571,17 @@ proc ::cm::db::pschedule::active_set {pschedule} {
     debug.cm/db/pschedule {}
     setup
 
-    db do eval {
+    set map {}
+    if {($pschedule eq {}) ||
+	([string tolower $pschedule] eq "null")} {
+	lappend map :pschedule NULL
+    }
+
+    db do eval [string map $map {
 	INSERT OR REPLACE
 	INTO   pschedule_global
 	VALUES (NULL, 'schedule/active', :pschedule)
-    }
+    }]
     return
 }
 
@@ -774,7 +814,9 @@ proc ::cm::db::pschedule::setup {} {
     } else {
 	db do eval {
 	    -- Default start at 09:00 = 9*60 = 540
-	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'start', 540)
+	    -- No active schedule by default.
+	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'start',           540);
+	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'schedule/active', NULL);
 	}
     }
 
