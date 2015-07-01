@@ -38,9 +38,9 @@ namespace eval ::cm {
 namespace eval ::cm::schedule {
     namespace export \
 	active-or-select just-select validate \
-	add remove rename select show listing test-known test-select \
-	track-add track-remove track-rename test-track-known test-track-select \
-	item-add-event item-add-placeholder test-item-day-known
+	add remove rename select select-clear selected show listing test-known \
+	test-select track-add track-remove track-rename test-track-known \
+	test-track-select item-add-event item-add-placeholder test-item-day-known
     #item-remove item-rename
     namespace ensemble create
 
@@ -136,6 +136,12 @@ proc ::cm::schedule::add {config} {
     try {
 	db do transaction {
 	    set pschedule [pschedule new $name]
+
+	    # New schedule is automatically active.
+	    puts -nonewline "Activating ... "
+	    flush stdout
+	    pschedule active_set $pschedule
+
 	    pschedule validate
 	}
     } on error {e o} {
@@ -189,6 +195,50 @@ proc ::cm::schedule::rename {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::schedule::select-clear {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule, operation ignored.}]
+	return
+    }
+
+    set name [dict get [pschedule details $pschedule] xdname]
+
+    puts -nonewline "\nDeactivating schedule \"[color name $name]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule active_set {}
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::selected {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule}]
+	return
+    }
+
+    set name [dict get [pschedule details $pschedule] xdname]
+
+    puts "\nActive schedule is \"[color name $name]\""
+    return
+}
+
 proc ::cm::schedule::select {config} {
     debug.cm/schedule {}
     pschedule setup
@@ -196,7 +246,7 @@ proc ::cm::schedule::select {config} {
 
     set pschedule [$config @name]
 
-    puts -nonewline "\nSchedule \"[color name [$config @name string]]\": Activating ... "
+    puts -nonewline "\nActivating schedule \"[color name [$config @name string]]\" ... "
     flush stdout
 
     db do transaction {
@@ -217,15 +267,15 @@ proc ::cm::schedule::show {config} {
     puts "\nSchedule \"[color name [$config @name string]]\":"
 
     set active_ps [pschedule active_get]
-    set psd        [pschedule details $pschedule]
+    set psd       [pschedule details $pschedule]
     dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
 
     [table/d t {
 	if {$active_ps == $pschedule} { $t add [color note Active] }
 	$t add Name   $xdname
-	$t add Tracks [join [pschedule track-names $xid] \n]
+	$t add Days   [pschedule day-cover $xid]
+	$t add Tracks [TrackList $xid]
 
-	# Extensions: Day range, #Items.
 	# Extension: Mark the active track and day.
     }] show
     return
@@ -239,18 +289,27 @@ proc ::cm::schedule::listing {config} {
     set active_ps [pschedule active_get]
 
     puts "\nSchedules:"
-    [table t {{} Name Tracks} {
+    [table t {{} Name Days Tracks} {
 	foreach {pschedule name _ _ _ _ _} [pschedule all] {
-	    set tracks [join [pschedule track-names $pschedule] \n]
+	    set tracks [TrackList $pschedule]
+	    set days   [pschedule day-cover $pschedule]
 
-	    util highlight-current active_ps $pschedule mark name tracks
+	    util highlight-current active_ps $pschedule mark name days tracks
 	    $t add $mark $name $tracks
 
-	    # Extensions: Day range, #Items.
 	    # Extension: Mark the active track, and day.
 	}
     }] show
     return
+}
+
+proc ::cm::schedule::TrackList {pschedule} {
+    debug.cm/schedule {}
+    set tracks {}
+    foreach {name icount} [pschedule track-name-counts $pschedule] {
+	append track $name " (" $icount ")\n"
+    }
+    return [string trimright $tracks \n]
 }
 
 # # ## ### ##### ######## ############# ######################
