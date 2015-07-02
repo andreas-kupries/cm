@@ -34,7 +34,7 @@ namespace eval ::cm::db::pschedule {
     namespace export \
         setup validate \
 	start_set start_get active_set active_get \
-	new remove rename all known selection details \
+	new remove rename all known selection details piece \
 	track-new track-remove track-rename track-all \
 	track-name-counts track-names track-known \
 	track-selection track-details \
@@ -130,7 +130,7 @@ proc ::cm::db::pschedule::IV-S0005-schedule-active-exists {} {
 	FROM            pschedule_global G --
 	LEFT OUTER JOIN pschedule        S --
 	ON              G.value = S.id     -- G-->S reference
-	WHERE G.key = 'schedule/active'            -- limit to active schedules
+	WHERE G.key = 'schedule/active'    -- limit to active schedules
 	AND   S.id IS NULL                 -- and keep only deref failures
     }]} { Vfail "The active schedule does not exist." }
     return
@@ -194,6 +194,18 @@ proc ::cm::db::pschedule::details {pschedule} {
 	FROM   pschedule
 	WHERE id = :pschedule
     }]
+}
+
+proc ::cm::db::pschedule::piece {pschedule piece} {
+    debug.cm/db/pschedule {}
+    setup
+
+    lappend map @@ $piece
+    return [db do onecolumn [string map $map {
+	SELECT @@
+	FROM   pschedule
+	WHERE id = :pschedule
+    }]]
 }
 
 proc ::cm::db::pschedule::all {} {
@@ -398,13 +410,27 @@ proc ::cm::db::pschedule::track-name-counts {pschedule} {
     # List of tracks, just names and number of associated
     # items. Intended for display only.
     return [db do eval {
-	SELECT T.dname      AS dname
-	,      count (I.id) AS itemcount
-	FROM   pschedule_track T
-	,      pschedule_item  I
-	WHERE  T.pschedule = :pschedule
-	AND    T.id        = I.track
-	GROUP BY dname
+	SELECT dname, itemcount
+	FROM (  -- Find all tracks which have items, group and count them.
+	        SELECT T.dname      AS dname
+	        ,      count (I.id) AS itemcount
+		FROM   pschedule_track T
+		,      pschedule_item  I
+		WHERE  T.pschedule = :pschedule
+		AND    T.id        = I.track
+		GROUP BY dname
+	      UNION
+		-- Find all the tracks which have no items, and generate fakes
+		-- for them. We cannot use this with the count(I.id) above,
+		-- because then the count would be _1_.
+	        SELECT T.dname      AS dname
+		,      0            AS itemcount
+		FROM            pschedule_track T --
+		LEFT OUTER JOIN pschedule_item  I --
+		ON              I.track = T.id    -- item -> track
+		WHERE  T.pschedule = :pschedule   -- limit to schedule
+		AND    I.id IS NULL               -- and tracks without items
+		GROUP BY dname)
 	ORDER BY dname
     }]
 }
