@@ -82,7 +82,7 @@ proc ::cm::schedule::active-or-select {p} {
 	$p undefined!
     }
 
-    set pslabel [dict get [pschedule details $pschedule] xdname]
+    set pslabel [pschedule piece $pschedule dname]
     if {[ask yn "Activate schedule \"[color name $pslabel]\" ?" yes]} {
 	pschedule active_set $pschedule
     }
@@ -295,7 +295,7 @@ proc ::cm::schedule::listing {config} {
 	    set days   [pschedule day-cover $pschedule]
 
 	    util highlight-current active_ps $pschedule mark name days tracks
-	    $t add $mark $name $tracks
+	    $t add $mark $name $days $tracks
 
 	    # Extension: Mark the active track, and day.
 	}
@@ -306,10 +306,18 @@ proc ::cm::schedule::listing {config} {
 proc ::cm::schedule::TrackList {pschedule} {
     debug.cm/schedule {}
     set tracks {}
-    foreach {name icount} [pschedule track-name-counts $pschedule] {
-	append track $name " (" $icount ")\n"
+
+    set trackstats [pschedule track-name-counts $pschedule]
+    # (name -> icount, sorted by name)
+
+    foreach name [util padr [util even $trackstats]] icount [util odd $trackstats] {
+	debug.cm/schedule { - $name = $icount}
+	append tracks $name " (" $icount ")\n"
     }
-    return [string trimright $tracks \n]
+    set tracks [string trimright $tracks \n]
+
+    debug.cm/schedule {==> ($tracks)}
+    return $tracks
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -337,12 +345,14 @@ proc ::cm::schedule::track-add {config} {
     pschedule setup
     db show-location
 
-    # try to insert, report failure as user error
-
-    set pslabel   [$config @schedule string]
     set pschedule [$config @schedule]
+    set pslabel   [pschedule piece $pschedule dname]
     set name      [$config @name]
 
+    debug.cm/schedule {pschedule = $pschedule '$pslabel'}
+    debug.cm/schedule {name      = '$name'}
+
+    # try to insert, report failure as user error
     puts -nonewline "Schedule \"[color name $pslabel]\": Creating track \"[color name $name]\" ... "
     flush stdout
 
@@ -366,7 +376,7 @@ proc ::cm::schedule::track-remove {config} {
     pschedule setup
     db show-location
 
-    set pslabel [$config @schedule string]
+    set pslabel [pschedule piece [$config @schedule] dname]
     set track   [$config @name]
 
     puts -nonewline "Schedule \"[color name $pslabel]\": Remove track \"[color name [$config @name string]]\" ... "
@@ -387,7 +397,7 @@ proc ::cm::schedule::track-rename {config} {
     pschedule setup
     db show-location
 
-    set pslabel [$config @schedule string]
+    set pslabel [pschedule piece [$config @schedule] dname]
     set track   [$config @name]
     set new     [$config @newname]
 
@@ -437,7 +447,7 @@ proc ::cm::schedule::item-add-event {config} {
 
     # try to insert, report failure as user error
 
-    set pslabel   [$config @schedule string]
+    set pslabel [pschedule piece $pschedule dname]
 
     puts "Schedule \"[color name $pslabel]\": Creating event \"$description\" ... "
     puts "* Track:  [color name [$config @track string]]"
@@ -475,7 +485,7 @@ proc ::cm::schedule::item-add-placeholder {config} {
 
     # try to insert, report failure as user error
 
-    set pslabel   [$config @schedule string]
+    set pslabel   [pschedule piece $pschedule dname]
 
     puts "Schedule \"[color name $pslabel]\": Creating placeholder \"$label\" ... "
     puts "* Track:       [color name [$config @track string]]"
