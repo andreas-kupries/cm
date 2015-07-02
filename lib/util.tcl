@@ -43,7 +43,7 @@ namespace eval ::cm {
 }
 
 namespace eval ::cm::util {
-    namespace export padr padl dictsort reflow indent undent \
+    namespace export even odd padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
 	dict-fill-permute* dict-join-keys initials select text-stdin \
@@ -247,6 +247,8 @@ proc ::cm::util::highlight-current {xvar id args} {
     set current ->
     foreach v $args {
 	upvar 1 $v str
+	if {$str eq {}} continue
+	# Highlight only non-empty fields.
 	set str [color bold $str]
     }
     return
@@ -357,6 +359,18 @@ proc ::cm::util::strip-prefix {prefix words} {
 	lappend results $w
     }
     return $results
+}
+
+proc ::cm::util::even {words} {
+    set r {}
+    foreach {e o} $words { lappend r $e }
+    return $r
+}
+
+proc ::cm::util::odd {words} {
+    set r {}
+    foreach {e o} $words { lappend r $o }
+    return $r
 }
 
 proc ::cm::util::padr {words} {
