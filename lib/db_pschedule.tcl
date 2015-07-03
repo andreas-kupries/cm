@@ -41,7 +41,7 @@ namespace eval ::cm::db::pschedule {
 	item-active-set item-active-get \
 	track-new track-remove track-rename track-all \
 	track-name-counts track-names track-known \
-	track-selection track-details \
+	track-selection track-details track-piece \
 	item-new-event item-new-placeholder item-details \
 	day-max day-cover
 
@@ -409,6 +409,18 @@ proc ::cm::db::pschedule::track-details {track} {
 	FROM   pschedule_track
 	WHERE  id = :track
     }]
+}
+
+proc ::cm::db::pschedule::track-piece {track piece} {
+    debug.cm/db/pschedule {}
+    setup
+
+    lappend map @@ $piece
+    return [db do eval [string map $map {
+	SELECT @@
+	FROM   pschedule_track
+	WHERE  id = :track
+    }]]
 }
 
 proc ::cm::db::pschedule::track-all {pschedule} {
