@@ -1773,15 +1773,20 @@ cmdr create cm::cm [file tail $::argv0] {
 	# TODO : Interactive operations.
 	##
 	# Navigation - Active item, day, track, time
+	#
 	# - Three axes: day, time, track
-	# - Day-axis:
+	#
+	# - Day (numerically ordered 0, 1, ...):
 	#   - f(irst), l(ast),
 	#   - p(rev(ious)), n(ext)
-	# - Time-axis:
+	#
+	# - Time (numerically ordered ascending from midnight):
 	#   - t(op), b(ottom),
 	#   - u(p)/f(orw(ard)), d(own)/back(ward)
-	# - Track-axis:
-	#   - g(o) "name" (no inherent ordering)
+	#
+	# - Track (lexicographically ordered by name):
+	#   - l(eft)m(ost), r(ight)m(ost)
+	#   - l(eft), r(ight)
 	##
 	# Selection
 	# - SetMark, FromMark, Include, Exclude

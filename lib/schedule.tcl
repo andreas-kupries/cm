@@ -38,7 +38,7 @@ namespace eval ::cm {
 namespace eval ::cm::schedule {
     namespace export \
 	active-or-select just-select validate \
-	add remove rename select select-clear selected show listing test-known \
+	add remove rename select select-clear selected focus show listing test-known \
 	test-select track-add track-remove track-rename test-track-known \
 	test-track-select item-add-event item-add-placeholder test-item-day-known
     #item-remove item-rename
@@ -207,7 +207,7 @@ proc ::cm::schedule::select-clear {config} {
 	return
     }
 
-    set name [dict get [pschedule details $pschedule] xdname]
+    set name [pschedule piece $pschedule dname]
 
     puts -nonewline "\nDeactivating schedule \"[color name $name]\" ... "
     flush stdout
@@ -233,7 +233,7 @@ proc ::cm::schedule::selected {config} {
 	return
     }
 
-    set name [dict get [pschedule details $pschedule] xdname]
+    set name [pschedule piece $pschedule dname]
 
     puts "\nActive schedule is \"[color name $name]\""
     return
@@ -303,6 +303,53 @@ proc ::cm::schedule::listing {config} {
     return
 }
 
+proc ::cm::schedule::focus {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule}]
+	return
+    }
+
+    set name  [pschedule piece $pschedule dname]
+    set focus [pschedule focus $pschedule]
+    dict with focus {} ;# => xactive{item,day,track,time},xaitem{day,track,start,len}
+
+    if {$xactivetrack ne {}} { set xactivetrack [track-piece $xactivetrack dname] }
+    if {$xaitemtrack  ne {}} { set xaitemtrack  [track-piece $xaitemtrack  dname] }
+
+    puts "\nFocus"
+    [table/d t {
+	$t add Schedule  $name
+	if {$xactiveitem eq {}} {
+	    # No item. Use saved historical data
+	    $t add Day       $xactiveday
+	    $t add Track     $xactivetrack
+	    $t add Time      $xactivetime
+	} else {
+	    # Use item information, and show delta to historical
+	    if {$xactiveday == $xaitemday} {
+		$t add Day   "I $xaitemday"
+	    } else {
+		$t add Day   "I $xaitemday (-- $xactiveday)"
+	    }
+	    if {$xactivetrack eq $xaitemtrack} {
+		$t add Track "I $xaitemtrack"
+	    } else {
+		$t add Track "I $xaitemtrack (-- $xactivetrack)"
+	    }
+	    $t add Time  "I $xaitemstart $xaitemlen (-- $xactivetime)" ;# -- TODO: format start, activetime
+	}
+    }] show
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::schedule::TrackList {pschedule} {
     debug.cm/schedule {}
     set tracks {}
@@ -359,6 +406,12 @@ proc ::cm::schedule::track-add {config} {
     try {
 	db do transaction {
 	    set track [pschedule track-new $pschedule $name]
+
+	    # New track is automatically active.
+	    puts -nonewline "Activating ... "
+	    flush stdout
+	    pschedule track-active-set $pschedule $track
+
 	    pschedule validate
 	}
     } on error {e o} {
@@ -458,7 +511,13 @@ proc ::cm::schedule::item-add-event {config} {
 
     try {
 	db do transaction {
-	    set track [pschedule item-new-event $pschedule $track $day $start $length $desc $note]
+	    set item [pschedule item-new-event $pschedule $track $day $start $length $desc $note]
+
+	    # New item is automatically active.
+	    puts -nonewline "Activating ... "
+	    flush stdout
+	    pschedule item-active-set $pschedule $item
+
 	    pschedule validate
 	}
     } on error {e o} {
@@ -496,7 +555,13 @@ proc ::cm::schedule::item-add-placeholder {config} {
 
     try {
 	db do transaction {
-	    set track [pschedule item-new-placeholder $pschedule $track $day $start $length $label]
+	    set item [pschedule item-new-placeholder $pschedule $track $day $start $length $label]
+
+	    # New item is automatically active.
+	    puts -nonewline "Activating ... "
+	    flush stdout
+	    pschedule item-active-set $pschedule $item
+
 	    pschedule validate
 	}
     } on error {e o} {
