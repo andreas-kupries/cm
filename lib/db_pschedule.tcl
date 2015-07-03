@@ -34,11 +34,15 @@ namespace eval ::cm::db::pschedule {
     namespace export \
         setup validate \
 	start_set start_get active_set active_get \
-	new remove rename all known selection details piece \
+	new remove rename all known selection details piece focus \
+	track-active-set track-active-get \
+	day-active-set day-active-get \
+	time-active-set time-active-get \
+	item-active-set item-active-get \
 	track-new track-remove track-rename track-all \
 	track-name-counts track-names track-known \
 	track-selection track-details \
-	item-new-event item-new-placeholder \
+	item-new-event item-new-placeholder item-details \
 	day-max day-cover
 
     # select select_track select_day select_item
@@ -192,6 +196,26 @@ proc ::cm::db::pschedule::details {pschedule} {
 	,      'xactivetrack', active_track
 	,      'xactivetime',  active_time
 	FROM   pschedule
+	WHERE id = :pschedule
+    }]
+}
+
+proc ::cm::db::pschedule::focus {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT 'xactiveitem',  S.active_item
+	,      'xactiveday',   S.active_day
+	,      'xactivetrack', S.active_track
+	,      'xactivetime',  S.active_time
+	,      'xaitemday',    I.day
+	,      'xaitemtrack',  I.track
+	,      'xaitemstart',  I.start
+	,      'xaitemlen',    I.length
+	FROM            pschedule      S
+	LEFT OUTER JOIN pschedule_item I
+	ON              S.active_item = I.id
 	WHERE id = :pschedule
     }]
 }
@@ -450,6 +474,143 @@ proc ::cm::db::pschedule::track-names {pschedule} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::db::pschedule::track-active-set {pschedule track} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # <IV_> TODO pschedule == track.pschedule (or leave that to the general validator)
+
+    set map {}
+    if {($track eq {}) ||
+	([string tolower $track] eq "null")} {
+	lappend map :track NULL
+    }
+
+    db do eval [string map $map {
+	UPDATE pschedule
+	SET    active_track = :track
+	WHERE  id = :pschedule
+    }]
+
+    return
+}
+
+proc ::cm::db::pschedule::track-active-get {pschedule} {
+    return [piece $pschedule active_track]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::day-active-set {pschedule day} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # <IV_> TODO keep day within the bounds (+1).
+
+    set map {}
+    if {($track eq {}) ||
+	([string tolower $day] eq "null")} {
+	lappend map :day NULL
+    }
+
+    db do eval [string map $map {
+	UPDATE pschedule
+	SET    active_day = :day
+	WHERE  id = :pschedule
+    }]
+
+    return
+}
+
+proc ::cm::db::pschedule::day-active-get {pschedule} {
+    return [piece $pschedule active_day]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::time-active-set {pschedule time} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # <IV_> TODO keep time within the bounds (0..1439)
+
+    set map {}
+    if {($track eq {}) ||
+	([string tolower $time] eq "null")} {
+	lappend map :time NULL
+    }
+
+    db do eval [string map $map {
+	UPDATE pschedule
+	SET    active_time = :time
+	WHERE  id = :pschedule
+    }]
+
+    return
+}
+
+proc ::cm::db::pschedule::time-active-get {pschedule} {
+    return [piece $pschedule active_time]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::item-active-set {pschedule item} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # <IV_> TODO pschedule == item.pschedule (or via general validation)
+
+    if {($item eq {}) ||
+	([string tolower $item] eq "null")} {
+	# Reset item reference. Leave the derived data intact, for providence.
+	db do eval {
+	    UPDATE pschedule
+	    SET    active_item = NULL
+	    WHERE  id = :pschedule
+	}
+	return
+    }
+
+    # Setting the item sets all axes with derived information.
+    # Complexity:
+    # - 
+
+    set idetails [item-details $item] ; dict with idetails { ; # TODO MAYBE conv.cmd.specialized to axis data.
+	set iday    $xday
+	set itrack  $xtrack
+	set istart  $xstart
+	set ilength $xlength
+    }
+
+    # Attention: (item.track IS NULL) ==> Keep active track as is, for providence.
+    if {$itrack eq {}} { set itrack [track-active-get $pschedule] }
+
+    incr istart $ilength ; # focus time is at the end of the item, by default.
+
+    db do eval {
+	UPDATE pschedule
+	SET    active_item  = :item
+	,      active_day   = :iday
+	,      active_track = :itrack
+	,      active_time  = :istart
+	WHERE  id = :pschedule
+    }
+
+    # TODO: Save (item.day, item.track) --> (item, time) mapping for future navigation to this point.
+    # TODO: NOTE: (item.track IS NULL) ==> Save same data into all known tracks.
+    # TODO: NOTE: new track => look for cross-track items and auto-import!
+    # TODO: Table "pschedule_focus"
+
+    return
+}
+
+proc ::cm::db::pschedule::item-active-get {pschedule} {
+    return [piece $pschedule active_item]
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::db::pschedule::track-new {pschedule dname} {
     debug.cm/db/pschedule {}
     setup
@@ -564,6 +725,26 @@ proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length
     }]
 
     return [db do last_insert_rowid]
+}
+
+proc ::cm::db::pschedule::item-details {item} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT 'xid'       , id            
+	,      'xpschedule', pschedule     
+	,      'xday'      , day           
+	,      'xtrack'    , track         
+	,      'xstart'    , start         
+	,      'xlength'   , length        
+	,      'xparent'   , parent        
+	,      'xlabel'    , label         
+	,      'xdescmajor', desc_major    
+	,      'xdescminor', desc_minor    
+	FROM   pschedule
+	WHERE id = :pschedule
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
