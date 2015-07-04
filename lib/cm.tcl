@@ -1657,13 +1657,45 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::vt pschedule]
 		generate [cm::call schedule active-or-select]
 	    }
+
+	    ## # # ## ### ##### ######## #############
+	    # Focus elements in the schedule. Command behaviour influenced by
+	    # - element specified by the user
+	    # - vs element taken from focus location
+	    # - plus additional specialities, like
+	    #   - Track needs mode to set it as NULL.
+	    ## # # ## ### ##### ######## #############
+
+	    state context {
+		- internal focus context.
+		- records user vs. system default.
+		- single place where database focus data gets loaded
+		structure is dict {
+		    schedule -> active schedule
+		    focus    -> focus data
+		    flags    -> focus stati
+		}
+	    } { defered
+		validate identity
+		generate [cm::call schedule context-setup]
+	    }
+
+	    ## # # ## ### ##### ######## #############
 	    option track {
-		The track to use.
+		The track to use for the new item
 	    } {
 		alias T
 		validate [cm::vt pschedule-track]
-		# TODO: selection
+		when-set [cm::call schedule context-set-track]
+		generate [cm::call schedule context-get-track]
 	    }
+	    option cross-tracks {
+		Create an item crossing all tracks
+	    } { presence
+		when-set [cm::call schedule context-cross-tracks]
+	    }
+
+	    ## # # ## ### ##### ######## #############
 	    option day {
 		The day to use
 	    } {

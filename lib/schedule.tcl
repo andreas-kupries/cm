@@ -38,6 +38,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::schedule {
     namespace export \
+	context-setup context-set-track context-cross-tracks context-get-track \
 	active-or-select just-select validate \
 	add remove rename select select-clear selected focus show listing test-known \
 	test-select track-add track-remove track-rename test-track-known \
@@ -64,6 +65,124 @@ debug level  cm/schedule
 debug prefix cm/schedule {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
+## Callbacks for focus location and associated defaults
+
+proc ::cm::schedule::context-setup {p} {
+    debug.cm/schedule {}
+    pschedule setup
+
+    set pschedule [pschedule active_get]
+    if {$pschedule eq {}} {
+	return {
+	    schedule {}
+	    focus {
+		xactiveitem  {}
+		xactiveday   {}
+		xactivetrack {}
+		xactivetime  {}
+		xaitemday    {}
+		xaitemtrack  {}
+		xaitemstart  {}
+		xaitemlen    {}
+	    }
+	    flags {
+		item  system
+		day   system
+		track system
+		time  system
+	    }
+	}
+    }
+
+    set focus [pschedule focus $pschedule]
+    return [dict create \
+		schedule $pschedule \
+		focus    $focus \
+		flags {
+		    item  system
+		    day   system
+		    track system
+		    time  system
+		}]
+}
+
+proc ::cm::schedule::context-set-track {p track} {
+    debug.cm/schedule {}
+    # RMW operation on the context.
+    # User-specified track.
+
+    # Read ...
+    set context [$p config @context]
+
+    # ... Modify ... (Setting user spec)
+    dict set context focus xactivetrack $track
+    dict set context flags track        user
+
+    # ... Writeback
+    $p config @context set $context
+
+    return $track
+}
+
+proc ::cm::schedule::context-cross-tracks {p track} {
+    debug.cm/schedule {}
+
+    # RMW operation on the context.
+    # User-specified track NULL (reach across tracks)
+
+    # Read ...
+    set context [$p config @context]
+
+    # ... Modify ... (Setting user spec)
+    dict set context focus xactivetrack {}
+    dict set context flags track        user
+
+    # ... Writeback
+    $p config @context set $context
+
+    return $track
+}
+
+proc ::cm::schedule::context-get-track {p} {
+    debug.cm/schedule {}
+
+    # Read operation on the context.
+    set context [$p config @context]
+
+    # assert (dict get $context flags track) == system
+
+    # Pull relevant focus data (active item, item track, active track).
+    set ci [dict get $context focus xactiveitem]
+    set it [dict get $context focus xaitemtrack]
+    set ct [dict get $context focus xactivetrack]
+
+    debug.cm/schedule {active item       = $ci}
+    debug.cm/schedule {active item track = $it}
+    debug.cm/schedule {active track      = $ct}
+
+    # No active item, return active track
+    if {$ci eq {}} {
+	return $ct
+    }
+
+    # The active item crosses tracks, return active track
+    if {$it eq {}} {
+	return $ct
+    }
+
+    # Return the active item's track. Same as the active track (ct)
+    # for an item not crossing tracks.
+    return $it
+
+    # UGH ... Reading the comments and looking at returns, it seems
+    # that we can simply always return the active track without all
+    # the checks and complexity.
+    #
+    # TODO test the above possibility
+}
+
+# # ## ### ##### ######## ############# ######################
+## Callbacks for active schedule
 
 proc ::cm::schedule::active-or-select {p} {
     debug.cm/schedule {}
