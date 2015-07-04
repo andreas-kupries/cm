@@ -699,11 +699,12 @@ proc ::cm::db::pschedule::item-new-event {pschedule track day start length desc 
 	INSERT
 	INTO pschedule_item
 	VALUES (NULL,       -- id
-		:pschedule,
-		:day,
-		:track,     -- track nullable
-		:start,
-		:length,
+		:pschedule, -- pschedule
+		:day,       -- day
+		:track,     -- track /nullable
+		:start,     -- start
+		:length,    -- length
+		NULL,       -- parent !! TODO
 		NULL,       -- label
 		:desc,      -- desc_major
 		:note)      -- desc_minor nullable
@@ -731,6 +732,7 @@ proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length
 		:track,     -- track nullable
 		:start,
 		:length,
+		NULL,       -- parent !! TODO
 		:label,
 		NULL,       -- desc_major
 		NULL)       -- desc_minor
@@ -754,8 +756,8 @@ proc ::cm::db::pschedule::item-details {item} {
 	,      'xlabel'    , label         
 	,      'xdescmajor', desc_major    
 	,      'xdescminor', desc_minor    
-	FROM   pschedule
-	WHERE id = :pschedule
+	FROM   pschedule_item
+	WHERE  id = :item
     }]
 }
 
@@ -793,14 +795,18 @@ proc ::cm::db::pschedule::active_set {pschedule} {
     set map {}
     if {($pschedule eq {}) ||
 	([string tolower $pschedule] eq "null")} {
-	lappend map :pschedule NULL
+	db do eval {
+	    DELETE
+	    FROM  pschedule_global
+	    WHERE key = 'schedule/active'
+	}
+    } else {
+	db do eval {
+	    INSERT OR REPLACE
+	    INTO   pschedule_global
+	    VALUES (NULL, 'schedule/active', :pschedule)
+	}
     }
-
-    db do eval [string map $map {
-	INSERT OR REPLACE
-	INTO   pschedule_global
-	VALUES (NULL, 'schedule/active', :pschedule)
-    }]
     return
 }
 
@@ -1022,7 +1028,7 @@ proc ::cm::db::pschedule::setup {} {
 
 	    --
 	    -- <IV_S_0004> key == "schedule/active" : value INTEGER REFERENCES pschedule "active schedule"
-	    --      key == "start"           : value INTEGER "start time, offset from midnight [min]"
+	    --             key == "start"           : value INTEGER "start time, offset from midnight [min]"
 	} {
 	    {id    INTEGER 1 {} 1}
 	    {key   TEXT    1 {} 0}
@@ -1033,9 +1039,7 @@ proc ::cm::db::pschedule::setup {} {
     } else {
 	db do eval {
 	    -- Default start at 09:00 = 9*60 = 540
-	    -- No active schedule by default.
 	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'start',           540);
-	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'schedule/active', NULL);
 	}
     }
 

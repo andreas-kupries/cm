@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
+package require cmdr::validate::time::minute
 package require debug
 package require debug::caller
 package require dbutil
@@ -502,10 +503,10 @@ proc ::cm::schedule::item-add-event {config} {
 
     set pslabel [pschedule piece $pschedule dname]
 
-    puts "Schedule \"[color name $pslabel]\": Creating event \"$description\" ... "
+    puts "Schedule \"[color name $pslabel]\": Creating event \"$desc\" ... "
     puts "* Track:  [color name [$config @track string]]"
     puts "* Day:    $day"
-    puts "* Start:  [pschedule-day 2external $start]"
+    puts "* Start:  [cmdr::validate::time::minute 2external $start]"
     puts "* Length: $length"
     puts "* Note:   $note"
 
@@ -547,11 +548,11 @@ proc ::cm::schedule::item-add-placeholder {config} {
     set pslabel   [pschedule piece $pschedule dname]
 
     puts "Schedule \"[color name $pslabel]\": Creating placeholder \"$label\" ... "
-    puts "* Track:       [color name [$config @track string]]"
-    puts "* Day:         $day"
-    puts "* Start:       [pschedule-day 2external $start]"
-    puts "* Length:      $length"
-    puts "* Description: $description"
+    puts "* Track:  [color name [$config @track string]]"
+    puts "* Day:    $day"
+    puts "* Start:  [cmdr::validate::time::minute 2external $start]"
+    puts "* Length: $length"
+    puts "* Label:  $label"
 
     try {
 	db do transaction {
