@@ -20,8 +20,8 @@ test schedule-item-placeholder-1.0 {schedule item placeholder, wrong args, not e
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
 
-test schedule-item-placeholder-1.2 {schedule item placeholder, wrong args, too many} -body {
-    run schedule item placeholder DESC NOTE X
+test schedule-item-placeholder-1.1 {schedule item placeholder, wrong args, too many} -body {
+    run schedule item placeholder LABEL X
 } -setup {
     stage-open
 } -cleanup {
@@ -37,12 +37,12 @@ test schedule-item-placeholder-1.2 {schedule item placeholder, wrong args, too m
 # # ## ### ##### ######## ############# #####################
 
 test schedule-item-placeholder-4.0 {schedule item placeholder} -body {
-    run schedule item placeholder -S SCHEDULE -T TRACK -D 0 -B 9:00 -L 22 LABEL
+    run schedule item placeholder -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 LABEL
     run schedule list
 } -setup {
     stage-open
     run schedule add SCHEDULE
-    run schedule track add --schedule SCHEDULE TRACK
+    run schedule track add TRACK
 } -cleanup {
     stage-close
 } -result [viewFile support/schedule/list-with-items-a.txt]

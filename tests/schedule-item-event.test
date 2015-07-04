@@ -20,15 +20,7 @@ test schedule-item-event-1.0 {schedule item event, wrong args, not enough} -body
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
 
-test schedule-item-event-1.1 {schedule item event, wrong args, not enough} -body {
-    run schedule item event DESC
-} -setup {
-    stage-open
-} -cleanup {
-    stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
-
-test schedule-item-event-1.2 {schedule item event, wrong args, too many} -body {
+test schedule-item-event-1.1 {schedule item event, wrong args, too many} -body {
     run schedule item event DESC NOTE X
 } -setup {
     stage-open
@@ -45,7 +37,7 @@ test schedule-item-event-1.2 {schedule item event, wrong args, too many} -body {
 # # ## ### ##### ######## ############# #####################
 
 test schedule-item-event-4.0 {schedule item event, only major description} -body {
-    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 9:00 -L 22 DESC
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 DESC
     run schedule list
 } -setup {
     stage-open
@@ -56,15 +48,15 @@ test schedule-item-event-4.0 {schedule item event, only major description} -body
 } -result [viewFile support/schedule/list-with-items-a.txt]
 
 test schedule-item-event-4.1 {schedule item event, major + minor descriptions} -body {
-    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 9:00 -L 22 DESC NOTE
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 DESC NOTE
     run schedule list
 } -setup {
     stage-open
     run schedule add SCHEDULE
-    run schedule track add --schedule SCHEDULE TRACK
+    run schedule track add TRACK
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-with-items-b.txt]
+} -result [viewFile support/schedule/list-with-items-a.txt]
 
 # TODO --in(side) ... Have to get a better handle on state
 

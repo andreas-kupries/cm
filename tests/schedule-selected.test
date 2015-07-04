@@ -1,0 +1,53 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - Printing the active schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-selected-1.0 {schedule selected, wrong args, too many} -body {
+    run schedule selected X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-selected-2.0 {schedule selected, no schedules} -body {
+    run schedule selected
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -match glob -result {*No active schedule}
+
+test schedule-selected-2.1 {schedule selected, new schedule is made active} -body {
+    run schedule selected
+} -setup {
+    stage-open
+    run schedule add fox
+} -cleanup {
+    stage-close
+} -match glob -result {*Active schedule is "fox"}
+
+test schedule-selected-2.2 {schedule selected, nothing active} -body {
+    run schedule selected
+} -setup {
+    stage-open
+    run schedule add fox
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*No active schedule}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

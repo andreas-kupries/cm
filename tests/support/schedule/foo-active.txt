@@ -4,5 +4,6 @@ Schedule "foo":
 +--------+-----+
 | Active |     |
 | Name   | foo |
+| Days   |     |
 | Tracks |     |
 +--------+-----+

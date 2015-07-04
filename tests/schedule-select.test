@@ -50,7 +50,7 @@ test schedule-select-2.0 {schedule select} -body {
     stage-close
 } -result {~/.cm/managed
 
-Schedule "fox": Activating ... OK}
+Activating schedule "fox" ... OK}
 
 test schedule-select-2.1 {schedule select, persistent} -body {
     run schedule select foo

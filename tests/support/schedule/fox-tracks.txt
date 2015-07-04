@@ -2,6 +2,8 @@
 
 Schedule "SCHEDULE":
 +--------+----------+
+| Active |          |
 | Name   | SCHEDULE |
-| Tracks | fox      |
+| Days   |          |
+| Tracks | fox (0)  |
 +--------+----------+
