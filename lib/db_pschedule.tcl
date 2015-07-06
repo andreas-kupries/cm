@@ -42,7 +42,7 @@ namespace eval ::cm::db::pschedule {
 	track-new track-remove track-rename track-all \
 	track-name-counts track-names track-known \
 	track-selection track-details track-piece \
-	item-new-event item-new-placeholder item-details \
+	item-new-event item-new-placeholder item-details item-piece \
 	day-max day-cover
 
     # select select_track select_day select_item
@@ -216,7 +216,7 @@ proc ::cm::db::pschedule::focus {pschedule} {
 	FROM            pschedule      S
 	LEFT OUTER JOIN pschedule_item I
 	ON              S.active_item = I.id
-	WHERE id = :pschedule
+	WHERE S.id = :pschedule
     }]
 }
 
@@ -759,6 +759,18 @@ proc ::cm::db::pschedule::item-details {item} {
 	FROM   pschedule_item
 	WHERE  id = :item
     }]
+}
+
+proc ::cm::db::pschedule::item-piece {item piece} {
+    debug.cm/db/pschedule {}
+    setup
+
+    lappend map @@ $piece
+    return [db do eval [string map $map {
+	SELECT @@
+	FROM   pschedule_item
+	WHERE  id = :item
+    }]]
 }
 
 # # ## ### ##### ######## ############# ######################
