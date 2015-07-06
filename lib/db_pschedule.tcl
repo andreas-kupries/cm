@@ -284,7 +284,13 @@ proc ::cm::db::pschedule::remove {pschedule} {
 	WHERE key   = 'schedule/active'
 	AND   value = :pschedule
 	;
-	-- Drop dependent information (items, tracks) first ...
+	-- Drop dependent information (items, tracks, focus) first ...
+	DELETE
+	FROM pschedule_focus
+	WHERE track IN (SELECT id
+			FROM   pschedule_track
+			WHERE  pschedule = :pschedule)
+	;
 	DELETE
 	FROM pschedule_item
 	WHERE pschedule = :pschedule
@@ -493,17 +499,24 @@ proc ::cm::db::pschedule::track-active-set {pschedule track} {
     # <IV_> TODO pschedule == track.pschedule (or leave that to the general validator)
 
     set map {}
+    set refocus 1
     if {($track eq {}) ||
 	([string tolower $track] eq "null")} {
 	lappend map :track NULL
+	set refocus 0
     }
 
-    db do eval [string map $map {
-	UPDATE pschedule
-	SET    active_track = :track
-	WHERE  id = :pschedule
-    }]
+    db do transaction {
+	db do eval [string map $map {
+	    UPDATE pschedule
+	    SET    active_track = :track
+	    WHERE  id = :pschedule
+	}]
 
+	if {$refocus} {
+	    Refocus $pschedule $track [day-active-get $pschedule]
+	}
+    }
     return
 }
 
@@ -520,17 +533,24 @@ proc ::cm::db::pschedule::day-active-set {pschedule day} {
     # <IV_> TODO keep day within the bounds (+1).
 
     set map {}
-    if {($track eq {}) ||
+    set refocus 1
+    if {($day eq {}) ||
 	([string tolower $day] eq "null")} {
 	lappend map :day NULL
+	set refocus 0
     }
 
-    db do eval [string map $map {
-	UPDATE pschedule
-	SET    active_day = :day
-	WHERE  id = :pschedule
-    }]
+    db do transaction {
+	db do eval [string map $map {
+	    UPDATE pschedule
+	    SET    active_day = :day
+	    WHERE  id = :pschedule
+	}]
 
+	if {$refocus} {
+	    Refocus $pschedule [track-active-get $pschedule] $day
+	}
+    }
     return
 }
 
@@ -540,24 +560,31 @@ proc ::cm::db::pschedule::day-active-get {pschedule} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::time-active-set {pschedule time} {
+proc ::cm::db::pschedule::time-active-set {pschedule time {mode save}} {
     debug.cm/db/pschedule {}
     setup
 
     # <IV_> TODO keep time within the bounds (0..1439)
 
     set map {}
-    if {($track eq {}) ||
+    if {($time eq {}) ||
 	([string tolower $time] eq "null")} {
 	lappend map :time NULL
     }
 
-    db do eval [string map $map {
-	UPDATE pschedule
-	SET    active_time = :time
-	WHERE  id = :pschedule
-    }]
+    db do transaction {
+	db do eval [string map $map {
+	    UPDATE pschedule
+	    SET    active_time = :time
+	    WHERE  id = :pschedule
+	}]
 
+	if {$mode eq "save"} {
+	    set details [details $pschedule] ; dict with details {
+		SaveFocus $pschedule $xactivetrack $xactiveday $xactiveitem $time
+	    }
+	}
+    }
     return
 }
 
@@ -567,7 +594,7 @@ proc ::cm::db::pschedule::time-active-get {pschedule} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::item-active-set {pschedule item} {
+proc ::cm::db::pschedule::item-active-set {pschedule item {mode save}} {
     debug.cm/db/pschedule {}
     setup
 
@@ -595,30 +622,82 @@ proc ::cm::db::pschedule::item-active-set {pschedule item} {
 	set ilength $xlength
     }
 
-    # Attention: (item.track IS NULL) ==> Keep active track as is, for providence.
-    if {$itrack eq {}} { set itrack [track-active-get $pschedule] }
+    # Attention: (item.track IS NULL) ==> Keep active track as is, for
+    # providence.
+    if {$itrack eq {}} {
+	set itrack [track-active-get $pschedule]
+    }
 
     incr istart $ilength ; # focus time is at the end of the item, by default.
 
-    db do eval {
-	UPDATE pschedule
-	SET    active_item  = :item
-	,      active_day   = :iday
-	,      active_track = :itrack
-	,      active_time  = :istart
-	WHERE  id = :pschedule
-    }
+    db do transaction {
+	db do eval {
+	    UPDATE pschedule
+	    SET    active_item  = :item
+	    ,      active_day   = :iday
+	    ,      active_track = :itrack
+	    ,      active_time  = :istart
+	    WHERE  id = :pschedule
+	}
 
-    # TODO: Save (item.day, item.track) --> (item, time) mapping for future navigation to this point.
-    # TODO: NOTE: (item.track IS NULL) ==> Save same data into all known tracks.
-    # TODO: NOTE: new track => look for cross-track items and auto-import!
-    # TODO: Table "pschedule_focus"
+	if {$mode eq "save"} {
+	    SaveFocus $pschedule $itrack $iday $item $istart
+	}
+    }
 
     return
 }
 
 proc ::cm::db::pschedule::item-active-get {pschedule} {
     return [piece $pschedule active_item]
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::pschedule::Refocus {pschedule track day} {
+    # Update active item and time from focus state, using the new
+    # combination of active track, and day.
+    debug.cm/db/pschedule {}
+
+    lassign [GetFocus $track $day] theitem thetime
+    item-active-set $pschedule $theitem nosave
+    time-active-set $pschedule $thetime nosave
+    return
+}
+
+proc ::cm::db::pschedule::SaveFocus {pschedule track day item time} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # TODO: assert (track.pschedule == pschedule)
+
+    if {$track eq {}} {
+	db do eval {
+	    SELECT id AS thetrack
+	    FROM   pschedule_track
+	    WHERE  pschedule = :pschedule
+	} {
+	    SaveFocus $pschedule $thetrack $iday $item $istart
+	}
+    } else {
+	db do eval {
+	    INSERT OR REPLACE
+	    INTO   pschedule_focus
+	    VALUES (:track, :day, :item, :time)
+	}
+    }
+    return
+}
+
+proc ::cm::db::pschedule::GetFocus {track day} {
+    debug.cm/db/pschedule {}
+    setup
+    return [db do eval {
+	SELECT active_item, active_time
+	FROM   pschedule_focus
+	WHERE  track     = :track
+	AND    day       = :day
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -648,9 +727,15 @@ proc ::cm::db::pschedule::track-remove {track} {
 
     db do eval {
 	-- Drop items referencing the track.
-	-- The affect schedule is implied in the track.
+	-- The affected schedule is implied in the track.
 	DELETE
 	FROM   pschedule_item
+	WHERE  track = :track
+	;
+	-- Drop focus state for this track.
+	-- The affected schedule is implied in the track.
+	DELETE
+	FROM   pschedule_focus
 	WHERE  track = :track
 	;
 	-- Drop active track in the schedule, if it is the removed track
@@ -1028,6 +1113,29 @@ proc ::cm::db::pschedule::setup {} {
 	} {}
     }]} {
 	db setup-error pschedule_item $error
+    }
+
+    if {![dbutil initialize-schema ::cm::db::do error pschedule_focus {
+	{
+	    -- Focus state information to aid navigation.
+	    -- Remember the active item and time for schedule, day, and track.
+	    -- The schdeule is actually implied by the track and therefore not stored.
+	    --
+	    	track		INTEGER	NOT NULL REFERENCES pschedule_track
+	    ,	day		INTEGER NOT NULL
+	    -- - - -- --- -----
+	    ,   active_item	INTEGER NOT NULL REFERENCES pschedule_item
+	    ,   active_time	INTEGER NOT NULL
+	    -- - - -- --- -----
+	    ,   UNIQUE (track, day) -- PK
+	} {
+	    {track       INTEGER 1 {} 0}
+	    {day         INTEGER 1 {} 0}
+	    {active_item INTEGER 1 {} 0}
+	    {active_time INTEGER 1 {} 0}
+	} {}
+    }]} {
+	db setup-error pschedule_focus $error
     }
 
     if {![dbutil initialize-schema ::cm::db::do error pschedule_global {
