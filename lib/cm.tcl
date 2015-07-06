@@ -1658,6 +1658,10 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [cm::call schedule active-or-select]
 	    }
 
+	    option dont-check {
+		Presence prevents schedule validation, allowing for intermediate invalid state.
+	    } { presence }
+
 	    ## # # ## ### ##### ######## #############
 	    # Focus elements in the schedule. Command behaviour influenced by
 	    # - element specified by the user
@@ -1694,21 +1698,23 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { presence
 		when-set [cm::call schedule context-cross-tracks]
 	    }
-
 	    ## # # ## ### ##### ######## #############
 	    option day {
 		The day to use
 	    } {
 		alias D
 		validate [cm::vt pschedule-day]
-		# TODO: selection
+		when-set [cm::call schedule context-set-day]
+		generate [cm::call schedule context-get-day]
 	    }
+	    ## # # ## ### ##### ######## #############
 	    option start-time {
 		The start time of the item
 	    } {
 		alias B
 		validate [cm::cvt time::minute]
-		# TODO: selection
+		when-set [cm::call schedule context-set-time]
+		generate [cm::call schedule context-get-time]
 	    }
 	    option length {
 		The length of the item in minutes
@@ -1716,15 +1722,23 @@ cmdr create cm::cm [file tail $::argv0] {
 		alias L
 		validate [cm::cvt time::minute]
 		default 0
-		# TODO: validation, selection
 	    }
-	    option in {
-		The parent of the item, if any.
-	    } {
-		# -- might simply use last item, or parent of last, auto-choice.
+	    ## # # ## ### ##### ######## #############
+	    option child {
+		Presence of this option indicates that the new item is a child.
+		The parent is deduced from the active item. Without such using
+		this option causes an error to be thrown.
+	    } { presence
 		alias P
-		#TODO:validate [cm::vt pschedule-item]
+		when-set [cm::call schedule context-mark-child]
 	    }
+	    state parent {
+		Context derived parent information. See also
+		"context-mark-child"
+	    } {
+		generate [cm::call schedule context-get-parent]
+	    }
+	    ## # # ## ### ##### ######## #############
 	}
 
 	officer track {

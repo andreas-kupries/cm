@@ -39,6 +39,8 @@ namespace eval ::cm {
 namespace eval ::cm::schedule {
     namespace export \
 	context-setup context-set-track context-cross-tracks context-get-track \
+	context-set-day context-get-day context-set-time context-get-time \
+	context-mark-child context-get-parent \
 	active-or-select just-select validate \
 	add remove rename select select-clear selected focus show listing test-known \
 	test-select track-add track-remove track-rename test-track-known \
@@ -86,11 +88,13 @@ proc ::cm::schedule::context-setup {p} {
 		xaitemlen    {}
 	    }
 	    flags {
-		item  system
-		day   system
-		track system
-		time  system
+		item   system
+		day    system
+		track  system
+		time   system
+		parent system
 	    }
+	    parent {}
 	}
     }
 
@@ -98,11 +102,13 @@ proc ::cm::schedule::context-setup {p} {
     return [dict create \
 		schedule $pschedule \
 		focus    $focus \
+		parent   {} \
 		flags {
-		    item  system
-		    day   system
-		    track system
-		    time  system
+		    item   system
+		    day    system
+		    track  system
+		    time   system
+		    parent system
 		}]
 }
 
@@ -160,25 +166,188 @@ proc ::cm::schedule::context-get-track {p} {
     debug.cm/schedule {active item track = $it}
     debug.cm/schedule {active track      = $ct}
 
-    # No active item, return active track
-    if {$ci eq {}} {
-	return $ct
-    }
+    # Return the active track. Always.
+    # - An active item with a track has set the active track to its own.
+    # - Active item crossing tracks left the active track unchanged.
+    # - User can change the track, which may not have an active item
+    # - Without active item the chosen active track must be used.
 
-    # The active item crosses tracks, return active track
-    if {$it eq {}} {
-	return $ct
-    }
+    return $ct
+}
 
-    # Return the active item's track. Same as the active track (ct)
-    # for an item not crossing tracks.
-    return $it
+proc ::cm::schedule::context-set-day {p day} {
+    debug.cm/schedule {}
+    # RMW operation on the context.
+    # User-specified day
 
-    # UGH ... Reading the comments and looking at returns, it seems
-    # that we can simply always return the active track without all
-    # the checks and complexity.
+    # Read ...
+    set context [$p config @context]
+
+    # ... Modify ... (Setting user spec)
+    dict set context focus xactiveday $day
+    dict set context flags day        user
+
+    # ... Writeback
+    $p config @context set $context
+
+    return $day
+}
+
+proc ::cm::schedule::context-get-day {p} {
+    debug.cm/schedule {}
+
+    # Read operation on the context.
+    set context [$p config @context]
+
+    # assert (dict get $context flags day) == system
+
+    # Pull relevant focus data (active item, item day, active day).
+    set ci [dict get $context focus xactiveitem]
+    set id [dict get $context focus xaitemday]
+    set cd [dict get $context focus xactiveday]
+
+    debug.cm/schedule {active item     = $ci}
+    debug.cm/schedule {active item day = $id}
+    debug.cm/schedule {active day      = $cd}
+
+    # Return the active day. Always.
+    # - An active item  has set the active day to its own.
+    # - User can change the day, which may not have an active item
+    # - Without active item the chosen active day must be used.
+
+    return $cd
+}
+
+proc ::cm::schedule::context-set-time {p offset} {
+    debug.cm/schedule {}
+    # RMW operation on the context.
+    # User-specified starting time.
+
+    # Read ...
+    set context [$p config @context]
+
+    # ... Modify ... (Setting user spec)
+    dict set context focus xactivetime $offset
+    dict set context flags time        user
+
+    # ... Writeback
+    $p config @context set $context
+
+    return $offset
+}
+
+proc ::cm::schedule::context-get-time {p} {
+    debug.cm/schedule {}
+
+    # Read operation on the context.
+    set context [$p config @context]
+
+    # assert (dict get $context flags time) == system
+
+    # Pull relevant focus data (active item, item start/length, active time).
+    set ci [dict get $context focus xactiveitem]
+    set is [dict get $context focus xaitemstart]
+    set il [dict get $context focus xaitemlen]
+    set ct [dict get $context focus xactivetime]
+
+    debug.cm/schedule {active item        = $ci}
+    debug.cm/schedule {active item start  = $is}
+    debug.cm/schedule {active item length = $il}
+    debug.cm/schedule {active time        = $ct}
+
+    # Return the active time. Always.
+    # - An active item  has set the active time.
+    # - User can change the time, which may not have an active item
+    # - Without active item the chosen active time must be used.
+
+    return $ct
+}
+
+proc ::cm::schedule::context-mark-child {p _ignored_} {
+    debug.cm/schedule {}
+    # RMW operation on the context.
+    # User-specified parent signal.
+
+    # Read ...
+    set context [$p config @context]
+
+    # ... Modify ... (Setting user spec)
+    dict set context flags parent      user
+
+    # ... Writeback
+    $p config @context set $context
+
+    return
+}
+
+proc ::cm::schedule::context-get-parent {p} {
+    debug.cm/schedule {}
+
+    # Read operation on the context.
+    set context [$p config @context]
+
+    # 1. No active item
+    #    a. User requested parent => Error
+    #    b. System parent         => None
     #
-    # TODO test the above possibility
+    # 2. Have active item
+    #    a. active time == item.start
+    #       i.  No active item parent => Active item is parent
+    #       ii. Active item parent    => Error
+    #    b. active time == item.end (start+len)
+    #       i.  No active item parent => Error
+    #       ii. Active item parent    => Active item parent is parent
+    #    c. any other active time.
+    #       i.  User requested parent => Error
+    #       ii. System parent         => None
+
+    set ci  [dict get $context focus xactiveitem]
+    set rqp [expr {[dict get context flags parent] eq "user"}]
+
+    debug.cm/schedule {active item        = $ci}
+    debug.cm/schedule {parent requested   = $rqp}
+
+    if {$ci eq {}} {
+	if {!$rqp} { return {} } ;# 1b
+	# 1a
+	return -code error "Unable to deduce parent, no active item"
+    }
+
+    # 2.
+    set is [dict get $context focus xaitemstart]
+    set il [dict get $context focus xaitemlen]
+    set ie [expr {$is + $il}]
+    set ct [dict get $context focus xactivetime]
+
+    debug.cm/schedule {active item start  = $is}
+    debug.cm/schedule {active item length = $il}
+    debug.cm/schedule {active item end    = $ie}
+    debug.cm/schedule {active time        = $ct}
+
+    if {$ct == $is} {
+	# 2a
+	set p [pschedule item-piece $ci parent]
+	if {$p eq {}} {
+	    return $ci ;# 2a.i
+	} else {
+	    return -code error "Rejecting active item as parent, already a child."
+	}
+
+    } elseif {$ct == $ie} {
+	# 2b
+	set p [pschedule item-piece $ci parent]
+	if {$p eq {}} {
+	    return -code error "Active item has no parent."
+	} else {
+	    return $p ;# 2b.ii
+	}
+
+    } else {
+	# 2c
+	if {!$rqp} { return {} } ;# 2c.i
+	# 2c.ii
+	return -code error "Unable to deduce parent from active item and time"
+    }
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -442,6 +611,13 @@ proc ::cm::schedule::focus {config} {
     if {$xactivetrack ne {}} { set xactivetrack [track-piece $xactivetrack dname] }
     if {$xaitemtrack  ne {}} { set xaitemtrack  [track-piece $xaitemtrack  dname] }
 
+    if {$xaitemstart != {}} {
+	set xaitemstart [cmdr::validate::time::minute 2external $xaitemstart]
+    }
+    if {$xactivetime != {}} {
+	set xactivetime [cmdr::validate::time::minute 2external $xactivetime]
+    }
+
     puts "\nFocus"
     [table/d t {
 	$t add Schedule  $name
@@ -462,7 +638,7 @@ proc ::cm::schedule::focus {config} {
 	    } else {
 		$t add Track "I $xaitemtrack (-- $xactivetrack)"
 	    }
-	    $t add Time  "I $xaitemstart $xaitemlen (-- $xactivetime)" ;# -- TODO: format start, activetime
+	    $t add Time  "I $xaitemstart $xaitemlen (-- $xactivetime)"
 	}
     }] show
     return
@@ -618,6 +794,8 @@ proc ::cm::schedule::item-add-event {config} {
     set desc      [$config @description]
     set note      [$config @note]
 
+    set validate  [expr {![$config @dont-check]}]
+
     # try to insert, report failure as user error
 
     set pslabel [pschedule piece $pschedule dname]
@@ -638,7 +816,7 @@ proc ::cm::schedule::item-add-event {config} {
 	    flush stdout
 	    pschedule item-active-set $pschedule $item
 
-	    pschedule validate
+	    if {$validate} { pschedule validate }
 	}
     } on error {e o} {
 	# TODO: trap only proper insert error, if possible.
@@ -662,6 +840,8 @@ proc ::cm::schedule::item-add-placeholder {config} {
     set length    [$config @length]
     set label     [$config @label]
 
+    set validate  [expr {![$config @dont-check]}]
+
     # try to insert, report failure as user error
 
     set pslabel   [pschedule piece $pschedule dname]
@@ -682,7 +862,7 @@ proc ::cm::schedule::item-add-placeholder {config} {
 	    flush stdout
 	    pschedule item-active-set $pschedule $item
 
-	    pschedule validate
+	    if {$validate} { pschedule validate }
 	}
     } on error {e o} {
 	# TODO: trap only proper insert error, if possible.
