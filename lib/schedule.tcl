@@ -41,7 +41,7 @@ namespace eval ::cm::schedule {
 	context-setup context-set-track context-cross-tracks context-get-track \
 	context-set-day context-get-day context-set-time context-get-time \
 	context-request-parent context-get-parent \
-	active-or-select just-select track-just-select validate \
+	active-or-select just-select track-just-select start validate \
 	add remove rename select select-clear selected focus show listing test-known \
 	test-select track-add track-remove track-rename track-select track-select-clear \
 	track-selected test-track-known \
@@ -76,13 +76,27 @@ proc ::cm::schedule::context-setup {p} {
 
     # Initialize the context dictionary.
     dict set context schedule [set pschedule [$p config @schedule]]
+
+    debug.cm/schedule {pschedule = ($pschedule)}
     if {$pschedule ne {}} {
+	debug.cm/schedule {/focus}
+
 	dict set context focus [pschedule focus $pschedule]
+
+	# Absolute fallbacks for missing focus information.
+	if {[dict get $context focus xactiveday] eq {}} {
+	    dict set context focus xactiveday 0
+	}
+	if {[dict get $context focus xactivetime] eq {}} {
+	    dict set context focus xactivetime  [pschedule start-get]
+	}
     } else {
+	debug.cm/schedule {/defaults}
+
 	dict set context focus xactiveitem  {} ;# active item
-	dict set context focus xactiveday   {} ;#        day
-	dict set context focus xactivetrack {} ;#        track
-	dict set context focus xactivetime  {} ;#        time
+	dict set context focus xactiveday   0  ;#        day
+	dict set context focus xactivetrack {} ;#        track, time
+	dict set context focus xactivetime  [pschedule start-get]
 
 	dict set context focus xaitemday    {} ;# similar data
 	dict set context focus xaitemtrack  {} ;# from the
@@ -91,6 +105,8 @@ proc ::cm::schedule::context-setup {p} {
     }
 
     dict set context parent {} ;# parent item to use
+
+    debug.cm/schedule {==> ($context)}
     return $context
 }
 
@@ -345,6 +361,34 @@ proc ::cm::schedule::validate {config} {
     }
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::start {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    if {[$config @time set?]} {
+	set time [$config @time]
+	set tlabel [cmdr::validate::time::minute 2external $time]
+
+	puts -nonewline "\nSetting global start time to $tlabel ... "
+	flush stdout
+
+	pschedule start-set $time
+
+	puts [color good OK]
+    } else {
+	puts ""
+    }
+
+    puts -nonewline "Current global start time: "
+    flush stdout
+
+    puts [cmdr::validate::time::minute 2external [pschedule start-get]]
     return
 }
 
@@ -831,12 +875,19 @@ proc ::cm::schedule::item-add-event {config} {
 
     # try to insert, report failure as user error
 
-    set pslabel [pschedule piece       $pschedule dname]
-    set tlabel  [pschedule track-piece $track     dname]
+    set pslabel [pschedule piece $pschedule dname]
+
+    if {$track eq {}} {
+	set tlabel {Across all tracks}
+	set tcolor note
+    } else {
+	set tlabel [pschedule track-piece $track dname]
+	set tcolor name
+    }
 
     debug.cm/schedule { context   = ($context)}
     debug.cm/schedule { schedule  = $pschedule "$pslabel"}
-    debug.cm/schedule { track     = $track "$tlabel"}
+    debug.cm/schedule { track     = ($track) "$tlabel"}
     debug.cm/schedule { day       = $day}
     debug.cm/schedule { start/len = $start ($length)}
     debug.cm/schedule { desc      = "$desc"}
@@ -845,10 +896,10 @@ proc ::cm::schedule::item-add-event {config} {
     debug.cm/schedule { parent    = $parent }
 
     puts "Schedule \"[color name $pslabel]\": Creating event \"[color name $desc]\" ... "
-    puts "* Track:  [color name $tlabel]"
+    puts "* Track:  [color $tcolor $tlabel]"
     puts "* Day:    $day"
     puts "* Start:  [cmdr::validate::time::minute 2external $start]"
-    puts "* Length: $length"
+    puts "* Length: [cmdr::validate::time::minute 2external $length]"
     if {$note ne {}} {
 	puts "* Note:   [color name $note]"
     }
@@ -865,6 +916,9 @@ proc ::cm::schedule::item-add-event {config} {
 		puts -nonewline "Activating ... "
 		flush stdout
 		pschedule item-active-set $pschedule $item
+	    } else {
+		# Affirm parent as active, with updated time/length
+		pschedule item-active-set $pschedule $parent
 	    }
 
 	    if {$validate} { pschedule validate }
@@ -901,13 +955,20 @@ proc ::cm::schedule::item-add-placeholder {config} {
     # try to insert, report failure as user error
 
     set pslabel [pschedule piece       $pschedule dname]
-    set tlabel  [pschedule track-piece $track     dname]
+
+    if {$track eq {}} {
+	set tlabel {Across all tracks}
+	set tcolor note
+    } else {
+	set tlabel [pschedule track-piece $track dname]
+	set tcolor name
+    }
 
     puts "Schedule \"[color name $pslabel]\": Creating placeholder \"[color name $label]\" ... "
-    puts "* Track:  [color name $tlabel]"
+    puts "* Track:  [color $tcolor $tlabel]"
     puts "* Day:    $day"
     puts "* Start:  [cmdr::validate::time::minute 2external $start]"
-    puts "* Length: $length"
+    puts "* Length: [cmdr::validate::time::minute 2external $length]"
     puts "* Label:  $label"
 
     try {
@@ -922,6 +983,9 @@ proc ::cm::schedule::item-add-placeholder {config} {
 		puts -nonewline "Activating ... "
 		flush stdout
 		pschedule item-active-set $pschedule $item
+	    } else {
+		# Affirm parent as active, with updated time/length
+		pschedule item-active-set $pschedule $parent
 	    }
 
 	    if {$validate} { pschedule validate }

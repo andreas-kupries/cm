@@ -225,11 +225,14 @@ proc ::cm::db::pschedule::piece {pschedule piece} {
     setup
 
     lappend map @@ $piece
-    return [db do onecolumn [string map $map {
+    set value [db do onecolumn [string map $map {
 	SELECT @@
 	FROM   pschedule
 	WHERE id = :pschedule
     }]]
+
+    debug.cm/db/pschedule {==> ($value)}
+    return $value
 }
 
 proc ::cm::db::pschedule::all {} {
@@ -422,11 +425,14 @@ proc ::cm::db::pschedule::track-piece {track piece} {
     setup
 
     lappend map @@ $piece
-    return [db do onecolumn [string map $map {
+    set value [db do onecolumn [string map $map {
 	SELECT @@
 	FROM   pschedule_track
 	WHERE  id = :track
     }]]
+
+    debug.cm/db/pschedule {==> ($value)}
+    return $value
 }
 
 proc ::cm::db::pschedule::track-all {pschedule} {
@@ -624,11 +630,18 @@ proc ::cm::db::pschedule::item-active-set {pschedule item {mode save}} {
 
     # Attention: (item.track IS NULL) ==> Keep active track as is, for
     # providence.
+    set aitrack $itrack
     if {$itrack eq {}} {
 	set itrack [track-active-get $pschedule]
+	debug.cm/db/pschedule {Keep track $itrack}
     }
 
     incr istart $ilength ; # focus time is at the end of the item, by default.
+
+    debug.cm/db/pschedule { @ item  = $item}
+    debug.cm/db/pschedule { @ day   = $iday}
+    debug.cm/db/pschedule { @ track = $itrack}
+    debug.cm/db/pschedule { @ time  = $istart}
 
     db do transaction {
 	db do eval {
@@ -641,7 +654,10 @@ proc ::cm::db::pschedule::item-active-set {pschedule item {mode save}} {
 	}
 
 	if {$mode eq "save"} {
-	    SaveFocus $pschedule $itrack $iday $item $istart
+	    # NOTE: Using aitrack here to ensure that an item across
+	    # tracks is saved to all of them, not just the track we
+	    # are keeping active.
+	    SaveFocus $pschedule $aitrack $iday $item $istart
 	}
     }
 
@@ -677,7 +693,7 @@ proc ::cm::db::pschedule::SaveFocus {pschedule track day item time} {
 	    FROM   pschedule_track
 	    WHERE  pschedule = :pschedule
 	} {
-	    SaveFocus $pschedule $thetrack $iday $item $istart
+	    SaveFocus $pschedule $thetrack $day $item $time
 	}
     } else {
 	db do eval {
@@ -857,11 +873,14 @@ proc ::cm::db::pschedule::item-piece {item piece} {
     setup
 
     lappend map @@ $piece
-    return [db do onecolumn [string map $map {
+    set value [db do onecolumn [string map $map {
 	SELECT @@
 	FROM   pschedule_item
 	WHERE  id = :item
     }]]
+
+    debug.cm/db/pschedule {==> ($value)}
+    return $value
 }
 
 proc ::cm::db::pschedule::item-extend {item length} {
