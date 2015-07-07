@@ -1,11 +1,19 @@
 #!/bin/bash
 
-functions cms()
+function cms()
 {
-    cm schedule "$@"
+    echo
+    echo === "$@" === === === === === === === === ===
+    echo
+    cm schedule "$@" --color always
+    # --debug cm/db/pschedule
+    # --debug cm/schedule
 }
 
-cms new "Tcl 2014"
+# Start clean
+cms remove "Tcl 2014"
+
+cms add "Tcl 2014"
 cms start 09:00
 cms track add 'Tutorial A'
 cms track add 'Tutorial B'
@@ -13,27 +21,27 @@ cms track add 'Tech Session'
 cms track add 'Community'
 
 cms track select     'Tutorial A'
-cms item event       Tutorials -L 03:30         --dont-check
+cms item event       Tutorials
 cms item placeholder @T0m0     -L 03:30 --child
 cms track select     'Tutorial B'
-cms item event       Tutorials -L 03:30         --dont-check
+cms item event       Tutorials
 cms item placeholder @T0m1     -L 03:30 --child
 
-cms item event 'Lunch Break'    -L 60 --across --dont-check
+cms item event 'Lunch Break'    --across
 cms item event 'Lunch Provided' -L 60 --child
 
 cms track select     'Tutorial A'
-cms item event       Tutorials -L 03:30         --dont-check
+cms item event       Tutorials
 cms item placeholder @T0a0     -L 03:30 --child
 cms track select     'Tutorial B'
-cms item event       Tutorials -L 03:30         --dont-check
+cms item event       Tutorials
 cms item placeholder @T0a1     -L 03:30 --child
 
 cms track select     'Tutorial A'
-cms item event       'Free Tutorial' -L 60
+cms item event       'Free Tutorial' -L 60 --child
 
 cms track select Community
-cms item event   'Social and BOFs' -B 19:00 -L 05:00 --dont-check
+cms item event   'Social and BOFs' -B 19:00
 cms item event   "Hospitality suite" "Tcl Community Association"  -L 05:00 --child
 
 

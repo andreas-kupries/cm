@@ -1655,6 +1655,18 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call schedule show]
 	default
 
+	private start {
+	    description { Show and/or set a global start-time }
+	    input time {
+		If present, set the global start time to this value.
+		Else simply show the current value of this setting.
+	    } {
+		optional
+		validate [cm::cvt time::minute]
+	    }
+	} [cm::call schedule start]
+	default
+
 	private list {
 	    description { Show a table of all known schedules }
 	} [cm::call schedule listing]
