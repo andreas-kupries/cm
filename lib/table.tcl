@@ -53,16 +53,16 @@ package require cmdr::color
 # No borders, with header row.
 ::report::defstyle table/plain {} {
     tcaption	1
-    for {set i 0 ; set n [columns]} {$i < $n} {incr i} {
-	pad $i both { }
+    for {set i 1 ; set n [columns]} {$i < $n} {incr i} {
+	pad $i left { }
     }
     return
 }
 
 # No borders, no header row
 ::report::defstyle table/plain/nohdr {} {
-    for {set i 0 ; set n [columns]} {$i < $n} {incr i} {
-	pad $i both { }
+    for {set i 1 ; set n [columns]} {$i < $n} {incr i} {
+	pad $i left { }
     }
     return
 }
