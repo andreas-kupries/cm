@@ -1697,9 +1697,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    ## # # ## ### ##### ######## #############
 
 	    state context {
-		- internal focus context.
-		- records user vs. system default.
-		- single place where database focus data gets loaded
+		Internal focus context holding all focus information
+		and associated flags across the different options.
+
 		structure is dict {
 		    schedule -> active schedule
 		    focus    -> focus data
@@ -1711,37 +1711,91 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 
 	    ## # # ## ### ##### ######## #############
+	    ### Logic for parent item.
+
+	    option child {
+		Presence of this option tells the system that the new
+		item requires a parent, which shall be the active
+		item, before and after.
+
+		The start-time shall be the current end-time of the
+		parent, and the parent be extended by the length of
+		the new item. Regardless of user choice.
+
+		The track and day of the new item shall be inherited
+		from the parent. Regardless of user choice.
+	    } { presence
+		alias P
+
+		when-set [disallow @track]
+		when-set [disallow @cross-tracks]
+		when-set [disallow @day]
+		when-set [disallow @start-time]
+
+		when-set [cm::call schedule context-request-parent]
+	    }
+	    state parent {
+		Context derived parent information. See also
+		--child above, and "context-request-parent".
+	    } {
+		generate [cm::call schedule context-get-parent]
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	    ## Logic for track.
+
 	    option track {
 		The track to use for the new item
 	    } {
 		alias T
 		validate [cm::vt pschedule-track]
+
+		when-set [disallow @cross-tracks]
+		when-set [disallow @child]
+
 		when-set [cm::call schedule context-set-track]
 		generate [cm::call schedule context-get-track]
 	    }
 	    option cross-tracks {
 		Create an item crossing all tracks
 	    } { presence
+		alias across
+		when-set [disallow @track]
+		when-set [disallow @child]
+
 		when-set [cm::call schedule context-cross-tracks]
 	    }
+
 	    ## # # ## ### ##### ######## #############
+	    ## Logic for day.
+
 	    option day {
 		The day to use
 	    } {
 		alias D
 		validate [cm::vt pschedule-day]
+
+		when-set [disallow @child]
+
 		when-set [cm::call schedule context-set-day]
 		generate [cm::call schedule context-get-day]
 	    }
+
 	    ## # # ## ### ##### ######## #############
+	    ## Logic for start-time
+
 	    option start-time {
 		The start time of the item
 	    } {
 		alias B
 		validate [cm::cvt time::minute]
+
+		when-set [disallow @child]
+
 		when-set [cm::call schedule context-set-time]
 		generate [cm::call schedule context-get-time]
 	    }
+
 	    option length {
 		The length of the item in minutes
 	    } {
@@ -1749,21 +1803,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::cvt time::minute]
 		default 0
 	    }
-	    ## # # ## ### ##### ######## #############
-	    option child {
-		Presence of this option indicates that the new item is a child.
-		The parent is deduced from the active item. Without such using
-		this option causes an error to be thrown.
-	    } { presence
-		alias P
-		when-set [cm::call schedule context-mark-child]
-	    }
-	    state parent {
-		Context derived parent information. See also
-		"context-mark-child"
-	    } {
-		generate [cm::call schedule context-get-parent]
-	    }
+
 	    ## # # ## ### ##### ######## #############
 	}
 
