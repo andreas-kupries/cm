@@ -33,7 +33,7 @@ namespace eval ::cm::db {
 namespace eval ::cm::db::pschedule {
     namespace export \
         setup validate \
-	start_set start_get active_set active_get \
+	start-set start-get active-set active-get \
 	new remove rename all known selection details piece focus \
 	track-active-set track-active-get \
 	day-active-set day-active-get \
@@ -887,7 +887,7 @@ proc ::cm::db::pschedule::item-extend {item length} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::start_set {minutes} {
+proc ::cm::db::pschedule::start-set {minutes} {
     debug.cm/db/pschedule {}
     setup
 
@@ -899,7 +899,7 @@ proc ::cm::db::pschedule::start_set {minutes} {
     return
 }
 
-proc ::cm::db::pschedule::start_get {} {
+proc ::cm::db::pschedule::start-get {} {
     debug.cm/db/pschedule {}
     setup
 
@@ -912,7 +912,7 @@ proc ::cm::db::pschedule::start_get {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::active_set {pschedule} {
+proc ::cm::db::pschedule::active-set {pschedule} {
     debug.cm/db/pschedule {}
     setup
 
@@ -934,7 +934,7 @@ proc ::cm::db::pschedule::active_set {pschedule} {
     return
 }
 
-proc ::cm::db::pschedule::active_get {} {
+proc ::cm::db::pschedule::active-get {} {
     debug.cm/db/pschedule {}
     setup
 

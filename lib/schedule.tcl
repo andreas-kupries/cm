@@ -283,7 +283,7 @@ proc ::cm::schedule::active-or-select {p} {
     # Fall back to user selection of the schedule to work with.
     # Ask user if they wish to make that schedule active as well.
 
-    set pschedule [pschedule active_get]
+    set pschedule [pschedule active-get]
     if {$pschedule ne {}} {
 	debug.cm/schedule {active ==> $pschedule}
 	return $pschedule
@@ -298,7 +298,7 @@ proc ::cm::schedule::active-or-select {p} {
     set pslabel [pschedule piece $pschedule dname]
     if {[ask yn "Activate schedule \"[color name $pslabel]\" ?" yes]} {
 	debug.cm/schedule {activate $pschedule}
-	pschedule active_set $pschedule
+	pschedule active-set $pschedule
     }
 
     debug.cm/schedule {==> $pschedule}
@@ -369,7 +369,7 @@ proc ::cm::schedule::add {config} {
 	    # New schedule is automatically active.
 	    puts -nonewline "Activating ... "
 	    flush stdout
-	    pschedule active_set $pschedule
+	    pschedule active-set $pschedule
 
 	    pschedule validate
 	}
@@ -429,7 +429,7 @@ proc ::cm::schedule::select-clear {config} {
     pschedule setup
     db show-location
 
-    set pschedule [pschedule active_get]
+    set pschedule [pschedule active-get]
 
     if {$pschedule eq {}} {
 	puts \n[color note {No active schedule, operation ignored.}]
@@ -442,7 +442,7 @@ proc ::cm::schedule::select-clear {config} {
     flush stdout
 
     db do transaction {
-	pschedule active_set {}
+	pschedule active-set {}
 	pschedule validate
     }
 
@@ -455,7 +455,7 @@ proc ::cm::schedule::selected {config} {
     pschedule setup
     db show-location
 
-    set pschedule [pschedule active_get]
+    set pschedule [pschedule active-get]
 
     if {$pschedule eq {}} {
 	puts \n[color note {No active schedule}]
@@ -480,7 +480,7 @@ proc ::cm::schedule::select {config} {
     flush stdout
 
     db do transaction {
-	pschedule active_set $pschedule
+	pschedule active-set $pschedule
 	pschedule validate
     }
 
@@ -496,7 +496,7 @@ proc ::cm::schedule::show {config} {
     set pschedule [$config @name]
     puts "\nSchedule \"[color name [$config @name string]]\":"
 
-    set active_ps [pschedule active_get]
+    set active_ps [pschedule active-get]
     set psd       [pschedule details $pschedule]
     dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
 
@@ -516,7 +516,7 @@ proc ::cm::schedule::listing {config} {
     pschedule setup
     db show-location
 
-    set active_ps [pschedule active_get]
+    set active_ps [pschedule active-get]
 
     puts "\nSchedules:"
     [table t {{} Name Days Tracks} {
@@ -538,7 +538,7 @@ proc ::cm::schedule::focus {config} {
     pschedule setup
     db show-location
 
-    set pschedule [pschedule active_get]
+    set pschedule [pschedule active-get]
 
     if {$pschedule eq {}} {
 	puts \n[color note {No active schedule}]
