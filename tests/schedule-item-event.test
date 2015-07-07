@@ -31,13 +31,51 @@ test schedule-item-event-1.1 {schedule item event, wrong args, too many} -body {
 # # ## ### ##### ######## ############# #####################
 ## Create various bogus events (validation type failures)
 
+foreach {n opta optb} {
+    0 --child            --cross-tracks
+    1 --child            {--track TRACK}
+    2 --child            {--day 0}
+    3 --child            {--start-time 120}
+    4 --cross-tracks     --child
+    5 {--track TRACK}    --child
+    6 {--day 0}          --child
+    7 {--start-time 120} --child
+    8 {--track TRACK}    --cross-tracks
+    9 --cross-tracks     {--track T}
+} {
+    set oa [lindex $opta 0]
+    set ob [lindex $optb 0]
+    set msg "*cmdr: You cannot use \"$ob\" together with \"$oa\"."
+
+    test schedule-item-event-2.0.$n {schedule item event, option check $opta / $optb} -body {
+	run schedule item event {*}$opta {*}$optb
+    } -setup {
+	stage-open
+	run schedule add       SCHEDULE
+	run schedule track add TRACK
+	run schedule item event -B 09:00 -L 30 DESC ;# for --child to latch on to.
+    } -cleanup {
+	stage-close
+    } -returnCodes error -match glob -result $msg
+}
+
+test schedule-item-event-2.1 {schedule item event, --child without active item} -body {
+    run schedule item event --child
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cmdr: No usable parent found}
+
 # # ## ### ##### ######## ############# #####################
 ## Create various bogus events (db validation failures)
 
 # # ## ### ##### ######## ############# #####################
 
 test schedule-item-event-4.0 {schedule item event, only major description} -body {
-    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 DESC
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 30 DESC
     run schedule list
 } -setup {
     stage-open
@@ -48,7 +86,7 @@ test schedule-item-event-4.0 {schedule item event, only major description} -body
 } -result [viewFile support/schedule/list-with-items.txt]
 
 test schedule-item-event-4.1 {schedule item event, major + minor descriptions} -body {
-    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 DESC NOTE
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 30 DESC NOTE
     run schedule list
 } -setup {
     stage-open

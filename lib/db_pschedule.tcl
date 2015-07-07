@@ -422,7 +422,7 @@ proc ::cm::db::pschedule::track-piece {track piece} {
     setup
 
     lappend map @@ $piece
-    return [db do eval [string map $map {
+    return [db do onecolumn [string map $map {
 	SELECT @@
 	FROM   pschedule_track
 	WHERE  id = :track
@@ -769,15 +769,18 @@ proc ::cm::db::pschedule::track-rename {track dname} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::item-new-event {pschedule track day start length desc note} {
+proc ::cm::db::pschedule::item-new-event {pschedule track day start length parent desc note} {
     debug.cm/db/pschedule {}
     setup
     # desc should not be empty string! - IV_I_TODO
 
     # track, note nullable.
     set map {}
-    if {$track eq {}} { lappend map :track NULL }
-    if {$note  eq {}} { lappend map :note  NULL }
+    if {$track  eq {}} { lappend map :track  NULL }
+    if {$note   eq {}} { lappend map :note   NULL }
+    if {$parent eq {}} { lappend map :parent NULL } else {
+	item-extend $parent $length
+    }
 
     # dynamically modify the sql code for the nullable elements.
     db do eval [string map $map {
@@ -789,7 +792,7 @@ proc ::cm::db::pschedule::item-new-event {pschedule track day start length desc 
 		:track,     -- track /nullable
 		:start,     -- start
 		:length,    -- length
-		NULL,       -- parent !! TODO
+		:parent,    -- parent /nullable
 		NULL,       -- label
 		:desc,      -- desc_major
 		:note)      -- desc_minor nullable
@@ -798,14 +801,17 @@ proc ::cm::db::pschedule::item-new-event {pschedule track day start length desc 
     return [db do last_insert_rowid]
 }
 
-proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length label} {
+proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length parent label} {
     debug.cm/db/pschedule {}
     setup
     # label should not be empty string! - IV_I_TODO
 
     set map {}
     # track nullable.
-    if {$track eq {}} { lappend map :track NULL }
+    if {$track  eq {}} { lappend map :track  NULL }
+    if {$parent eq {}} { lappend map :parent NULL } else {
+	item-extend $parent $length
+    }
 
     # dynamically modify the sql code for the nullable element.
     db do eval [string map $map {
@@ -814,10 +820,10 @@ proc ::cm::db::pschedule::item-new-placeholder {pschedule track day start length
 	VALUES (NULL,       -- id
 		:pschedule,
 		:day,
-		:track,     -- track nullable
+		:track,     -- track /nullable
 		:start,
 		:length,
-		NULL,       -- parent !! TODO
+		:parent,    -- parent /nullable
 		:label,
 		NULL,       -- desc_major
 		NULL)       -- desc_minor
@@ -851,11 +857,32 @@ proc ::cm::db::pschedule::item-piece {item piece} {
     setup
 
     lappend map @@ $piece
-    return [db do eval [string map $map {
+    return [db do onecolumn [string map $map {
 	SELECT @@
 	FROM   pschedule_item
 	WHERE  id = :item
     }]]
+}
+
+proc ::cm::db::pschedule::item-extend {item length} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # TODO: look for siblings behind item, and move them.
+
+    db do transaction {
+	incr length [db do onecolumn {
+	    SELECT length
+	    FROM   pschedule_item
+	    WHERE  id = :item
+	}]
+	db do eval {
+	    UPDATE pschedule_item
+	    SET    length = :length
+	    WHERE  id = :item
+	}
+    }
+    return
 }
 
 # # ## ### ##### ######## ############# ######################
