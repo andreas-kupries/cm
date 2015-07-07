@@ -130,6 +130,12 @@ oo::class create ::cm::table {
 	return
     }
 
+    method = {} {
+	set result [my String]
+	my destroy
+	return $result
+    } ; export =
+
     method show {{cmd puts}} {
 	uplevel 1 [list {*}$cmd [my String]]
 	my destroy

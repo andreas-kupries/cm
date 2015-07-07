@@ -41,9 +41,10 @@ namespace eval ::cm::schedule {
 	context-setup context-set-track context-cross-tracks context-get-track \
 	context-set-day context-get-day context-set-time context-get-time \
 	context-mark-child context-get-parent \
-	active-or-select just-select validate \
+	active-or-select just-select track-just-select validate \
 	add remove rename select select-clear selected focus show listing test-known \
-	test-select track-add track-remove track-rename test-track-known \
+	test-select track-add track-remove track-rename track-select track-select-clear \
+	track-selected test-track-known \
 	test-track-select item-add-event item-add-placeholder test-item-day-known
     #item-remove item-rename
     namespace ensemble create
@@ -391,6 +392,20 @@ proc ::cm::schedule::just-select {p} {
     return $pschedule
 }
 
+proc ::cm::schedule::track-just-select {p} {
+    debug.cm/schedule {}
+    pschedule setup
+
+    lappend cmd pschedule track-selection [$p config @schedule]
+
+    set track [util select $p track $cmd]
+    if {$track eq {}} {
+	$p undefined!
+    }
+
+    return $track
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::schedule::validate {config} {
@@ -534,8 +549,9 @@ proc ::cm::schedule::select {config} {
     db show-location
 
     set pschedule [$config @name]
+    set pslabel   [pschedule piece $pschedule dname]
 
-    puts -nonewline "\nActivating schedule \"[color name [$config @name string]]\" ... "
+    puts -nonewline "\nActivating schedule \"[color name $pslabel]\" ... "
     flush stdout
 
     db do transaction {
@@ -650,14 +666,29 @@ proc ::cm::schedule::TrackList {pschedule} {
     debug.cm/schedule {}
     set tracks {}
 
+    set at [pschedule track-active-get $pschedule]
+    set at [pschedule track-piece $at dname]
+
     set trackstats [pschedule track-name-counts $pschedule]
     # (name -> icount, sorted by name)
 
+    set tracks [string trimright [[table tx {{} Track Count} {
+	$tx noheader
+	$tx plain
+	foreach {name icount} $trackstats {
+	    set mark [expr {$at eq $name ? "->" : ""}]
+	    $tx add $mark $name ($icount)
+	}
+    }] =] \n]
+
+
+    if 0 {
     foreach name [util padr [util even $trackstats]] icount [util odd $trackstats] {
 	debug.cm/schedule { - $name = $icount}
 	append tracks $name " (" $icount ")\n"
     }
     set tracks [string trimright $tracks \n]
+    }
 
     debug.cm/schedule {==> ($tracks)}
     return $tracks
@@ -755,6 +786,96 @@ proc ::cm::schedule::track-rename {config} {
 
     db do transaction {
 	pschedule track-rename $track $new
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::track-select-clear {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule, operation ignored.}]
+	return
+    }
+
+    set pslabel [pschedule piece            $pschedule dname]
+    set track   [pschedule track-active-get $pschedule]
+
+    if {$track eq {}} {
+	puts \n[color note "No active track in schedule \""][color name $pslabel][color note "\", operation ignored."]
+	return
+    }
+
+    set tlabel [pschedule track-piece $track dname]
+
+    puts -nonewline "\nDeactivating track \"[color name $tlabel]\" in schedule \"[color name $pslabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule {}
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-selected {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule}]
+	return
+    }
+
+    set pslabel [pschedule piece            $pschedule dname]
+    set track   [pschedule track-active-get $pschedule]
+
+    if {$track eq {}} {
+	puts \n[color note "No active track in schedule \""][color name $pslabel][color note "\""]
+	return
+    }
+
+    set tlabel [pschedule track-piece $track dname]
+
+    puts "\nActive track is \"[color name $tlabel]\", in schedule \"[color name $pslabel]\""
+    return
+}
+
+proc ::cm::schedule::track-select {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [pschedule active_get]
+
+    if {$pschedule eq {}} {
+	puts \n[color note {No active schedule}]
+	return
+    }
+
+    set pslabel [pschedule piece $pschedule dname]
+    set track   [$config @name]
+    set tlabel  [pschedule track-piece $track dname]
+
+    puts -nonewline "\nActivating track \"[color name $tlabel]\", in schedule \"[color name $pslabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule $track
+	pschedule validate
     }
 
     puts [color good OK]
