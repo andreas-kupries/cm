@@ -216,6 +216,22 @@ cmdr create cm::cm [file tail $::argv0] {
 	}]
     }
 
+    option no-prompt {
+	Disable interactive queries.
+    } {
+	presence
+	alias n
+	alias non-interactive
+	alias noprompt
+	# Note: Global disabling of all interactivity. Use first
+	# to affect all other input. Also the reason for when-set
+	# instead of when-complete. Must be handled early to cut off
+	# interactive entry in cmdr::private, where possible.
+	when-set [lambda {p x} {
+	    cmdr interactive [expr {!$x}]
+	}]
+    }
+
     # # ## ### ##### ######## ############# ######################
 
     private version {
@@ -1584,6 +1600,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	}
 
+	common .opt_track_select {
+	    input name {
+		The name of the track to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule-track]
+		generate [cm::call schedule track-just-select]
+	    }
+	}
+
 	private add {
 	    description { Create a new, empty named schedule }
 	    input name {
@@ -1770,6 +1796,23 @@ cmdr create cm::cm [file tail $::argv0] {
 		    The new name of the track
 		} { validate [cm::vt notpschedule-track] }
 	    } [cm::call schedule track-rename]
+
+	    private select {
+		description { Activate the named track }
+		use .schedule-context
+		use .opt_track_select
+	    } [cm::call schedule track-select]
+	    # Track axis: "go to"
+
+	    private clear-select {
+		description { Clear active track }
+		use .schedule-context
+	    } [cm::call schedule track-select-clear]
+
+	    private selected {
+		description { Tell which track is active }
+		use .schedule-context
+	    } [cm::call schedule track-selected]
 	}
 
 	officer item {
