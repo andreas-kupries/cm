@@ -46,47 +46,48 @@ test schedule-track-select-1.2 {schedule track select, unknown schedule} -body {
 # # ## ### ##### ######## ############# #####################
 
 test schedule-track-select-2.0 {schedule track select, no active schedule} -body {
-    run schedule track select hound -n
+    run schedule track select -n TRACK
 } -setup {
     stage-open
-    run schedule add fox
-    run schedule track add hound
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
     run schedule clear-select
 } -cleanup {
     stage-close
-} -match glob -result {*No active schedule}
+} -returnCodes error -match glob -result {* Undefined: schedule}
 
 test schedule-track-select-2.1 {schedule track select} -body {
-    run schedule track select hound
+    run schedule track select TRACK
 } -setup {
     stage-open
-    run schedule add fox
-    run schedule track add hound
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule track clear-select
 } -cleanup {
     stage-close
-} -match glob -result {*Activating track "hound", in schedule "fox" ... OK}
+} -match glob -result {*Schedule "SCHEDULE": Activating track "TRACK" ... OK}
 
 test schedule-track-select-2.2 {schedule track select, persistent} -body {
-    run schedule track select hound
+    run schedule track select TRACK
     run schedules
 } -setup {
     stage-open
-    run schedule add foo
-    run schedule track add hound
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
 } -cleanup {
     stage-close
 } -result [viewFile support/schedule/list-active-track.txt]
 
 test schedule-track-select-2.3 {schedule track select, persistent} -body {
-    run schedule track select hound
-    run schedule show fox
+    run schedule track select TRACK
+    run schedule show         SCHEDULE
 } -setup {
     stage-open
-    run schedule add fox
-    run schedule track add hound
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/fox-active-track.txt]
+} -result [viewFile support/schedule/show-active-track.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

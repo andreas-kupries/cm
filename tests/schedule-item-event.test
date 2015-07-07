@@ -41,22 +41,22 @@ test schedule-item-event-4.0 {schedule item event, only major description} -body
     run schedule list
 } -setup {
     stage-open
-    run schedule add SCHEDULE
-    run schedule track add --schedule SCHEDULE TRACK
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-with-items-a.txt]
+} -result [viewFile support/schedule/list-with-items.txt]
 
 test schedule-item-event-4.1 {schedule item event, major + minor descriptions} -body {
     run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 DESC NOTE
     run schedule list
 } -setup {
     stage-open
-    run schedule add SCHEDULE
+    run schedule add       SCHEDULE
     run schedule track add TRACK
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-with-items-a.txt]
+} -result [viewFile support/schedule/list-with-items.txt]
 
 # TODO --in(side) ... Have to get a better handle on state
 

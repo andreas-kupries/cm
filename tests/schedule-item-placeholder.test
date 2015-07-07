@@ -41,11 +41,11 @@ test schedule-item-placeholder-4.0 {schedule item placeholder} -body {
     run schedule list
 } -setup {
     stage-open
-    run schedule add SCHEDULE
+    run schedule add       SCHEDULE
     run schedule track add TRACK
 } -cleanup {
     stage-close
-} -result [viewFile support/schedule/list-with-items-a.txt]
+} -result [viewFile support/schedule/list-with-items.txt]
 
 # TODO --in(side) ... Have to get a better handle on state
 
