@@ -1,0 +1,76 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - unselecting the active day in the active schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-clear-select-1.0 {schedule day clear-select, wrong args, too many} -body {
+    run schedule day clear-select X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-clear-select-2.0 {schedule day clear-select, no schedules} -body {
+    run schedule day clear-select
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-day-clear-select-2.1 {schedule day clear-select, schedule, not active} -body {
+    run schedule day clear-select -n
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto active
+    run schedule clear-select ;# force inactive
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-day-clear-select-2.2 {schedule day clear-select, active schedule, no days} -body {
+    run schedule day clear-select
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active day, operation ignored.}
+
+test schedule-day-clear-select-2.3 {schedule day clear-select, active schedule, day, not active} -body {
+    run schedule day clear-select
+} -setup {
+    stage-open
+    run schedule add        SCHEDULE ;# auto active
+    run schedule track add  TRACK    ;# auto active
+    run schedule item event EVENT    ;# Now we have an active day
+    run schedule day clear-select    ;# force inactive
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active day, operation ignored.}
+
+test schedule-day-clear-select-2.4 {schedule day clear-select, active schedule and day} -body {
+    run schedule day clear-select
+} -setup {
+    stage-open
+    run schedule add        SCHEDULE ;# auto active
+    run schedule track add  TRACK    ;# auto active
+    run schedule item event EVENT    ;# Now we have an active day (0)
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Deactivating day "0" ... OK}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

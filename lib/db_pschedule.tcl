@@ -39,11 +39,11 @@ namespace eval ::cm::db::pschedule {
 	day-active-set day-active-get \
 	time-active-set time-active-get \
 	item-active-set item-active-get \
-	track-new track-remove track-rename track-all \
+	track-new track-remove track-rename track-all track-map \
 	track-name-counts track-names track-known \
 	track-selection track-details track-piece \
 	item-new-event item-new-placeholder item-details item-piece \
-	day-max day-cover
+	day-max day-cover day-selection
 
     # select select_track select_day select_item
     namespace ensemble create
@@ -362,6 +362,26 @@ proc ::cm::db::pschedule::day-max {pschedule} {
     return $max
 }
 
+proc ::cm::db::pschedule::day-selection {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # dict: label -> id
+    set known {}
+
+    # Selection uses the display name.
+    db do eval {
+        SELECT day
+        FROM   pschedule_item
+	WHERE  pschedule = :pschedule
+	ORDER BY day
+    } {
+        lappend known $day $day
+    }
+
+    return $known
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::db::pschedule::track-known {pschedule} {
@@ -445,6 +465,21 @@ proc ::cm::db::pschedule::track-all {pschedule} {
 	SELECT id
 	,      dname
 	,      name
+	FROM   pschedule_track
+	WHERE  pschedule = :pschedule
+	ORDER BY name
+    }]
+}
+
+proc ::cm::db::pschedule::track-map {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    # Dict of tracks with enough information for both internal
+    # identification and user display.
+    return [db do eval {
+	SELECT id
+	,      dname
 	FROM   pschedule_track
 	WHERE  pschedule = :pschedule
 	ORDER BY name

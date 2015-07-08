@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - unselecting the active track in the active schedule
+## schedule management - unselecting the active track in a schedule
 
 kt check Tcl     8.5
 kt check tcltest 2

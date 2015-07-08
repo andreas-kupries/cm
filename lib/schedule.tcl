@@ -41,11 +41,15 @@ namespace eval ::cm::schedule {
 	context-setup context-set-track context-cross-tracks context-get-track \
 	context-set-day context-get-day context-set-time context-get-time \
 	context-request-parent context-get-parent \
-	active-or-select just-select track-just-select start validate \
+	active-or-select just-select track-just-select day-just-select start validate \
 	add remove rename select select-clear selected focus show listing test-known \
-	test-select track-add track-remove track-rename track-select track-select-clear \
-	track-selected test-track-known \
-	test-track-select item-add-event item-add-placeholder test-item-day-known
+	test-select track-add track-remove track-rename \
+	track-select track-select-clear track-selected \
+	track-leftmost track-rightmost track-left track-right \
+	test-track-known test-track-select \
+	item-add-event item-add-placeholder test-item-day-known \
+	day-select day-select-clear day-selected day-first day-last day-previous day-next
+
     #item-remove item-rename
     namespace ensemble create
 
@@ -345,6 +349,20 @@ proc ::cm::schedule::track-just-select {p} {
     }
 
     return $track
+}
+
+proc ::cm::schedule::day-just-select {p} {
+    debug.cm/schedule {}
+    pschedule setup
+
+    lappend cmd pschedule day-selection [$p config @schedule]
+
+    set day [util select $p day $cmd]
+    if {$day eq {}} {
+	$p undefined!
+    }
+
+    return $day
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -826,6 +844,300 @@ proc ::cm::schedule::track-select {config} {
 
     db do transaction {
 	pschedule track-active-set $pschedule $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-leftmost {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece $pschedule dname]
+
+    # TODO: leftmost - handle case of no tracks
+
+    set tracks [pschedule track-map $pschedule]
+    lassign [lrange $tracks 0 1] track tlabel
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating track \"[color name $tlabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-rightmost {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece $pschedule dname]
+
+    # TODO: rightmost - handle case of no tracks
+
+    set tracks [pschedule track-all $pschedule]
+    lassign [lrange $tracks end-1 end] track tlabel
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating track \"[color name $tlabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-left {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece            $pschedule dname]
+    set track     [pschedule track-active-get $pschedule]
+
+    # No tracks falls under 'no active track'.
+
+    if {$track eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active track, operation ignored.}]"
+	return
+    }
+
+    # Previous track, with wrap-around to rightmost.
+    set tracks [pschedule track-all $pschedule]
+    set pos [lsearch -exact [dict keys $tracks] $track]
+    incr pos $pos
+    incr pos -2
+    if {$pos < 0} { set pos end-1 }
+    lassign [lrange $tracks $pos ${pos}+1] track tlabel
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating track \"[color name $tlabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::track-right {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece            $pschedule dname]
+    set track     [pschedule track-active-get $pschedule]
+
+    # No tracks falls under 'no active track'.
+
+    if {$track eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active track, operation ignored.}]"
+	return
+    }
+
+    # Next track, with wrap-around to leftmost.
+    set tracks [pschedule track-all $pschedule]
+    set pos [lsearch -exact [dict keys $tracks] $track]
+    incr pos $pos
+    incr pos 2
+    if {$pos > [llength $tracks]} { set pos 0 }
+    lassign [lrange $tracks $pos ${pos}+1] track tlabel
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating track \"[color name $tlabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule track-active-set $pschedule $track
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::day-select-clear {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece          $pschedule dname]
+    set day       [pschedule day-active-get $pschedule]
+
+    if {$day eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active day, operation ignored.}]"
+	return
+    }
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Deactivating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule {}
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::day-selected {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece          $pschedule dname]
+    set day       [pschedule day-active-get $pschedule]
+
+    if {$day eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active day.}]"
+	return
+    }
+
+    puts "\nSchedule \"[color name $pslabel]\": Active day is \"[color name $day]\"."
+    return
+}
+
+proc ::cm::schedule::day-select {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set day       [$config @day]
+    set pslabel   [pschedule piece $pschedule dname]
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule $day
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::day-first {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece $pschedule dname]
+
+    set day 0
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule $day
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::day-last {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece $pschedule dname]
+
+    set day [pschedule day-max $pschedule]
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule $day
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::day-previous {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece          $pschedule dname]
+    set day       [pschedule day-active-get $pschedule]
+
+    if {$day eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active day, operation ignored.}]"
+	return
+    }
+
+    # Previous day, with wrap-around to last.
+    incr day -1
+    if {$day < 0} { set day [pschedule day-max $pschedule] }
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule $day
+	pschedule validate
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::schedule::day-next {config} {
+    debug.cm/schedule {}
+    pschedule setup
+    db show-location
+
+    set pschedule [$config @schedule]
+    set pslabel   [pschedule piece          $pschedule dname]
+    set day       [pschedule day-active-get $pschedule]
+
+    if {$day eq {}} {
+	puts "\nSchedule \"[color name $pslabel]\": [color note {No active day, operation ignored.}]"
+	return
+    }
+
+    # Next day, with wrap-around to first.
+    set max [pschedule day-max $pschedule]
+    incr day 1
+    if {$day > $max} { set day 0 }
+
+    puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
+    flush stdout
+
+    db do transaction {
+	pschedule day-active-set $pschedule $day
 	pschedule validate
     }
 

@@ -1610,6 +1610,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	}
 
+	common .opt_day_select {
+	    input day {
+		The index of the day to work on (0-based)
+	    } {
+		optional
+		validate [cm::vt pschedule-day]
+		generate [cm::call schedule day-just-select]
+	    }
+	}
+
 	private add {
 	    description { Create a new, empty named schedule }
 	    input name {
@@ -1849,13 +1859,6 @@ cmdr create cm::cm [file tail $::argv0] {
 		} { validate [cm::vt notpschedule-track] }
 	    } [cm::call schedule track-rename]
 
-	    private select {
-		description { Activate the named track }
-		use .schedule-context
-		use .opt_track_select
-	    } [cm::call schedule track-select]
-	    # Track axis: "go to"
-
 	    private clear-select {
 		description { Clear active track }
 		use .schedule-context
@@ -1865,7 +1868,98 @@ cmdr create cm::cm [file tail $::argv0] {
 		description { Tell which track is active }
 		use .schedule-context
 	    } [cm::call schedule track-selected]
+
+	    # Track nav commands
+
+	    private select {
+		description { Activate the named track }
+		use .schedule-context
+		use .opt_track_select
+	    } [cm::call schedule track-select]
+	    # Track axis: "go to"
+
+	    private leftmost {
+		description { Activate the lexicographically first track }
+		use .schedule-context
+	    } [cm::call schedule track-leftmost]
+
+	    private left {
+		description { Activate the lexicographically previous track }
+		use .schedule-context
+	    } [cm::call schedule track-left]
+
+	    private rightmost {
+		description { Activate the lexicographically last track }
+		use .schedule-context
+	    } [cm::call schedule track-rightmost]
+
+	    private right {
+		description { Activate the lexicographically next track }
+		use .schedule-context
+	    } [cm::call schedule track-right]
 	}
+
+	officer day {
+	    private clear-select {
+		description { Clear active day }
+		use .schedule-context
+	    } [cm::call schedule day-select-clear]
+
+	    private selected {
+		description { Tell which day is active }
+		use .schedule-context
+	    } [cm::call schedule day-selected]
+
+	    # Day nav commands
+
+	    private select {
+		description { Activate the named day }
+		use .schedule-context
+		use .opt_day_select
+	    } [cm::call schedule day-select]
+	    # Day axis: "go to"
+
+	    private first {
+		description { Activate the first day }
+		use .schedule-context
+	    } [cm::call schedule day-first]
+
+	    private previous {
+		description { Activate the previous day }
+		use .schedule-context
+	    } [cm::call schedule day-previous]
+
+	    private last {
+		description { Activate the last day }
+		use .schedule-context
+	    } [cm::call schedule day-last]
+
+	    private next {
+		description { Activate the next day }
+		use .schedule-context
+	    } [cm::call schedule day-next]
+	}
+
+	# Nav shorts - Tracks
+	alias leftmost  = track leftmost
+	alias lm        = track leftmost
+	alias rightmost = track rightmost
+	alias rm        = track rightmost
+	alias left      = track left
+	alias l         = track left
+	alias right     = track right
+	alias r         = track right
+
+	# Nav shorts - Days
+	alias first     = day first
+	alias f         = day first
+	alias last      = day last
+	#alias l         = day last -- clash (left)
+	alias previous  = day previous
+	alias prev      = day previous
+	alias p         = day previous
+	alias next      = day next
+	alias n         = day next
 
 	officer item {
 	    private event {
