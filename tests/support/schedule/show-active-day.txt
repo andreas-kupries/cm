@@ -3,7 +3,7 @@
 Schedule "SCHEDULE":
 +--------+--------------+
 | Active |              |
-| Name   | SCHEDULE     |
-| Days   |              |
+| Days   |  (@ 0)       |
 | Tracks | -> TRACK (0) |
+| Items  |              |
 +--------+--------------+

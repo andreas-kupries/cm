@@ -64,7 +64,7 @@ test schedule-select-2.1 {schedule select, persistent} -body {
 
 test schedule-select-2.2 {schedule select, persistent} -body {
     run schedule select foo
-    run schedule show foo
+    run schedule show   foo
 } -setup {
     stage-open
     run schedule add foo

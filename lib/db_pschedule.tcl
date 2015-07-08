@@ -43,6 +43,7 @@ namespace eval ::cm::db::pschedule {
 	track-name-counts track-names track-known \
 	track-selection track-details track-piece \
 	item-new-event item-new-placeholder item-details item-piece \
+	item-all \
 	day-max day-cover day-selection
 
     # select select_track select_day select_item
@@ -937,6 +938,29 @@ proc ::cm::db::pschedule::item-extend {item length} {
 	}
     }
     return
+}
+
+proc ::cm::db::pschedule::item-all {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT I.id
+	,      I.pschedule
+	,      I.day
+	,      T.dname
+	,      I.start
+	,      I.length
+	,      I.parent
+	,      I.label
+	,      I.desc_major
+	,      I.desc_minor
+	FROM            pschedule_item  I
+	LEFT OUTER JOIN pschedule_track T
+	ON              I.track = T.id
+	WHERE I.pschedule = :pschedule
+	ORDER BY I.day, I.start, I.parent, T.dname
+    }]
 }
 
 # # ## ### ##### ######## ############# ######################

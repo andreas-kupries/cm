@@ -47,7 +47,7 @@ namespace eval ::cm::schedule {
 	track-select track-select-clear track-selected \
 	track-leftmost track-rightmost track-left track-right \
 	test-track-known test-track-select \
-	item-add-event item-add-placeholder test-item-day-known \
+	item-add-event item-add-placeholder test-item-day-max \
 	day-select day-select-clear day-selected day-first day-last day-previous day-next
 
     #item-remove item-rename
@@ -59,6 +59,8 @@ namespace eval ::cm::schedule {
     namespace import ::cm::db::pschedule
     namespace import ::cm::util
     namespace import ::cm::validate::pschedule-day
+
+    namespace import ::cmdr::validate::time::minute
 
     namespace import ::cm::table::do
     namespace import ::cm::table::dict
@@ -391,7 +393,7 @@ proc ::cm::schedule::start {config} {
 
     if {[$config @time set?]} {
 	set time [$config @time]
-	set tlabel [cmdr::validate::time::minute 2external $time]
+	set tlabel [minute 2external $time]
 
 	puts -nonewline "\nSetting global start time to $tlabel ... "
 	flush stdout
@@ -406,7 +408,7 @@ proc ::cm::schedule::start {config} {
     puts -nonewline "Current global start time: "
     flush stdout
 
-    puts [cmdr::validate::time::minute 2external [pschedule start-get]]
+    puts [minute 2external [pschedule start-get]]
     return
 }
 
@@ -556,19 +558,23 @@ proc ::cm::schedule::show {config} {
     db show-location
 
     set pschedule [$config @name]
-    puts "\nSchedule \"[color name [$config @name string]]\":"
 
     set active_ps [pschedule active-get]
     set psd       [pschedule details $pschedule]
     dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
 
+    puts "\nSchedule \"[color name $xdname]\":"
     [table/d t {
 	if {$active_ps == $pschedule} { $t add [color note Active] }
-	$t add Name   $xdname
-	$t add Days   [pschedule day-cover $xid]
-	$t add Tracks [TrackList $xid]
+	#$t add Name   $xdname -- redundant -- See intro line above.
 
-	# Extension: Mark the active track and day.
+	if {$xactiveday ne {}} {
+	    $t add Days "[pschedule day-cover $xid] ([color bold "@ $xactiveday"])"
+	} else {
+	    $t add Days [pschedule day-cover $xid]
+	}
+	$t add Tracks [TrackList $xid bold]
+	$t add Items  [ItemList  $xid bold]
     }] show
     return
 }
@@ -582,14 +588,16 @@ proc ::cm::schedule::listing {config} {
 
     puts "\nSchedules:"
     [table t {{} Name Days Tracks} {
-	foreach {pschedule name _ _ _ _ _} [pschedule all] {
+	foreach {pschedule name _ _ activeday _ _} [pschedule all] {
 	    set tracks [TrackList $pschedule]
 	    set days   [pschedule day-cover $pschedule]
+	    if {$activeday ne {}} {
+		append days " (@ " $activeday ")"
+	    }
 
 	    util highlight-current active_ps $pschedule mark name days tracks
 	    $t add $mark $name $days $tracks
-
-	    # Extension: Mark the active track, and day.
+	    # Note: Do not show item details. To much data for a list.
 	}
     }] show
     return
@@ -615,10 +623,10 @@ proc ::cm::schedule::focus {config} {
     if {$xaitemtrack  ne {}} { set xaitemtrack  [track-piece $xaitemtrack  dname] }
 
     if {$xaitemstart != {}} {
-	set xaitemstart [cmdr::validate::time::minute 2external $xaitemstart]
+	set xaitemstart [minute 2external $xaitemstart]
     }
     if {$xactivetime != {}} {
-	set xactivetime [cmdr::validate::time::minute 2external $xactivetime]
+	set xactivetime [minute 2external $xactivetime]
     }
 
     puts "\nFocus"
@@ -649,7 +657,7 @@ proc ::cm::schedule::focus {config} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::schedule::TrackList {pschedule} {
+proc ::cm::schedule::TrackList {pschedule {color {}}} {
     debug.cm/schedule {}
     set tracks {}
 
@@ -664,21 +672,54 @@ proc ::cm::schedule::TrackList {pschedule} {
 	$tx plain
 	foreach {name icount} $trackstats {
 	    set mark [expr {$at eq $name ? "->" : ""}]
-	    $tx add $mark $name ($icount)
+	    if {($at eq $name) && ($color ne {})} {
+		$tx add [color $color $mark] [color $color $name] [color $color ($icount)]
+	    } else {
+		$tx add $mark $name ($icount)
+	    }
 	}
     }] =] \n]
 
-
-    if 0 {
-    foreach name [util padr [util even $trackstats]] icount [util odd $trackstats] {
-	debug.cm/schedule { - $name = $icount}
-	append tracks $name " (" $icount ")\n"
-    }
-    set tracks [string trimright $tracks \n]
-    }
-
     debug.cm/schedule {==> ($tracks)}
     return $tracks
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::schedule::ItemList {pschedule {color {}}} {
+    debug.cm/schedule {}
+    set tracks {}
+
+    set ai [pschedule item-active-get $pschedule]
+
+    set items [string trimright [[table tx {{} {} Day Start Length Desc Note} {
+	#                             active^  ^parent
+	$tx noheader
+	$tx plain
+
+	foreach {id _ day track start length parent label dmajor dminor} [pschedule item-all $pschedule] {
+	    set mark   [expr {$id     eq $ai ? "->"  : ""}]
+	    set parent [expr {$parent ne {}  ? "+--" : "*"}]
+	    set start  [minute 2external $start]
+	    set length [minute 2external $length]
+	    if {$dmajor eq {}} { set dmajor <<${label}>> }
+
+	    if {($id eq $ai) && ($color ne {})} {
+		set mark   [color $color $mark] 
+		set parent [color $color $parent]
+		set start  [color $color $start]
+		set length [color $color $length]
+		set track  [color $color $track] 
+		set dmajor [color $color $dmajor]
+		set dminor [color $color $dminor]
+	    }
+
+	    $tx add $mark $parent $day $start $length $track $dmajor $dminor
+	}
+    }] =] \n]
+
+    debug.cm/schedule {==> ($items)}
+    return $items
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -1068,9 +1109,8 @@ proc ::cm::schedule::day-last {config} {
     db show-location
 
     set pschedule [$config @schedule]
-    set pslabel   [pschedule piece $pschedule dname]
-
-    set day [pschedule day-max $pschedule]
+    set pslabel   [pschedule piece   $pschedule dname]
+    set day       [pschedule day-max $pschedule]
 
     puts -nonewline "\nSchedule \"[color name $pslabel]\": Activating day \"[color name $day]\" ... "
     flush stdout
@@ -1210,8 +1250,8 @@ proc ::cm::schedule::item-add-event {config} {
     puts "Schedule \"[color name $pslabel]\": Creating event \"[color name $desc]\" ... "
     puts "* Track:  [color $tcolor $tlabel]"
     puts "* Day:    $day"
-    puts "* Start:  [cmdr::validate::time::minute 2external $start]"
-    puts "* Length: [cmdr::validate::time::minute 2external $length]"
+    puts "* Start:  [minute 2external $start]"
+    puts "* Length: [minute 2external $length]"
     if {$note ne {}} {
 	puts "* Note:   [color name $note]"
     }
@@ -1279,8 +1319,8 @@ proc ::cm::schedule::item-add-placeholder {config} {
     puts "Schedule \"[color name $pslabel]\": Creating placeholder \"[color name $label]\" ... "
     puts "* Track:  [color $tcolor $tlabel]"
     puts "* Day:    $day"
-    puts "* Start:  [cmdr::validate::time::minute 2external $start]"
-    puts "* Length: [cmdr::validate::time::minute 2external $length]"
+    puts "* Start:  [minute 2external $start]"
+    puts "* Length: [minute 2external $length]"
     puts "* Label:  $label"
 
     try {
@@ -1314,7 +1354,7 @@ proc ::cm::schedule::item-add-placeholder {config} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::schedule::test-item-day-known {config} {
+proc ::cm::schedule::test-item-day-max {config} {
     debug.cm/schedule {}
     pschedule setup
     db show-location
