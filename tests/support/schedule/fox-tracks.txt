@@ -3,7 +3,7 @@
 Schedule "SCHEDULE":
 +--------+------------+
 | Active |            |
-| Name   | SCHEDULE   |
 | Days   |            |
 | Tracks | -> fox (0) |
+| Items  |            |
 +--------+------------+

@@ -49,11 +49,11 @@ test schedule-rename-1.3 {schedule rename, known destination schedule} -body {
 # # ## ### ##### ######## ############# #####################
 
 test schedule-rename-2.0 {schedule rename} -body {
-    run schedule rename FoO fox
+    run schedule rename sChEdUlE fox
     run schedule show fox
 } -setup {
     stage-open
-    run schedule add foo
+    run schedule add SCHEDULE
 } -cleanup {
     stage-close
 } -result [viewFile support/schedule/fox.txt]

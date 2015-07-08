@@ -41,7 +41,7 @@ test schedule-day-last-2.1 {schedule day last} -body {
     run schedule add SCHEDULE
 } -cleanup {
     stage-close
-} -match glob -result {*Schedule "SCHEDULE": Activating day "2" ... OK}
+} -match glob -result {*Schedule "SCHEDULE": Activating day "0" ... OK}
 
 test schedule-day-last-2.2 {schedule day last, persistent} -body {
     run schedule day last
