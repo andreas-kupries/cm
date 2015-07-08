@@ -659,13 +659,15 @@ proc ::cm::schedule::focus {config} {
 
 proc ::cm::schedule::TrackList {pschedule {color {}}} {
     debug.cm/schedule {}
-    set tracks {}
-
-    set at [pschedule track-active-get $pschedule]
-    set at [pschedule track-piece $at dname]
 
     set trackstats [pschedule track-name-counts $pschedule]
     # (name -> icount, sorted by name)
+
+    # Quick bailout when there are no tracks.
+    if {![llength $trackstats]} { return {} }
+
+    set at [pschedule track-active-get $pschedule]
+    set at [pschedule track-piece $at dname]
 
     set tracks [string trimright [[table tx {{} Track Count} {
 	$tx noheader
@@ -688,20 +690,50 @@ proc ::cm::schedule::TrackList {pschedule {color {}}} {
 
 proc ::cm::schedule::ItemList {pschedule {color {}}} {
     debug.cm/schedule {}
+
+    set items [pschedule item-all $pschedule]
+    # (id schedule day trackname start length parent label dmajor dminor)
+
+    # Quick bailout when there are no items.
+    if {![llength $items]} { return {} }
+
+    # Compute tracks in use, their max width, and calculate from that
+    # a symbol to use for items going across tracks.
     set tracks {}
+    foreach {_ _ _ track _ _ _ _ _ _} $items { lappend tracks $track }
+    set maxt [util max-length $tracks]
+    switch -exact $maxt {
+	0 -
+	1 { set across * }
+	2 { set across <> }
+	default {
+	    incr maxt -2
+	    set across <[string repeat - $maxt]>
+	}
+    }
 
-    set ai [pschedule item-active-get $pschedule]
+    # Make the table.
+    set ai    [pschedule item-active-get $pschedule]
+    set lastday 0
 
-    set items [string trimright [[table tx {{} {} Day Start Length Desc Note} {
+    set items [string trimright [[table tx {{} {} Day Start End Length {} Track {} Desc Note} {
 	#                             active^  ^parent
 	$tx noheader
 	$tx plain
 
-	foreach {id _ day track start length parent label dmajor dminor} [pschedule item-all $pschedule] {
+	foreach {id _ day track start length parent label dmajor dminor} $items {
+
+	    if {$day != $lastday} {
+		$tx add {} {} {} {} {} {} - {} - {} {}
+	    }
+
 	    set mark   [expr {$id     eq $ai ? "->"  : ""}]
-	    set parent [expr {$parent ne {}  ? "+--" : "*"}]
+	    set parent [expr {$parent ne {}  ? " \\-" : "*"}]
+	    set end    [minute 2external [expr {$start + $length}]]
 	    set start  [minute 2external $start]
-	    set length [minute 2external $length]
+	    set length ([minute 2external $length])
+
+	    if {$track  eq {}} { set track $across       }
 	    if {$dmajor eq {}} { set dmajor <<${label}>> }
 
 	    if {($id eq $ai) && ($color ne {})} {
@@ -709,12 +741,14 @@ proc ::cm::schedule::ItemList {pschedule {color {}}} {
 		set parent [color $color $parent]
 		set start  [color $color $start]
 		set length [color $color $length]
+		set end    [color $color $end]
 		set track  [color $color $track] 
 		set dmajor [color $color $dmajor]
 		set dminor [color $color $dminor]
 	    }
 
-	    $tx add $mark $parent $day $start $length $track $dmajor $dminor
+	    $tx add $mark $parent $day $start $end $length | $track | $dmajor $dminor
+	    set lastday $day
 	}
     }] =] \n]
 

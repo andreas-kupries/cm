@@ -15,10 +15,13 @@ cms remove "Tcl 2014"
 
 cms add "Tcl 2014"
 cms start 09:00
+
 cms track add 'Tutorial A'
 cms track add 'Tutorial B'
 cms track add 'Tech Session'
 cms track add 'Community'
+
+cms day select 0
 
 cms track select     'Tutorial A'
 cms item event       Tutorials
@@ -38,75 +41,78 @@ cms item event       Tutorials
 cms item placeholder @T0a1     -L 03:30 --child
 
 cms track select     'Tutorial A'
-cms item event       'Free Tutorial' -L 60 --child
+cms item event       'Free Tutorial' -L 60
 
 cms track select Community
 cms item event   'Social and BOFs' -B 19:00
 cms item event   "Hospitality suite" "Tcl Community Association"  -L 05:00 --child
 
+cms day next
 
+cms track select     'Tutorial A'
+cms item event       Tutorials
+cms item placeholder @T1m0     -L 03:30 --child
+cms track select     'Tutorial B'
+cms item event       Tutorials
+cms item placeholder @T1m1     -L 03:30 --child
 
+cms item event 'Lunch Break'    --across
+cms item event 'Lunch Provided' -L 60 --child
 
+cms track select     'Tutorial A'
+cms item event       Tutorials
+cms item placeholder @T1a0     -L 03:30 --child
+cms track select     'Tutorial B'
+cms item event       Tutorials
+cms item placeholder @T1a1     -L 03:30 --child
+
+cms track select     'Tutorial A'
+cms item event       'Certification Exam' -B 19:30
+cms item placeholder @T1e1     -L 60 --child
+
+cms track select Community
+cms item event   'Social and BOFs' -B 19:00
+cms item event   "Hospitality suite" "Tcl Community Association"  -L 05:00 --child
+
+cms day next
+cms track select 'Tech Session'
+
+cms item event 'Welcome and Keynote'
+cms item event 'Welcome and Announcements' Host -L 0 --child
+cms item placeholder @K1                        -L 01:30 --child
+
+cms item event Break
+cms item event -L 15 Break --child
+
+cms item placeholder @S1
+cms item event @S1.1 -L 30 --child
+cms item event @S1.2 -L 30 --child
+cms item event @S1.3 -L 30 --child
+
+cms item event 'Lunch Break'
+cms item event 'Conference Luncheon' "Tcl Community Association" -L 60 --child
+
+cms item placeholder @S2
+cms item event @S2.1 -L 30 --child
+cms item event @S2.2 -L 30 --child
+cms item event @S2.3 -L 30 --child
+
+cms item placeholder @S3
+cms item event @S3.1 -L 30 --child
+cms item event @S3.2 -L 30 --child
+cms item event @S3.3 -L 30 --child
+
+cms item event 'Dinner Break'
+cms item event "See registration or the hospitality suite for suggestions" "On your own" \
+    -L 2:30 --child
+
+cms track select Community
+cms item event   'Social and BOFs' -B 19:00
+cms item event   "Hospitality suite" "Tcl Community Association"  -L 05:00 --child
 
 exit
 # #############################################################################
-cms ;## WIBNI to duplicate this ((group) item) across days
-cms yank
-cms day= 1
-cms insert --keep-track
-cms next
-cms insert --keep-track
-cms next
-cms insert --keep-track
-cms next
-cms insert --keep-track
-cms day= 0
 
-cms ;## WIBNI to duplicate an entire day
-cms ;## COST  -- placeholder uniqueness required auto-modify.
-cms ;## COST  -- need command to edit other than current item
-cms ;## COST  -- or command to switch current item into middle.
-cms ;## COST  -- and either restrict editing to non-time attributes
-cms ;## COST  -- or handle movement of items after current one.
-cms next
-cms ;# -- ENTER day 1 - tutorial day 2
-cms next
-cms track= 'Tech Session'
-cms event 'Welcome and Keynote'
-cms open
-cms event 'Welcome and Announcements' Host
-cms placeholder 1:30 @K1
-cms close
-cms event Break
-cms open
-cms event 15 Break
-cms close
-cms placeholder @S1
-cms open
-cms event 30 @S1.1
-cms event 30 @S1.2
-cms event 30 @S1.3
-cms close
-cms event 'Lunch Break'
-cms open
-cms event 1:00 'Conference Luncheon' "Tcl Community Association"
-cms close
-cms placeholder @S2
-cms open
-cms event 30 @S2.1
-cms event 30 @S2.2
-cms event 30 @S2.3
-cms close
-cms placeholder @S3
-cms open
-cms event 30 @S3.1
-cms event 30 @S3.2
-cms event 30 @S3.3
-cms close
-cms event 'Dinner Break'
-cms open
-cms event 2:30 "See registration for suggestions" "On your own"
-cms close
 cms ;## -- enter hospitality suite
 cms ;# enter day 3 - conference day 4
 cms ;# enter day 4 - conference day 5

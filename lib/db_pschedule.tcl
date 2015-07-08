@@ -959,7 +959,7 @@ proc ::cm::db::pschedule::item-all {pschedule} {
 	LEFT OUTER JOIN pschedule_track T
 	ON              I.track = T.id
 	WHERE I.pschedule = :pschedule
-	ORDER BY I.day, I.start, I.parent, T.dname
+	ORDER BY I.day, I.start, T.dname, I.parent
     }]
 }
 
