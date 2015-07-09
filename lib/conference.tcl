@@ -31,6 +31,8 @@ package provide cm::conference 0 ;# circular via contact, campaign
 
 package require cm::db::booked
 package require cm::db::registered
+package require cm::db::pschedule
+package require cm::db::schedule
 package require cm::city
 package require cm::config::core
 package require cm::contact
@@ -62,14 +64,19 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink cmd_debug_speakers \
+	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove \
 	cmd_registration_list cmd_registration_add cmd_registration_remove \
+	\
+	cmd_schedule_set cmd_schedule_show cmd_schedule_edit \
+	\
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
-	known-attachment get-attachment known-submitter its-hotel
+	known-attachment get-attachment known-submitter its-hotel \
+	known-talks-vt
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -78,6 +85,8 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::validate::weekday
     namespace import ::cm::db::booked
     namespace import ::cm::db::registered
+    namespace import ::cm::db::pschedule
+    namespace import ::cm::db::schedule
     namespace import ::cm::city
     namespace import ::cm::contact
     namespace import ::cm::db
@@ -289,6 +298,12 @@ proc ::cm::conference::cmd_show {config} {
 	$t add {} {}
 	$t add Minutes/Talk     $xtalklen
 	$t add Talks/Session    $xsesslen
+
+	if {$xpschedule eq {}} {
+	    $t add Schedule "[color bad {Undefined}]\n(=> conference schedule)"
+	} else {
+	    $t add Schedule [pschedule piece $xpschedule dname]
+	}
 
 	$t add {} {}
 
@@ -1679,6 +1694,8 @@ proc ::cm::conference::cmd_tutorial_show {config} {
 		} {
 		    set tutorial [cm::tutorial cell $conference $day $half $track]
 
+		    debug.cm/conference {con $conference day $day track $track half $half == $tutorial}
+
 		    if {$tutorial ne {}} {
 			set    tdetails [tutorial details $tutorial]
 			set    title    [dict get $tdetails xtitle]
@@ -1893,6 +1910,191 @@ proc ::cm::conference::cmd_end_set {config} {
     write $conference $details
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_schedule_set {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    # Link named physical schedule to the conference.
+    # Locate all placeholder items, their labels and use
+    # them to generate the logical schedule to fill out.
+
+    # TODO: Handle a previous physical schedule. Handle carry over of
+    # TODO: user-customized logical entries.
+
+    set conference [current]
+    set pschedule  [$config @name]
+    set pslabel    [pschedule piece $pschedule dname]
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": Linking to schedule \"[color name $pslabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	schedule drop    $conference
+	DB-pschedule-set $conference $pschedule
+	foreach label [pschedule item-placeholders $pschedule] {
+	    switch -glob -- $label {
+		@S* {
+		    # Sessions, Fixed lines. Create a basic default.
+		    regexp {@S(.*)$} $label -> sno
+		    schedule add_fixed $conference $label "Session $sno"
+		}
+		@T* {
+		    # Tutorial placeholder, encoded slot.
+		    regexp {@T(\d+)([ame])(\d+)$} $label -> day half track
+		    # half = m morning   1
+		    #      = a afternoon 2
+		    #      = e evening   3
+		    set half [string map {m 1 a 2 e 3} $half]
+		    incr day   -1
+
+		    # Find the tutorial in that slot.
+		    set t [cm::tutorial::cell-id $conference $day $half $track]
+
+		    debug.cm/conference {con $conference day $day track $track half $half == $t}
+
+		    if {$t eq {}} {
+			# Nothing. Make it fixed, a warning.
+			schedule add_fixed $conference $label "!Missing"
+		    } else {
+			# Link tutorial into the slot.
+			schedule add_tutorial $conference $label $t
+		    }
+		}
+		default {
+		    # General entry, all undefined.
+		    schedule add_empty $conference $label
+		}
+	    }
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_schedule_show {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    dict with details {}
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": "
+    flush stdout
+
+    if {$xpschedule eq {}} {
+	puts [color bad {No schedule defined}]
+	return
+    }
+
+    set pslabel [pschedule piece $xpschedule dname]
+    puts "Schedule \"[color name $pslabel]\": " 
+
+    [table t {Slot Type Details} {
+	foreach {label talk tutorial session} [schedule of $conference] {
+	    if {$talk ne {}} {
+		set type Talk
+		set note $talk
+	    } elseif {$tutorial ne {}} {
+		set type Tutorial
+		set note $tutorial
+	    } elseif {$session ne {}} {
+		set type Fixed
+		set note $session
+	    } else {
+		set type {}
+		set note {}
+	    }
+	    $t add $label $type $note
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_schedule_edit {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    dict with details {}
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": "
+    flush stdout
+
+    if {$xpschedule eq {}} {
+	puts [color bad {No schedule defined}]
+	return
+    }
+
+    set pslabel [pschedule piece $xpschedule dname]
+    puts -nonewline "Schedule \"[color name $pslabel]\": " 
+    flush stdout
+
+    set slot  [$config @label]
+    set sname [$config @label string]
+    set type  [$config @type]
+    set value [$config @value]
+
+    puts -nonewline "Slot \"[color name $sname]\" := " 
+    flush stdout
+
+    # TODO: Ensure uniqueness of talk/tutorial assignments.
+
+    switch -exact $type {
+	talk {
+	    # value = talk-id
+	    set title [get-talk-title $value]
+	    puts -nonewline "Talk \"[color name $title]\" ... " 
+	    flush stdout
+
+	    schedule set_talk $slot $value
+	}
+	tutorial {
+	    # value = (scheduled-id day half tutorial)
+	    lassign $value value _ _ _
+	    set title [cm::tutorial get-scheduled $value]
+	    puts -nonewline "Tutorial \"[color name $title]\" ... " 
+	    flush stdout
+
+	    schedule set_tutorial $slot $value
+	}
+	fixed {
+	    # value = string
+	    puts -nonewline "\"$value\" ... " 
+	    flush stdout
+
+	    schedule set_fixed $slot $value
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::DB-pschedule-set {conference pschedule} {
+    debug.cm/conference {}
+    Setup
+    db do eval {
+	UPDATE conference
+	SET    pschedule = :pschedule
+	WHERE  id = :conference
+    }
     return
 }
 
@@ -4113,11 +4315,12 @@ proc ::cm::conference::issues {details} {
     set issues {}
 
     foreach {var message} {
-	xcity     "Location is not known"
-	xhotel    "Hotel is not known"
-	xfacility "Facility is not known"
-	xstart    "Start date is not known"
-	xend      "End date is not known"
+	xcity      "Location is not known"
+	xhotel     "Hotel is not known"
+	xfacility  "Facility is not known"
+	xstart     "Start date is not known"
+	xend       "End date is not known"
+	xpschedule "No schedule defined"
     } {
 	if {[set $var] ne {}} continue
 	+issue $message
@@ -4261,7 +4464,8 @@ proc ::cm::conference::details {id} {
 	       'xlength',     length,
 	       'xtalklen',    talklength,
 	       'xsesslen',    sessionlen,
-	       'xrstatus',    rstatus
+	       'xrstatus',    rstatus,
+	       'xpschedule',  pschedule
 	FROM  conference
 	WHERE id = :id
     }]
@@ -4680,6 +4884,44 @@ proc ::cm::conference::select-submission {p} {
     return [dict get $submissions $choice]
 }
 
+proc ::cm::conference::known-talks-vt {} {
+    debug.cm/conference {}
+    Setup
+
+    set conference [the-current]
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT T.id    AS id
+	,      S.id    AS sid
+	,      S.title AS title
+	FROM   submission S
+	,      talk       T
+	WHERE  S.conference = :conference
+	AND    S.id         = T.submission
+    } {
+	dict set known $title                         $id
+	dict set known "[get-submission-handle $sid]" $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::get-talk-title {talk} {
+    debug.cm/tutorial {}
+    Setup
+    return [db do onecolumn {
+	SELECT title
+	FROM   submission
+	WHERE  id IN (SELECT submission
+		      FROM   talk
+		      WHERE  id = :talk)
+    }]
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
@@ -4715,7 +4957,9 @@ proc ::cm::conference::Setup {} {
 	    sessionlen	INTEGER NOT NULL,	-- in #talks max  basic scheduling parameters.
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
-	    rstatus	INTEGER NOT NULL REFERENCES rstatus
+	    rstatus	INTEGER NOT NULL REFERENCES rstatus,
+
+	    pschedule   INTEGER REFERENCES pschedule
 
 	    -- future expansion columns:
 	    -- -- max day|range for tutorials
@@ -4755,6 +4999,7 @@ proc ::cm::conference::Setup {} {
 	    {talklength		INTEGER	1 {} 0}
 	    {sessionlen		INTEGER	1 {} 0}
 	    {rstatus		INTEGER	1 {} 0}
+	    {pschedule		INTEGER	0 {} 0}
 	} {}
     }]} {
 	db setup-error conference $error

@@ -824,6 +824,40 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# - -- --- ----  -------- ------------- ----------------------
 
+	private schedule {
+	    section {Conference Management}
+	    description { Link a schedule to the conference }
+	    input name {
+		The name of the schedule to use.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+	} [cm::call conference cmd_schedule_set]
+
+	private schedule-show {
+	    section {Conference Management}
+	    description { Show the current logical schedule for the conference }
+	} [cm::call conference cmd_schedule_show]
+
+	private schedule-edit {
+	    section {Conference Management}
+	    description { Edit the logical schedule for the conference }
+	    input label {
+		Name of the slot to edit.
+	    } { validate [cm::vt schedule-slot] }
+	    input type {
+		New type of the slot
+	    } { validate [cm::vt schedule-slot-type] }
+	    input value {
+		New value of the slot, type-dependent interpretation.
+	    } { validate [cm::vt schedule-slot-value] }
+	} [cm::call conference cmd_schedule_edit]
+
+	# TODO: Drop physical schedule, integrated drop of logical entries.
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private rate {
 	    section {Conference Management}
 	    description { Set the room rate information }
