@@ -1570,7 +1570,7 @@ proc ::cm::contact::Setup {} {
 
 	    id		INTEGER NOT NULL PRIMARY KEY,
 	    company	INTEGER NOT NULL REFERENCES contact,
-	    person	INTEGER NOT NULL REFERENCES contact,
+	    person	INTEGER NOT NULL REFERENCES contact
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {company	INTEGER 1 {} 0}
