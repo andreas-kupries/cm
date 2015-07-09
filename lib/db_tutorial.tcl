@@ -31,14 +31,18 @@ package require cm::util
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm {
+    namespace export db
+    namespace ensemble create
+}
+namespace eval ::cm::db {
     namespace export tutorial
     namespace ensemble create
 }
 namespace eval ::cm::db::tutorial {
     namespace export \
 	all new title= desc= req= tag= 2name get update select \
-	known known-tag known-title dayrange trackrange cell speakers \
-	scheduled schedule unschedule \
+	known known-tag known-title dayrange trackrange cell \
+	speakers speakers* scheduled schedule unschedule \
 	issues setup dump
     namespace ensemble create
 
@@ -356,13 +360,14 @@ proc ::cm::db::tutorial::speakers* {conference} {
     debug.cm/db/tutorial {}
     setup
 
-    # Get data from the exactly addressed cell in the schedule.
     return [db do eval {
-	SELECT dname, tag, biography
+	SELECT dname
+	,      tag
+	,      biography
 	FROM   contact
 	WHERE  id IN (SELECT DISTINCT T.speaker
-		      FROM  tutorial_schedule S,
-		            tutorial          T
+		      FROM  tutorial_schedule S
+		      ,     tutorial          T
 		      WHERE S.conference = :conference
 		      AND   S.tutorial   = T.id)
     }]
@@ -374,10 +379,10 @@ proc ::cm::db::tutorial::speakers {conference} {
 
     return [db do eval {
 	SELECT DISTINCT T.speaker
-	FROM  tutorial_schedule S,
-	      tutorial          T
+	FROM  tutorial_schedule S
+	,     tutorial          T
 	WHERE S.conference = :conference
-	AND   S.tutorial   = T.id)
+	AND   S.tutorial   = T.id
     }]
 }
 

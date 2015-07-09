@@ -89,7 +89,7 @@ proc ::cm::contact::cmd_show {config} {
 	    	   C.can_talk     AS ctalk,
 	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
-	          contact_type CT
+	          contact-type CT
 	    WHERE C.id   = :contact
 	    AND   C.type = CT.id
 	} {
@@ -223,7 +223,7 @@ proc ::cm::contact::cmd_list {config} {
 	    	   C.can_talk     AS ctalk,
 	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
-	          contact_type CT
+	          contact-type CT
 	    WHERE (C.name  GLOB :pattern
 	     OR    C.dname GLOB :pattern)
 	    AND   CT.id = C.type
@@ -1429,7 +1429,7 @@ proc ::cm::contact::select {p} {
 proc ::cm::contact::Setup {} {
     debug.cm/contact {}
 
-    contact_type setup
+    contact-type setup
 
     if {![dbutil initialize-schema ::cm::db::do error contact {
 	{
@@ -1439,7 +1439,7 @@ proc ::cm::contact::Setup {} {
 
 	    id		 INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    tag		 TEXT	 	  UNIQUE,	-- for html anchors, and quick identification
-	    type	 INTEGER NOT NULL REFERENCES contact_type,
+	    type	 INTEGER NOT NULL REFERENCES contact-type,
 	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	    dname	 TEXT	 NOT NULL,		-- display name
 	    biography	 TEXT,
