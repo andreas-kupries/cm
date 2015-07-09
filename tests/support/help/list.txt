@@ -1,4 +1,14 @@
 cm [OPTIONS]
+    cm accepted
+    cm booked
+    cm booking
+    cm booking add <person> [<hotel>]
+    cm booking drop <person>
+    cm booking exit
+    cm booking help [OPTIONS] [<cmdname>...]
+    cm booking list
+    cm booking remove <person>
+    cm bookings
     cm campaign
     cm campaign close
     cm campaign drop [<entry>...]
@@ -97,6 +107,7 @@ cm [OPTIONS]
     cm debug fix-mails
     cm debug help [OPTIONS] [<cmdname>...]
     cm debug levels
+    cm debug speakers
     cm exit
     cm facilities
     cm help [OPTIONS] [<cmdname>...]
@@ -134,9 +145,86 @@ cm [OPTIONS]
     cm location transport [<location>]
     cm location transport-set <location> [<map>]
     cm locations
+    cm register [OPTIONS] <person>
+    cm registered
+    cm registration
+    cm registration add [OPTIONS] <person>
+    cm registration drop <person>
+    cm registration exit
+    cm registration help [OPTIONS] [<cmdname>...]
+    cm registration list
+    cm registration remove <person>
     cm save <destination>
+    cm schedule
+    cm schedule add <name>
+    cm schedule clear-select
+    cm schedule create <name>
+    cm schedule day
+    cm schedule day clear-select [OPTIONS]
+    cm schedule day exit
+    cm schedule day first [OPTIONS]
+    cm schedule day help [OPTIONS] [<cmdname>...]
+    cm schedule day last [OPTIONS]
+    cm schedule day next [OPTIONS]
+    cm schedule day previous [OPTIONS]
+    cm schedule day select [OPTIONS] [<day>]
+    cm schedule day selected [OPTIONS]
+    cm schedule drop [<name>]
+    cm schedule event [OPTIONS] <description> [<note>]
+    cm schedule exit
+    cm schedule f [OPTIONS]
+    cm schedule first [OPTIONS]
+    cm schedule help [OPTIONS] [<cmdname>...]
+    cm schedule item
+    cm schedule item drop [OPTIONS] <ref>
+    cm schedule item event [OPTIONS] <description> [<note>]
+    cm schedule item exit
+    cm schedule item help [OPTIONS] [<cmdname>...]
+    cm schedule item placeholder [OPTIONS] <label>
+    cm schedule item remove [OPTIONS] <ref>
+    cm schedule item rename [OPTIONS] <ref> <newname>
+    cm schedule l [OPTIONS]
+    cm schedule last [OPTIONS]
+    cm schedule left [OPTIONS]
+    cm schedule leftmost [OPTIONS]
+    cm schedule list
+    cm schedule lm [OPTIONS]
+    cm schedule n [OPTIONS]
+    cm schedule next [OPTIONS]
+    cm schedule p [OPTIONS]
+    cm schedule placeholder [OPTIONS] <label>
+    cm schedule prev [OPTIONS]
+    cm schedule previous [OPTIONS]
+    cm schedule r [OPTIONS]
+    cm schedule remove [<name>]
+    cm schedule rename <name> <newname>
+    cm schedule right [OPTIONS]
+    cm schedule rightmost [OPTIONS]
+    cm schedule rm [OPTIONS]
+    cm schedule select [<name>]
+    cm schedule selected
+    cm schedule show [<name>]
+    cm schedule start [<time>]
+    cm schedule track
+    cm schedule track add [OPTIONS] <name>
+    cm schedule track clear-select [OPTIONS]
+    cm schedule track create [OPTIONS] <name>
+    cm schedule track drop [OPTIONS] <name>
+    cm schedule track exit
+    cm schedule track help [OPTIONS] [<cmdname>...]
+    cm schedule track left [OPTIONS]
+    cm schedule track leftmost [OPTIONS]
+    cm schedule track remove [OPTIONS] <name>
+    cm schedule track rename [OPTIONS] <name> <newname>
+    cm schedule track right [OPTIONS]
+    cm schedule track rightmost [OPTIONS]
+    cm schedule track select [OPTIONS] [<name>]
+    cm schedule track selected [OPTIONS]
+    cm schedule validate
+    cm schedules
     cm submission
     cm submission accept [OPTIONS] [<submission>]
+    cm submission accepted
     cm submission add [OPTIONS] <title> [<author>...]
     cm submission add-speaker <submission> [<speaker>...]
     cm submission add-submitter <submission> [<submitter>...]
@@ -188,6 +276,11 @@ cm [OPTIONS]
     cm test location-staff-select
     cm test mail-address <address>
     cm test mail-setup <destination>
+    cm test schedule-item-day-max <schedule>
+    cm test schedule-known
+    cm test schedule-select
+    cm test schedule-track-known <schedule>
+    cm test schedule-track-select <schedule>
     cm tutorial
     cm tutorial add [OPTIONS] <speaker> <tag> [<title>] [<description>]
     cm tutorial change-description <tutorial> [<text>]
@@ -205,5 +298,6 @@ cm [OPTIONS]
     cm tutorial set-title <tutorial> <text>
     cm tutorial show [<name>]
     cm tutorials
+    cm unregister <person>
     cm unsubmit [<submission>...]
     cm version

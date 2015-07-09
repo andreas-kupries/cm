@@ -1,0 +1,11 @@
+#!/bin/bash
+ftilde
+rtilde
+sleep 2
+clear
+echo
+./build.tcl uninstall install
+clear
+echo
+echo reinstalled = $(date)
+echo

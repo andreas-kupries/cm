@@ -43,7 +43,7 @@ namespace eval ::cm {
 }
 
 namespace eval ::cm::util {
-    namespace export padr padl dictsort reflow indent undent \
+    namespace export even odd padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
 	dict-fill-permute* dict-join-keys initials select text-stdin \
@@ -55,8 +55,8 @@ namespace eval ::cm::util {
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cm::table::dict
+    rename dict table/d
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -69,12 +69,13 @@ debug prefix cm/util {[debug caller] | }
 
 proc ::cm::util::pdict {dict} {
     debug.cm/util {}
-    [table t {Key Value} {
+    [table/d t {
 	foreach k [lsort -dict [dict keys $dict]] {
 	    set v [dict get $dict $k]
 	    $t add $k $v
 	}
     }] show
+    return
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -243,9 +244,11 @@ proc ::cm::util::highlight-current {xvar id args} {
 	set current {}
 	return 
     }
-    set current *
+    set current ->
     foreach v $args {
 	upvar 1 $v str
+	if {$str eq {}} continue
+	# Highlight only non-empty fields.
 	set str [color bold $str]
     }
     return
@@ -356,6 +359,18 @@ proc ::cm::util::strip-prefix {prefix words} {
 	lappend results $w
     }
     return $results
+}
+
+proc ::cm::util::even {words} {
+    set r {}
+    foreach {e o} $words { lappend r $e }
+    return $r
+}
+
+proc ::cm::util::odd {words} {
+    set r {}
+    foreach {e o} $words { lappend r $o }
+    return $r
 }
 
 proc ::cm::util::padr {words} {

@@ -1,0 +1,62 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - renaming schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-rename-1.0 {schedule rename, wrong args, not enough} -body {
+    run schedule rename
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-rename-1.1 {schedule rename, wrong args, too many} -body {
+    run schedule rename NAME NEWNAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-rename-1.2 {schedule rename, unknown origin schedule} -body {
+    run schedule rename BOGUS NEW
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a schedule name for input "name", got "BOGUS"}
+
+test schedule-rename-1.3 {schedule rename, known destination schedule} -body {
+    run schedule rename foo bar
+} -setup {
+    stage-open
+    run schedule add foo
+    run schedule add bar
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Found a problem with input "newname": A schedule named "bar" already exists. Please use a different name.}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-rename-2.0 {schedule rename} -body {
+    run schedule rename sChEdUlE fox
+    run schedule show fox
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/fox.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

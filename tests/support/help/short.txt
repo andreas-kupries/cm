@@ -1,6 +1,43 @@
 cm [OPTIONS]
     The cm command line client
 
+cm accepted
+    Show accepted submissions, aka presentations for the current conference
+
+cm booked
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
+cm booking
+    Manage the hotel bookings by people.
+
+cm booking add <person> [<hotel>]
+    Add contact as having booked a hotel for the conference. The hotel
+    defaults to the conference hotel.
+
+cm booking drop <person>
+    Drop contact from the list of people who booked their hotel for the
+    conference.
+
+cm booking exit
+    Exit the shell. No-op if not in a shell.
+
+cm booking help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm booking list
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
+cm booking remove <person>
+    Drop contact from the list of people who booked their hotel for the
+    conference.
+
+cm bookings
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
 cm campaign
     Manage the campaign for a conference. All commands assume a "current
     conference".
@@ -309,6 +346,9 @@ cm debug levels
     List all the debug levels known to the system, which we can enable to gain
     a (partial) narrative of the application-internal actions.
 
+cm debug speakers
+    Show speaker information inserted into the overview page.
+
 cm exit
     Exit the shell. No-op if not in a shell.
 
@@ -427,14 +467,249 @@ cm location transport-set <location> [<map>]
 cm locations
     Show a table of all known locations
 
+cm register [OPTIONS] <person>
+    Register contact with the conference. Options for setting up presenter
+    discount, taken tutorials, walkin fee, etc.
+
+cm registered
+    Show the set of registered people.
+
+cm registration
+    Manage the registrations
+
+cm registration add [OPTIONS] <person>
+    Register contact with the conference. Options for setting up presenter
+    discount, taken tutorials, walkin fee, etc.
+
+cm registration drop <person>
+    Drop contact from the list of registered people
+
+cm registration exit
+    Exit the shell. No-op if not in a shell.
+
+cm registration help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm registration list
+    Show the set of registered people.
+
+cm registration remove <person>
+    Drop contact from the list of registered people
+
 cm save <destination>
     Save database as readable and executable Tcl script
+
+cm schedule
+    Manage conference schedules.
+
+cm schedule add <name>
+    Create a new, empty named schedule
+
+cm schedule clear-select
+    Clear active schedule
+
+cm schedule create <name>
+    Create a new, empty named schedule
+
+cm schedule day
+
+cm schedule day clear-select [OPTIONS]
+    Clear active day
+
+cm schedule day exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule day first [OPTIONS]
+    Activate the first day
+
+cm schedule day help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule day last [OPTIONS]
+    Activate the last day
+
+cm schedule day next [OPTIONS]
+    Activate the next day
+
+cm schedule day previous [OPTIONS]
+    Activate the previous day
+
+cm schedule day select [OPTIONS] [<day>]
+    Activate the named day
+
+cm schedule day selected [OPTIONS]
+    Tell which day is active
+
+cm schedule drop [<name>]
+    Destroy the named schedule
+
+cm schedule event [OPTIONS] <description> [<note>]
+    Create a new fixed event for the schedule
+
+cm schedule exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule f [OPTIONS]
+    Activate the first day
+
+cm schedule first [OPTIONS]
+    Activate the first day
+
+cm schedule help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule item
+
+cm schedule item drop [OPTIONS] <ref>
+    Destroy the item in the schedule
+
+cm schedule item event [OPTIONS] <description> [<note>]
+    Create a new fixed event for the schedule
+
+cm schedule item exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule item help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule item placeholder [OPTIONS] <label>
+    Create a new placeholder for the schedule
+
+cm schedule item remove [OPTIONS] <ref>
+    Destroy the item in the schedule
+
+cm schedule item rename [OPTIONS] <ref> <newname>
+    Rename the specified item
+
+cm schedule l [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule last [OPTIONS]
+    Activate the last day
+
+cm schedule left [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule leftmost [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule list
+    Show a table of all known schedules
+
+cm schedule lm [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule n [OPTIONS]
+    Activate the next day
+
+cm schedule next [OPTIONS]
+    Activate the next day
+
+cm schedule p [OPTIONS]
+    Activate the previous day
+
+cm schedule placeholder [OPTIONS] <label>
+    Create a new placeholder for the schedule
+
+cm schedule prev [OPTIONS]
+    Activate the previous day
+
+cm schedule previous [OPTIONS]
+    Activate the previous day
+
+cm schedule r [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule remove [<name>]
+    Destroy the named schedule
+
+cm schedule rename <name> <newname>
+    Rename the named schedule
+
+cm schedule right [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule rightmost [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule rm [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule select [<name>]
+    Activate the named schedule
+
+cm schedule selected
+    Tell which schedule is active
+
+cm schedule show [<name>]
+    Show information about the named schedule
+
+cm schedule start [<time>]
+    Show and/or set a global start-time
+
+cm schedule track
+
+cm schedule track add [OPTIONS] <name>
+    Create a new track for the schedule
+
+cm schedule track clear-select [OPTIONS]
+    Clear active track
+
+cm schedule track create [OPTIONS] <name>
+    Create a new track for the schedule
+
+cm schedule track drop [OPTIONS] <name>
+    Destroy the named track in the schedule
+
+cm schedule track exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule track help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule track left [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule track leftmost [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule track remove [OPTIONS] <name>
+    Destroy the named track in the schedule
+
+cm schedule track rename [OPTIONS] <name> <newname>
+    Rename the named track
+
+cm schedule track right [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule track rightmost [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule track select [OPTIONS] [<name>]
+    Activate the named track
+
+cm schedule track selected [OPTIONS]
+    Tell which track is active
+
+cm schedule validate
+    Validate schedule information
+
+cm schedules
+    Show a table of all known schedules
 
 cm submission
     Manage the submissions
 
 cm submission accept [OPTIONS] [<submission>]
     Accept the specified submission
+
+cm submission accepted
+    Show accepted submissions, aka presentations for the current conference
 
 cm submission add [OPTIONS] <title> [<author>...]
     Submit a paper/talk proposal. The abstract is read from stdin.
@@ -593,6 +868,21 @@ cm test mail-address <address>
 cm test mail-setup <destination>
     Generate a test mail and send it using the current mail configuration.
 
+cm test schedule-item-day-max <schedule>
+    Print day validation information
+
+cm test schedule-known
+    Print validation dictionary
+
+cm test schedule-select
+    Print selection dictionary
+
+cm test schedule-track-known <schedule>
+    Print validation dictionary
+
+cm test schedule-track-select <schedule>
+    Print selection dictionary
+
 cm tutorial
     Manage the tutorials we can or have offered in conferences.
 
@@ -644,6 +934,9 @@ cm tutorial show [<name>]
 
 cm tutorials
     Show a table of all known tutorials
+
+cm unregister <person>
+    Drop contact from the list of registered people
 
 cm unsubmit [<submission>...]
     Remove one or more specified submissions

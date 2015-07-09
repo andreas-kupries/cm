@@ -1,0 +1,43 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - listing
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-list-1.0 {schedule list, wrong args, too many} -body {
+    run schedule list X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-list-2.0-IV_S_0002-IV_T_0001 {schedule list, defaults, empty <IV_S_0002><IV_T_0001>} -body {
+    run schedule list
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-empty.txt]
+
+test schedule-list-2.1-IV_S_0002-IV_T_0001 {schedule list, not empty <IV_S_0002><IV_T_0001>} -body {
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

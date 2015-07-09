@@ -28,12 +28,16 @@ package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
 
+package require cm::city
+package require cm::config::core
 package require cm::contact
 package require cm::db
+package require cm::db::booked
 package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
 package require cm::db::location
+package require cm::db::registered
 package require cm::db::rstatus
 package require cm::db::staffrole
 package require cm::db::talk-state
@@ -64,13 +68,17 @@ namespace eval ::cm::conference {
 	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
-	cmd_submission_dropsubmitter cmd_tutorial_show cmd_tutorial_link \
-	cmd_tutorial_unlink \
+	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
+	cmd_tutorial_unlink cmd_debug_speakers \
+	cmd_booking_list cmd_booking_add cmd_booking_remove \
+	cmd_registration_list cmd_registration_add cmd_registration_remove \
 	select label current get insert known-sponsor \
 	select-sponsor select-staff known-staff \
 	select-submission get-submission \
 	get-submission-handle known-submissions-vt \
-	known-speaker known-attachment get-attachment known-submitter
+	known-speaker known-attachment get-attachment known-submitter \
+	its-hotel
+
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -79,10 +87,12 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::validate::weekday
     namespace import ::cm::contact
     namespace import ::cm::db
+    namespace import ::cm::db::booked
     namespace import ::cm::db::city
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
     namespace import ::cm::db::location
+    namespace import ::cm::db::registered
     namespace import ::cm::db::rstatus
     namespace import ::cm::db::staffrole
     namespace import ::cm::db::talk-state
@@ -1003,13 +1013,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    $t add Authors  $authors
 
 	    if {$accepted} {
-		set speakers [db do eval {
-		    SELECT dname
-		    FROM   contact
-		    WHERE  id IN (SELECT contact
-				  FROM   talker
-				  WHERE  talk = :talk)
-		}]
+		set speakers [talk-speakers $talk]
 		if {[llength $speakers]} {
 		    $t add Speakers [join $speakers \n]
 		}
@@ -1109,6 +1113,83 @@ proc ::cm::conference::cmd_submission_list {config} {
     return
 }
 
+proc ::cm::conference::cmd_submission_list_accepted {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    set w [string length "| Id | Type | Date | State | Authors | Speakers |  | Title | Attachments |"]
+    set w [util tspace $w 60]
+
+    puts "Submissions for \"[color name [get $conference]]\""
+    [table t {Id Type Date State Authors Speakers {} Title Attachments} {
+	db do eval {
+	    SELECT S.id         AS id
+	    ,      S.title      AS title
+	    ,      S.invited    AS invited
+	    ,      S.submitdate AS submitdate
+	    ,      S.abstract   AS abstract
+	    ,      S.summary    AS summary
+	    ,      TT.text      AS ttype
+	    ,      TS.text      AS tstate
+	    ,      T.id         AS tid
+	    FROM   submission S
+	    ,      talk       T
+	    ,      talk_type  TT
+	    ,      talk_state TS
+	    WHERE  S.conference = :conference
+	    AND    T.submission = S.id
+	    AND    T.type       = TT.id
+	    AND    T.state      = TS.id
+	    ORDER BY S.submitdate, S.id
+	} {
+	    set authors [join [db do eval {
+		SELECT dname
+		FROM   contact
+		WHERE  id IN (SELECT contact
+			      FROM   submitter
+			      WHERE  submission = :id)
+		ORDER BY dname
+	    }] \n]
+	    set speakers [join [talk-speakers $tid] \n]
+	    set attachments [join [db do eval {
+		SELECT type
+		FROM   attachment
+		WHERE  talk = :tid
+		ORDER BY type
+	    }] \n]
+	    set invited    [expr {$invited ? "Invited" : ""}]
+	    set submitdate [hdate $submitdate]
+
+	    set issues {}
+
+	    if {([string trim $abstract] eq {}) &&
+		([string trim $summary] eq {})} {
+		+issue "Missing abstract/summary"
+	    }
+
+	    # These are issues if speakers or attachments are found missing.
+	    if {$speakers eq {}} {
+		+issue "No speakers"
+	    }
+	    if {$attachments eq {}} {
+		+issue "No materials"
+	    }
+
+	    if {[llength $issues]} {
+		append authors \n [fmt-issues-cli $issues]
+	    }
+
+	    set title [util adjust $w $title]
+	    $t add [get-submission-handle $id] $ttype $submitdate $tstate \
+		$authors $speakers $invited $title $attachments
+	}
+    }] show
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::cmd_submission_accept {config} {
@@ -1123,7 +1204,7 @@ proc ::cm::conference::cmd_submission_accept {config} {
 	set type [$config @type]
     } else {
 	set invited [db do eval { SELECT invited FROM submission WHERE id = :submission }]
-	set type [expr {$invited ? 1 : 2}]
+	set type [expr {$invited ? 3 : 2}]
     }
 
     puts -nonewline "Accept \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
@@ -1756,7 +1837,7 @@ proc ::cm::conference::cmd_rate_set {config} {
     set dead  [cdefault @deadline        {clock add $begin -14 days}]
     set pdead [cdefault @public-deadline {clock add $dead   -7 days}]
 
-    # Limit to the chosen umber of digits after the decimal point, we
+    # Limit to the chosen number of digits after the decimal point, we
     # will store things as int.
     set factor 10e$decimal
     set rate [expr {int($rate * $factor)}]
@@ -1774,13 +1855,13 @@ proc ::cm::conference::cmd_rate_set {config} {
 	db do eval {
 	    UPDATE rate
 	    SET    rate       = :rate
-	           decimal    = :decimal
-	           currency   = :currency
-	           groupcode  = :group
-	           begindate  = :begin
-	           enddate    = :end
-	           deadline   = :dead
-	           pdeadline  = :pdead
+	    ,      decimal    = :decimal
+	    ,      currency   = :currency
+	    ,      groupcode  = :group
+	    ,      begindate  = :begin
+	    ,      enddate    = :end
+	    ,      deadline   = :dead
+	    ,      pdeadline  = :pdead
 	    WHERE  conference = :conference
 	    AND    location   = :location
 	}
@@ -1820,6 +1901,223 @@ proc ::cm::conference::cmd_end_set {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_registration_list {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set speakers   [the-presenters $conference]
+    # Tutorial speakers are not required to register, i.e. they can
+    # teach without attending the tech sessions.
+    set count 0
+
+    puts "Registered for \"[color name [get $conference]]\" ..."
+    [table t {Who Walkin? {Day 1 Morning} {Day 1 Afternoon} {Day 2 Morning} {Day 2 Afternoon}} {
+	# Show the registrations we have.
+	foreach {dname walkin ta tb tc td} [registered listing $conference] {
+	    $t add $dname [hbool $walkin] $ta $tb $tc $td
+	    dict unset speakers $dname
+	    incr count
+	}
+
+	# Now, if we have speakers which are not registered, show
+	# these as well, highlighted as issue.
+
+	if {[dict size $speakers]} {
+	    if {$count} { $t add {} {} {} {} {} {} }
+	    foreach dname [lsort -dict [dict keys $speakers]] {
+		$t add [color bad "MISSING: $dname"] {} {} {} {} {}
+	    }
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_registration_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person] ;    debug.cm/conference {person = $person}
+    set walkin     [$config @walkin] ;    debug.cm/conference {walkin = $walkin}
+    set tutorials  [$config @taking] ;    debug.cm/conference {tut = ([join $tutorials {),(}])}
+    # tutorials = ((id,day,half,tutorial)...)
+    #        id => in the tutorial __schedule__
+
+    if {[llength $tutorials] > 4} {
+	error "Too many tutorials, canonly handle 4."
+    }
+
+    set c [get $conference]
+    set p [cm contact get $person]
+
+    puts -nonewline "Register \"[color name $p]\" for \"[color name $c]\" ... "
+    set close 0
+
+    try {
+	db do transaction {
+	    set r [registered add $conference $person $walkin]
+	    # TODO: tutorials - map day/half into slot number.
+	    # ASSUMES day  in (0,1),  |1st two conference days
+	    #         half in (1,2)   |morning,afternoon
+	    # ==> (1..4) ((half+2*day)
+	    # Day 1 morning   0,1 - 1
+	    # Day 1 afternoon 0,2 - 2
+	    # Day 2 morning   1,1 - 3
+	    # Day 2 afternoon 1,2 - 4
+
+	    foreach t $tutorials {
+		lassign $t id day half tutorial
+		debug.cm/conference {tutorial s=$id d=$day h=$half t=$tutorial}
+
+		puts -nonewline "\n Taking tutorial \"[color name [cm tutorial get $tutorial]]\""
+
+		set slot [expr {2*$day+$half}]
+		debug.cm/conference {slot = $slot}
+
+		registered pupil-of $r $slot $id
+		set close 1
+	    }
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	if {$close} { puts {} }
+	puts [color bad $e]
+	return
+    }
+
+    if {$close} { puts {} }
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_registration_remove {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+
+    set c [get $conference]
+    set p [cm contact get $person]
+
+    puts -nonewline "Unregister \"[color name $p]\" from \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    registered remove $conference $person
+	}
+    } on error {e o} {
+	# TODO: trap only proper delete error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::its-hotel {p} {
+    # add @hotel - generate callback
+    debug.cm/conference {}
+    set conference [current]
+    set hotel [dict get [details $conference] xhotel]
+    return $hotel
+}
+
+proc ::cm::conference::cmd_booking_list {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set speakers   [the-speakers $conference]
+    set count 0
+
+    puts "Booked for \"[color name [get $conference]]\" ..."
+    [table t {Who Hotel City} {
+	foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
+	    $t add $dname $locname [city label $cityname $state $nation]
+	    dict unset speakers $dname
+	    incr count
+	}
+
+	# Now, if we have speakers without a booked hotel, show these
+	# as well, highlighted as issue.
+
+	if {[dict size $speakers]} {
+	    if {$count} { $t add {} {} {} }
+	    foreach dname [lsort -dict [dict keys $speakers]] {
+		$t add [color bad "MISSING $dname"] {} {}
+	    }
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_booking_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+    set hotel      [$config @hotel]
+
+    set c [get $conference]
+    set p [cm contact get $person]
+    set h [location get $hotel]
+
+    puts -nonewline "Booking \"[color name $p]\" at \"[color name $h]\" for \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    booked add $conference $person $hotel
+	}
+    } on error {e o} {
+	# TODO: trap only proper insert error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_booking_remove {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set person     [$config @person]
+
+    set c [get $conference]
+    set p [cm contact get $person]
+
+    puts -nonewline "Unbooking \"[color name $p]\" for \"[color name $c]\" ... "
+
+    try {
+	db do transaction {
+	    booked remove $conference $person
+	}
+    } on error {e o} {
+	# TODO: trap only proper delete error, if possible.
+	puts [color bad $e]
+	return
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_website_make {config} {
     debug.cm/conference {}
     Setup
@@ -1840,14 +2138,52 @@ proc ::cm::conference::cmd_website_make {config} {
     file delete -force $dstdir/pages/blog
 
     # # ## ### ##### ######## #############
-    puts "Filling in..."
-    make_page Overview          index       make_overview
+    ## Data configuration
 
-    lappend navbar {*}[make_page {Call For Papers} cfp         make_callforpapers]
-    lappend navbar {*}[make_page Location          location    make_location]
+    if {[rate-have-group-code $conference]} {
+	puts "Groupcode: [color good Yes]"
+    } else {
+	puts "Groupcode: [color bad No]"
+    }
+
+    if {[have-speakers $conference]} {
+	puts "Speakers:  [color good Yes]"
+    } else {
+	puts "Speakers:  [color bad None]"
+    }
+
+    if {[cm::tutorial have-some $conference]} {
+	puts "Tutorials: [color good Yes]"
+    } else {
+	puts "Tutorials: [color bad None]"
+    }
+
+    if {[have-talks $conference]} {
+	puts "Talks:     [color good Yes]"
+    } else {
+	puts "Talks:     [color bad None]"
+    }
 
     set rstatus [registration-mode $conference]
     puts "Registration: $rstatus"
+
+    # # ## ### ##### ######## #############
+    puts "Filling in..."
+
+    if {[have-speakers $conference]} {
+	make_page Overview  index  make_overview_speakers $conference
+    } else {
+	make_page Overview  index  make_overview
+    }
+
+    lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers]
+
+    if {[rate-have-group-code $conference]} {
+	lappend navbar {*}[make_page Location  location  make_location]
+    } else {
+	lappend navbar {*}[make_page Location  location  make_location_nogc]
+    }
+
     # The rstatus strings match the contents of table 'rstatus'.
     switch -exact -- $rstatus {
 	pending {
@@ -1863,22 +2199,21 @@ proc ::cm::conference::cmd_website_make {config} {
     }
 
     if {[tutorial scheduled $conference]} {
-	puts "Tutorials: [color good Yes]"
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
     } else {
-	puts "Tutorials: [color bad None]"
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
     }
 
-
-    lappend navbar {*}[make_page Schedule          schedule    make_schedule]
-    make_page                    Abstracts         abstracts   make_abstracts
+    lappend navbar {*}[make_page Schedule   schedule   make_schedule]
+    if {[have-talks $conference]} {
+	make_page   Abstracts  abstracts  make_abstracts $conference
+    } else {
+	make_page   Abstracts  abstracts  make_abstracts_none
+    }
 
     if {[have-speakers $conference]} {
-	puts "Speakers: [color good Yes]"
 	make_page  Speakers  bios  make_speakers $conference
     } else {
-	puts "Speakers: [color bad None]"
 	make_page  Speakers  bios  make_speakers_none
     }
 
@@ -2000,28 +2335,41 @@ proc ::cm::conference::make_overview {} {
     return [template use www-main]
 }
 
+proc ::cm::conference::make_overview_speakers {conference} {
+    debug.cm/conference {}
+    return [string map \
+		[list @speakers@ [speaker-listing $conference]] \
+		[template use www-main-speakers]]
+}
+
 proc ::cm::conference::make_callforpapers {} {
     return [template use www-cfp]
 }
 
 proc ::cm::conference::make_location {} {
     debug.cm/conference {}
-    # make-location - TODO: Move text into a configurable template
     # make-location - TODO: switch to a different text block when deadline has passed.
-    return [util undent {
-	We have negotiated a reduced room rate for attendees of the
-	conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
+    return [template use www-location]
+}
 
-	To register for a room at the hotel you can use phone (@h:bookphone@),
-	fax (@h:bookfax@), or their [website](@h:booklink@).
-	Be certain to mention that you are with the Tcl/Tk Conference to
-	get the Tcl/Tk Conference room rate. Our coupon code is __@r:group@__.
+proc ::cm::conference::make_location_nogc {} {
+    debug.cm/conference {}
+    # make-location - TODO: switch to a different text block when deadline has passed.
+    return [template use www-location-without-gcode]
+}
 
-	These rooms will be released to the general public after __@r:deadline@__,
-	so be sure to reserve your room before.
+proc ::cm::conference::rate-have-group-code {conference} {
+    set details [details $conference]
+    dict with details {}
+    set location $xhotel
 
-	@h:transport@
+    set gcode [db do onecolumn {
+	SELECT groupcode
+	FROM   rate
+	WHERE  conference = :conference
+	AND    location   = :location
     }]
+    return [expr {$gcode ne {}}]
 }
 
 proc ::cm::conference::registration-mode {conference} {
@@ -2182,22 +2530,323 @@ proc ::cm::conference::make_schedule {} {
     }]
 }
 
-proc ::cm::conference::make_abstracts {} {
-    # make-abstracts - TODO: Move text into a configurable template
-    # make-abstracts - TODO: data driven on schedule data
-    return [util undent {
-	The paper abstracts will be finalized and put up after
-	all the notifications to authors have been sent out on
-	@c:t:authornote@, as part of creating the schedule.
+proc ::cm::conference::make_abstracts_none {} {
+    debug.cm/conference {}
+    return [template use www-abstracts.none]
+}
 
-	Please check back after.
+proc ::cm::conference::make_abstracts {conference} {
+    debug.cm/conference {}
+
+    set text [template use www-abstracts]
+
+    # per talk: title, speakers, abstract ...
+    # keynotes first, then general presentations...
+
+    foreach {talk title abstract} [keynote-abstracts $conference] {
+	if {[string trim $abstract] eq {}} {
+	    set abstract "__Missing abstract__"
+	}
+	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	append text [anchor T$talk] \n
+	append text "\#\# Keynote &mdash; $title\n\n$speakers\n\n$abstract\n\n"
+    }
+
+    foreach {talk title abstract} [general-abstracts $conference] {
+	if {[string trim $abstract] eq {}} {
+	    set abstract "__Missing abstract__" 
+	}
+	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	append text [anchor T$talk] \n
+	append text "\#\# $title\n\n$speakers\n\n$abstract\n\n"
+    }
+    return $text
+}
+
+proc ::cm::conference::link-speakers {speakers} {
+    set r {}
+    foreach {dname tag} $speakers {
+	lappend r [link $dname bios.html $tag]
+    }
+    return $r
+}
+
+proc ::cm::conference::cmd_debug_speakers {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    puts [speaker-listing [current]]
+    return
+}
+
+proc ::cm::conference::keynotes {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT C.dname     AS dname
+	,      C.tag       AS tag
+	,      C.biography AS biography
+	FROM contact    C  -- (id)
+	,    talker     TR -- (id, talk, contact)
+	,    talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	ORDER BY dname
     }]
+}
+
+proc ::cm::conference::general-talks {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT C.dname     AS dname
+	,      C.tag       AS tag
+	,      C.biography AS biography
+	FROM contact    C  -- (id)
+	,    talker     TR -- (id, talk, contact)
+	,    talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::talk-speakers {talk} {
+    return [db do eval {
+	SELECT dname, tag
+	FROM   contact
+	WHERE  id IN (SELECT contact
+		      FROM   talker
+		      WHERE  talk = :talk)
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::keynote-abstracts {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	,      S.abstract AS abstract
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::general-abstracts {conference} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	,      S.abstract AS abstract
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::tutorials-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.tag
+	,      T.title
+	FROM tutorial          T
+	,    tutorial_schedule TS
+	,    contact           C
+	WHERE TS.conference = :conference
+	AND   TS.tutorial   = T.id
+	AND   T.speaker     = C.id
+	AND   C.tag         = :speakertag
+	ORDER BY T.title
+    }]
+}
+
+proc ::cm::conference::keynotes-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    talker     TR -- (id, talk, contact)
+	,    submission S  -- (id, conference)
+	,    contact    C  -- (id, tag)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text      = 'keynote'
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   C.tag        = :speakertag
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::talks-of {conference speakertag} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT T.id       AS id
+	,      S.title    AS title
+	FROM talk_type  TT -- (id, text)
+	,    talk       T  -- (id, submission, type)
+	,    talker     TR -- (id, talk, contact)
+	,    submission S  -- (id, conference)
+	,    contact    C  -- (id, tag)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   T.type       = TT.id
+	AND   TT.text     != 'keynote'
+	AND   TR.talk      = T.id
+	AND   TR.contact   = C.id
+	AND   C.tag        = :speakertag
+	ORDER BY title
+    }]
+}
+
+proc ::cm::conference::the-speakers {conference} {
+    debug.cm/conference {}
+    set map {}
+    foreach {dname tag bio} [keynotes $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [general-talks $conference] {
+	dict set map $dname $tag
+    }
+
+    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    return $map
+}
+
+proc ::cm::conference::the-presenters {conference} {
+    debug.cm/conference {}
+    set map {}
+    foreach {dname tag bio} [keynotes $conference] {
+	dict set map $dname $tag
+    }
+    foreach {dname tag bio} [general-talks $conference] {
+	dict set map $dname $tag
+    }
+
+    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    return $map
+}
+
+proc ::cm::conference::speaker-listing {conference} {
+    debug.cm/conference {}
+    # speaker-listing - TODO - general presenters
+
+    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+
+    # Keynotes...
+    set first 1
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "## Keynotes\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
+	append text [fmt-speakers $dname $tag [keynotes-of $conference $tag] T abstracts.html]
+    }
+    if {!$first} { append text \n }
+
+    # Tutorials...
+    set first 1
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "## Tutorials\n\n"
+	    set first 0
+	}
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for tutorial speaker '$dname'"] }
+	append text [fmt-speakers $dname $tag [tutorials-of $conference $tag] ${tag}: tutorials.html]
+    }
+    if {!$first} { append text \n }
+
+    # Presenters...
+    set first 1
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "## Keynotes\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for general speaker '$dname'"] }
+	append text [fmt-speakers $dname $tag [talks-of $conference $tag] T abstracts.html]
+    }
+    if {!$first} { append text \n }
+
+    return $text
+}
+
+proc ::cm::conference::fmt-speakers {dname tag talks tpfx tlink} {
+    # talks = (tag title...)
+
+    append text "  * "
+    append text [link $dname bios.html $tag]
+
+    if {[llength $talks]} {
+	append text " &mdash;"
+	set pre " ("
+	foreach {ttag title} $talks {
+	    append text $pre [link $title $tlink $tpfx$ttag]
+	    set pre ", "
+	}
+	append text ")"
+    }
+    append text \n
+    return $text
 }
 
 proc ::cm::conference::have-speakers {conference} {
     debug.cm/conference {}
-    # have-speakers TODO keynotes & presenters
-    return [llength [tutorial speakers $conference]]
+    # have-speakers: tutorials or any talks (keynotes, general)
+    return [expr {[llength [tutorial speakers $conference]] || [db do exists {
+	SELECT TR.contact
+	FROM talker     TR -- (id, talk, contact)
+	,    talk       T  -- (id, submission, type)
+	,    submission S  -- (id, conference)
+	WHERE S.conference = :conference
+	AND   S.id         = T.submission
+	AND   TR.talk      = T.id
+    }]}]
 }
 
 proc ::cm::conference::make_speakers_none {} {
@@ -2207,12 +2856,12 @@ proc ::cm::conference::make_speakers_none {} {
 
 proc ::cm::conference::make_speakers {conference} {
     debug.cm/conference {}
-    # tutorials, keynotes, general presenters.
+    # bio page for
+    # - tutorials speakers,
+    # - keynote speakers,
+    # - general presenters.
 
     set text [template use www-speakers]
-
-    # make-speakers - TODO - keynotes
-    # make-speakers - TODO - general presenters
 
     set map  {} ; # name -> (tag, bio)
     set type {} ; # name -> list(types), type in T, K, P
@@ -2223,17 +2872,29 @@ proc ::cm::conference::make_speakers {conference} {
 	dict set     map  $dname [list $tag $bio]
 	dict lappend type $dname T
     }
-    # general presenters extend the map.
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$bio eq {}} { set bio "__No biography known__" }
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname [list $tag $bio]
+	dict lappend type $dname K
+    }
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$bio eq {}} { set bio "__No biography known__" }
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for speaker '$dname'"] }
+	dict set     map  $dname [list $tag $bio]
+	dict lappend type $dname P
+    }
 
-    # make-speaker TODO : iterate map per type
-    # make-speaker TODO : alt: simply show readable type info
-    #                          in the data for each contact.
-
+    # Generate the page contents from the collected information.
     foreach dname [lsort -dict [dict keys $map]] {
 	lassign [dict get $map $dname] tag bio
 
+	set types [join [lsort -dict [string map \
+					  {T Tutorial K Keynote P Presenter} \
+					  [dict get $type $dname]]] {, }]
+
 	append text [anchor $tag] \n
-	append text "## " $dname \n\n
+	append text "## " $dname " &mdash; " $types \n\n
 	append text $bio \n\n
     }
 
@@ -2275,6 +2936,9 @@ proc ::cm::conference::make_admin {conference} {
     if {[llength $issues]} {
 	append text "* " [link Issues      {} issues] \n
     }
+
+    append text "* " [link Registered   {} registered] \n
+    append text "* " [link Booked       {} booked] \n
     append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
     append text "* " [link Campaign    {} campaign] \n
@@ -2289,6 +2953,8 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
     }
 
+    make_admin_registered  $conference text registered
+    make_admin_booked      $conference text booked
     make_admin_accepted    $conference text accepted
     make_admin_submissions $conference text submissions
     make_admin_campaign    $conference text campaign
@@ -2296,6 +2962,58 @@ proc ::cm::conference::make_admin {conference} {
 
     # What else ...
     return $text
+}
+
+proc ::cm::conference::make_admin_registered {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # People booked to a hotel
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Registered\n\n"
+
+    set first 1
+    foreach {dname walkin ta tb tc td} [registered listing $conference] {
+	if {$first} {
+	    append text |Who|Walkin|1-Morning|1-Afternoon|2-Morning|2-Afternoon|\n|-|-|-|-|-|-|\n
+	    set first 0
+	}
+	append text | $dname | $walkin | $ta | $tb | $tc | $td |\n
+    }
+
+    if {$first} {
+	append text "__No registrations__"
+    }
+
+    append text \n
+    return
+}
+
+proc ::cm::conference::make_admin_booked {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # People booked to a hotel
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Booked\n\n"
+
+    set first 1
+    foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
+	if {$first} {
+	    append text |Who|Hotel|City|\n|-|-|-|\n
+	    set first 0
+	}
+	append text | $dname | $locname | [city label $cityname $state $nation] |\n
+    }
+
+    if {$first} {
+	append text "__No bookings__"
+    }
+
+    append text \n
+    return
 }
 
 proc ::cm::conference::make_admin_timeline {conference textvar tag} {
@@ -2438,7 +3156,9 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	       S.title      AS title
 	FROM   submission S
 	WHERE  conference = :conference
-	AND    0 < (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
+	AND    0 < (SELECT count (T.id)
+		    FROM   talk T
+		    WHERE  T.submission = S.id)
 	ORDER BY submitdate, id
     } {
 	if {$first} {
@@ -2500,7 +3220,9 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	       S.title      AS title
 	FROM   submission S
 	WHERE  conference = :conference
-	AND    0 = (SELECT count (T.id) FROM talk T WHERE T.submission = S.id)
+	AND    0 = (SELECT count (T.id)
+		    FROM   talk T
+		    WHERE  T.submission = S.id)
 	ORDER BY submitdate, id
     } {
 	if {$first} {
@@ -2698,6 +3420,18 @@ proc ::cm::conference::sidebar_reg_show {} {
 	AND   E.ispublic
 	ORDER BY T.date
     }
+}
+
+proc ::cm::conference::have-talks {conference} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do exists {
+	SELECT T.id
+	FROM   talk T, submission S
+	WHERE  S.conference = :conference
+	AND    T.submission = S.id
+    }]
 }
 
 proc ::cm::conference::cdefault {attr dcmd} {
@@ -3020,6 +3754,10 @@ proc ::cm::conference::+map {key value} {
     return
 }
 
+proc ::cm::conference::hbool {x} {
+    expr {$x ? "yes" : "no"}
+}
+
 proc ::cm::conference::ifempty {x y} {
     if {$x ne {}} { return $x }
     return $y
@@ -3264,6 +4002,20 @@ proc ::cm::conference::known {} {
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
+    # xconference 
+    # xyear       
+    # xmanagement 
+    # xsubmission 
+    # xcity       
+    # xhotel      
+    # xfacility   
+    # xstart      
+    # xend        
+    # xalign      
+    # xlength     
+    # xtalklen    
+    # xsesslen    
+    # xrstatus
 
     set issues {}
 
@@ -3354,6 +4106,23 @@ proc ::cm::conference::issues {details} {
 	    break
 	}
     }
+
+    set presenters [the-presenters $xconference]
+    foreach {dname _ _ _ _ _} [registered listing $xconference] {
+	dict unset presenters $dname
+    }
+    foreach dname [lsort -dict [dict keys $presenters]] {
+	+issue "Presenter \"$dname\" not registered"
+    }
+
+    set speakers [the-speakers $xconference]
+    foreach {dname _ _ _ _ _ _ _} [booked listing $xconference] {
+	dict unset speakers $dname
+    }
+    foreach dname [lsort -dict [dict keys $speakers]] {
+	+issue "Speaker \"$dname\" not booked (to a hotel)"
+    }
+
 
     if {![llength $issues]} return
     return $issues
@@ -3674,6 +4443,9 @@ proc ::cm::conference::Setup {} {
     talk-type  setup
     template   setup
     timeline   setup
+
+    booked     setup ;# TODO possible loop, these two refer back to
+    registered setup ;# TODO conference. maybe move things.
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
