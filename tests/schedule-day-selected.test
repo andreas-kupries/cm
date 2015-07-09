@@ -1,0 +1,75 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - Printing the active day in a schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-selected-1.0 {schedule day selected, wrong args, too many} -body {
+    run schedule day selected X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-selected-2.0 {schedule day selected, no schedules} -body {
+    run schedule day selected
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-day-selected-2.1 {schedule day selected, no active schedule} -body {
+    run schedule day selected -n
+} -setup {
+    stage-open
+    run schedule add S
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-day-selected-2.2 {schedule day selected, active schedule, no days} -body {
+    run schedule day selected
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active day.}
+
+test schedule-day-selected-2.3 {schedule day selected, active schedule, no active day} -body {
+    run schedule day selected
+} -setup {
+    stage-open
+    run schedule add        SCHEDULE
+    run schedule track add  TRACK
+    run schedule item event EVENT
+    run schedule day clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active day.}
+
+test schedule-day-selected-2.4 {schedule day selected, new day is made active} -body {
+    run schedule day selected
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+    run schedule day select 0
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Active day is "0".}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

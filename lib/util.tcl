@@ -32,6 +32,8 @@ package require linenoise
 package require struct::list
 package require textutil::adjust
 
+package require cm::table
+
 # # ## ### ##### ######## ############# #####################
 ## Definition
 
@@ -41,16 +43,20 @@ namespace eval ::cm {
 }
 
 namespace eval ::cm::util {
-    namespace export padr padl dictsort reflow indent undent \
+    namespace export even odd padr padl dictsort reflow indent undent \
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
-	dict-join-keys initials match-substr match-enum select text-stdin
+	dict-fill-permute* dict-join-keys initials select text-stdin \
+	match-substr match-enum fmt-issues-cli fmt-issues-web pdict
     namespace ensemble create
 
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
+
+    namespace import ::cm::table::dict
+    rename dict table/d
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -58,6 +64,39 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::pdict {dict} {
+    debug.cm/util {}
+    [table/d t {
+	foreach k [lsort -dict [dict keys $dict]] {
+	    set v [dict get $dict $k]
+	    $t add $k $v
+	}
+    }] show
+    return
+}
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::fmt-issues-web {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "* $issue"
+    }
+    return [join $result \n]
+}
+
+proc ::cm::util::fmt-issues-cli {issues} {
+    debug.cm/util {}
+    set result {}
+    foreach issue $issues {
+	lappend result "- [color bad $issue]"
+    }
+    return [join $result \n]
+}
 
 # # ## ### ##### ######## ############# #####################
 
@@ -109,7 +148,7 @@ proc ::cm::util::match-substr {iv known nocase x} {
     if {($nocase eq "nocase") || $nocase} { set x [string tolower $x] }
 
     # Check for exact match first, this trumps substring matching,
-    # especially if substring matching would be ambigous.
+    # especially if substring matching would be ambiguous.
     if {[dict exists $known $x]} {
 	set id [dict get $known $x]
 	return ok
@@ -132,7 +171,7 @@ proc ::cm::util::match-substr {iv known nocase x} {
     set n [llength $ids]
 
     if {$n > 1} {
-	return ambiguos
+	return ambiguous
     }
 
     # Uniquely identified, success
@@ -205,9 +244,11 @@ proc ::cm::util::highlight-current {xvar id args} {
 	set current {}
 	return 
     }
-    set current *
+    set current ->
     foreach v $args {
 	upvar 1 $v str
+	if {$str eq {}} continue
+	# Highlight only non-empty fields.
 	set str [color bold $str]
     }
     return
@@ -253,6 +294,20 @@ proc ::cm::util::dict-drop-ambiguous {dict} {
 }
 
 proc ::cm::util::dict-fill-permute {dict} {
+    debug.cm/util {}
+
+    # Extend with key permutations which do not clash
+    dict for {k vlist} $dict {
+	foreach p [struct::list permutations $k] {
+	    if {[dict exists $dict $p]} continue
+	    dict set dict $p $vlist
+	}
+    }
+
+    return $dict
+}
+
+proc ::cm::util::dict-fill-permute* {dict} {
     debug.cm/util {}
 
     # Extend with key permutations which do not clash
@@ -304,6 +359,18 @@ proc ::cm::util::strip-prefix {prefix words} {
 	lappend results $w
     }
     return $results
+}
+
+proc ::cm::util::even {words} {
+    set r {}
+    foreach {e o} $words { lappend r $e }
+    return $r
+}
+
+proc ::cm::util::odd {words} {
+    set r {}
+    foreach {e o} $words { lappend r $o }
+    return $r
 }
 
 proc ::cm::util::padr {words} {

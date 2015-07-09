@@ -18,14 +18,22 @@
 # @@ Meta End
 
 package require Tcl 8.5
-package require cmdr::color ; # color activation
-package require cmdr::history
-package require cmdr::help::tcl
 package require cmdr::actor 1.3 ;# Need -extend support for common/use blocks.
+package require cmdr::color ; # color activation
+package require cmdr::help::tcl
+package require cmdr::history
+package require cmdr::pager 1.1
 package require cmdr
 package require debug
 package require debug::caller
 package require lambda
+package require cm::table
+
+cmdr color define heading =bold ;# Table header color.
+
+cm::table::show ::cmdr pager
+
+cmdr color define heading =bold ;# Table header color.
 
 #package require cm::seen  ; # set-progress
 
@@ -218,6 +226,22 @@ cmdr create cm::cm [file tail $::argv0] {
 		always { cmdr color activate 1 }
 		never  { cmdr color activate 0 }
 	    }
+	}]
+    }
+
+    option no-prompt {
+	Disable interactive queries.
+    } {
+	presence
+	alias n
+	alias non-interactive
+	alias noprompt
+	# Note: Global disabling of all interactivity. Use first
+	# to affect all other input. Also the reason for when-set
+	# instead of when-complete. Must be handled early to cut off
+	# interactive entry in cmdr::private, where possible.
+	when-set [lambda {p x} {
+	    cmdr interactive [expr {!$x}]
 	}]
     }
 
@@ -994,12 +1018,130 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call conference cmd_tutorial_show]
 
 	# - -- --- ----  -------- ------------- ----------------------
+	# - -- --- ----  -------- ------------- ----------------------
     }
     alias conferences = conference list
 
     # # ## ### ##### ######## ############# ######################
+    ## Management of registrations for a conference. Own toplevel
+    ## ensemble, although it could be put under 'conference'. Less to
+    ## type.
+
+    officer registration {
+	description {
+	    Manage the registrations
+	}
+
+	# TODO: Reporting - x-ref with speakers, missing speakers are issues.
+
+	private list {
+	    section {Registration Management}
+	    description {
+		Show the set of registered people.
+	    }
+	} [cm::call conference cmd_registration_list]
+
+	private add {
+	    section {Registration Management}
+	    description {
+		Register contact with the conference.
+		Options for setting up presenter discount, taken tutorials, walkin fee, etc.
+	    }
+
+	    option walkin {
+		Mark a walk-in registration -- late fee
+	    } { alias W ; presence }
+
+	    # Presenter flag is automatically determined.
+	    # Simply check against speakers for tutorials, keynotes and general talks.
+	    # Storage is redundant, so don't.
+
+	    option taking {
+		Tutorial taken by the registrant -- fees
+	    } {
+		alias T ; list
+		validate [cm::vt ctutorial]
+	    }
+	    input person {
+		The person getting registered
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	    # FUTURE: Extend with code able to tabulate and compute
+	    # the conference fee taking all discounts and fees into
+	    # account.
+	} [cm::call conference cmd_registration_add]
+
+	private remove {
+	    section {Registration Management}
+	    description {
+		Drop contact from the list of registered people
+	    }
+
+	    input person {
+		The person dropping their registration.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	} [cm::call conference cmd_registration_remove]
+	alias drop
+    }
+    alias registered = registration list
+    alias register   = registration add
+    alias unregister = registration remove
+
+    # # ## ### ##### ######## ############# ######################
+    ## Management of hotel bookings for a conference. Own toplevel
+    ## ensemble, although it could be put under 'conference'. Less to
+    ## type.
+
+    officer booking {
+	description {
+	    Manage the hotel bookings by people.
+	}
+
+	private list {
+	    section {Booking Management}
+	    description {
+		Show the set of people having booked a hotel room for the conference, and where.
+	    }
+	} [cm::call conference cmd_booking_list]
+
+	private add {
+	    section {Booking Management}
+	    description {
+		Add contact as having booked a hotel for the conference.
+		The hotel defaults to the conference hotel.
+	    }
+	    input person {
+		The person booking a room.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	    input hotel { Booked hotel, defaults to conference hotel } {
+		optional
+		validate [cm::vt location]
+		generate [cm::call conference its-hotel]
+	    }
+
+	} [cm::call conference cmd_booking_add]
+
+	private remove {
+	    section {Booking Management}
+	    description {
+		Drop contact from the list of people who booked their hotel for the conference.
+	    }
+
+	    input person {
+		The person dropping their booking.
+	    } { validate [cm::vt contact] } ; # TODO validator person
+
+	} [cm::call conference cmd_booking_remove]
+	alias drop
+    }
+    alias bookings = booking list
+    alias booked   = booking list
+
+    # # ## ### ##### ######## ############# ######################
     ## Submission management. Own toplevel ensemble, although it could
-    ## be put under 'conference'. Less to type.
+    ## be put under 'conference'. Less to type as is.
 
     officer submission {
 	description {
@@ -1113,12 +1255,19 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show submissions for the current conference }
 	} [cm::call conference cmd_submission_list]
 
+	private accepted {
+	    section {Submission Management}
+	    description { Show accepted submissions, aka presentations for the current conference }
+	} [cm::call conference cmd_submission_list_accepted]
+
 	private accept {
 	    section {Submission Management}
 	    description { Accept the specified submission }
 	    option type {
 		Type of talk. Default is based on the invited
 		state of the chosen submission.
+		invited => keynote
+		regular => submitted
 	    } { validate [cm::vt talk-type] }
 	    input submission {
 		The submission to accept.
@@ -1188,6 +1337,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	# talks:       change type, status
     }
     alias submissions = submission list
+    alias accepted    = submission accepted
     alias unsubmit    = submission drop
     alias submit      = submission add
 
@@ -1439,6 +1589,10 @@ cmdr create cm::cm [file tail $::argv0] {
 		Filter list by the glob pattern
 	    } { optional ; default * }
 	    option with-mails {Show mail addresses} { presence }
+	    option only {
+		Show only entries of the requested type(s).
+		If not specified show all.
+	    } { list ; validate [cm::vt contact-type] }
 	} [cm::call contact cmd_list]
 
 	private show {
@@ -1488,6 +1642,474 @@ cmdr create cm::cm [file tail $::argv0] {
     alias contacts = contact list
 
     # # ## ### ##### ######## ############# ######################
+    ## Schedule management
+
+    officer schedule {
+	description {
+	    Manage conference schedules.
+	}
+
+	common *all* -extend {
+	    section {Conference Management} Schedules
+	}
+
+	common .opt_schedule {
+	    input name {
+		The name of the schedule to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+	}
+
+	common .opt_schedule_select {
+	    input name {
+		The name of the schedule to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule just-select]
+	    }
+	}
+
+	common .opt_track_select {
+	    input name {
+		The name of the track to work on.
+	    } {
+		optional
+		validate [cm::vt pschedule-track]
+		generate [cm::call schedule track-just-select]
+	    }
+	}
+
+	common .opt_day_select {
+	    input day {
+		The index of the day to work on (0-based)
+	    } {
+		optional
+		validate [cm::vt pschedule-day]
+		generate [cm::call schedule day-just-select]
+	    }
+	}
+
+	private add {
+	    description { Create a new, empty named schedule }
+	    input name {
+		The name of the new schedule.
+	    } { validate [cm::vt notpschedule] }
+	} [cm::call schedule add]
+	alias create
+
+	private remove {
+	    description { Destroy the named schedule }
+	    use .opt_schedule
+	} [cm::call schedule remove]
+	alias drop
+
+	private rename {
+	    description { Rename the named schedule }
+	    input name {
+		The name of the schedule to modify
+	    } { validate [cm::vt pschedule] }
+	    input newname {
+		The new name of the schedule
+	    } { validate [cm::vt notpschedule] }
+	} [cm::call schedule rename]
+
+	private select {
+	    description { Activate the named schedule }
+	    use .opt_schedule_select
+	} [cm::call schedule select]
+
+	private clear-select {
+	    description { Clear active schedule }
+	} [cm::call schedule select-clear]
+
+	private selected {
+	    description { Tell which schedule is active }
+	} [cm::call schedule selected]
+
+	# TODO: Duplicate an entire schedule under a new name.
+
+	private show {
+	    description { Show information about the named schedule }
+	    use .opt_schedule
+	} [cm::call schedule show]
+	default
+
+	private start {
+	    description { Show and/or set a global start-time }
+	    input time {
+		If present, set the global start time to this value.
+		Else simply show the current value of this setting.
+	    } {
+		optional
+		validate [cm::cvt time::minute]
+	    }
+	} [cm::call schedule start]
+	default
+
+	private list {
+	    description { Show a table of all known schedules }
+	} [cm::call schedule listing]
+
+	private validate {
+	    description { Validate schedule information }
+	} [cm::call schedule validate]
+
+	# TODO : Item handling
+
+	common .schedule-context {
+	    option schedule {
+		The schedule to operate on.
+	    } {
+		alias S
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+	}
+
+	common .full-context {
+	    option schedule {
+		The schedule to use.
+	    } {
+		alias S
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+
+	    option dont-check {
+		Presence prevents schedule validation, allowing for intermediate invalid state.
+	    } { presence }
+
+	    ## # # ## ### ##### ######## #############
+	    # Focus elements in the schedule. Command behaviour influenced by
+	    # - element specified by the user
+	    # - vs element taken from focus location
+	    # - plus additional specialities, like
+	    #   - Track needs mode to set it as NULL.
+	    ## # # ## ### ##### ######## #############
+
+	    state context {
+		Internal focus context holding all focus information
+		and associated flags across the different options.
+
+		structure is dict {
+		    schedule -> active schedule
+		    focus    -> focus data
+		    flags    -> focus stati
+		}
+	    } { defered
+		validate identity
+		generate [cm::call schedule context-setup]
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	    ### Logic for parent item.
+
+	    option child {
+		Presence of this option tells the system that the new
+		item requires a parent, which shall be the active
+		item, before and after.
+
+		The start-time shall be the current end-time of the
+		parent, and the parent be extended by the length of
+		the new item. Regardless of user choice.
+
+		The track and day of the new item shall be inherited
+		from the parent. Regardless of user choice.
+	    } { presence
+		alias P
+
+		when-set [disallow @track]
+		when-set [disallow @cross-tracks]
+		when-set [disallow @day]
+		when-set [disallow @start-time]
+
+		when-set [cm::call schedule context-request-parent]
+	    }
+	    state parent {
+		Context derived parent information. See also
+		--child above, and "context-request-parent".
+	    } {
+		generate [cm::call schedule context-get-parent]
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	    ## Logic for track.
+
+	    option track {
+		The track to use for the new item
+	    } {
+		alias T
+		validate [cm::vt pschedule-track]
+
+		when-set [disallow @cross-tracks]
+		when-set [disallow @child]
+
+		when-set [cm::call schedule context-set-track]
+		generate [cm::call schedule context-get-track]
+	    }
+	    option cross-tracks {
+		Create an item crossing all tracks
+	    } { presence
+		alias across
+		when-set [disallow @track]
+		when-set [disallow @child]
+
+		when-set [cm::call schedule context-cross-tracks]
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	    ## Logic for day.
+
+	    option day {
+		The day to use
+	    } {
+		alias D
+		validate [cm::vt pschedule-day]
+
+		when-set [disallow @child]
+
+		when-set [cm::call schedule context-set-day]
+		generate [cm::call schedule context-get-day]
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	    ## Logic for start-time
+
+	    option start-time {
+		The start time of the item
+	    } {
+		alias B
+		validate [cm::cvt time::minute]
+
+		when-set [disallow @child]
+
+		when-set [cm::call schedule context-set-time]
+		generate [cm::call schedule context-get-time]
+	    }
+
+	    option length {
+		The length of the item in minutes
+	    } {
+		alias L
+		validate [cm::cvt time::minute]
+		default 0
+	    }
+
+	    ## # # ## ### ##### ######## #############
+	}
+
+	officer track {
+	    private add {
+		description { Create a new track for the schedule }
+		use .schedule-context
+		input name {
+		    The name of the new track.
+		} { validate [cm::vt notpschedule-track] }
+	    } [cm::call schedule track-add]
+	    alias create
+
+	    private remove {
+		description { Destroy the named track in the schedule }
+		use .schedule-context
+		input name {
+		    The name of the track to destroy.
+		} { validate [cm::vt pschedule-track] }
+	    } [cm::call schedule track-remove]
+	    alias drop
+
+	    private rename {
+		description { Rename the named track }
+		use .schedule-context
+		input name {
+		    The name of the track to rename
+		} { validate [cm::vt pschedule-track] }
+		input newname {
+		    The new name of the track
+		} { validate [cm::vt notpschedule-track] }
+	    } [cm::call schedule track-rename]
+
+	    private clear-select {
+		description { Clear active track }
+		use .schedule-context
+	    } [cm::call schedule track-select-clear]
+
+	    private selected {
+		description { Tell which track is active }
+		use .schedule-context
+	    } [cm::call schedule track-selected]
+
+	    # Track nav commands
+
+	    private select {
+		description { Activate the named track }
+		use .schedule-context
+		use .opt_track_select
+	    } [cm::call schedule track-select]
+	    # Track axis: "go to"
+
+	    private leftmost {
+		description { Activate the lexicographically first track }
+		use .schedule-context
+	    } [cm::call schedule track-leftmost]
+
+	    private left {
+		description { Activate the lexicographically previous track }
+		use .schedule-context
+	    } [cm::call schedule track-left]
+
+	    private rightmost {
+		description { Activate the lexicographically last track }
+		use .schedule-context
+	    } [cm::call schedule track-rightmost]
+
+	    private right {
+		description { Activate the lexicographically next track }
+		use .schedule-context
+	    } [cm::call schedule track-right]
+	}
+
+	officer day {
+	    private clear-select {
+		description { Clear active day }
+		use .schedule-context
+	    } [cm::call schedule day-select-clear]
+
+	    private selected {
+		description { Tell which day is active }
+		use .schedule-context
+	    } [cm::call schedule day-selected]
+
+	    # Day nav commands
+
+	    private select {
+		description { Activate the named day }
+		use .schedule-context
+		use .opt_day_select
+	    } [cm::call schedule day-select]
+	    # Day axis: "go to"
+
+	    private first {
+		description { Activate the first day }
+		use .schedule-context
+	    } [cm::call schedule day-first]
+
+	    private previous {
+		description { Activate the previous day }
+		use .schedule-context
+	    } [cm::call schedule day-previous]
+
+	    private last {
+		description { Activate the last day }
+		use .schedule-context
+	    } [cm::call schedule day-last]
+
+	    private next {
+		description { Activate the next day }
+		use .schedule-context
+	    } [cm::call schedule day-next]
+	}
+
+	# Nav shorts - Tracks
+	alias leftmost  = track leftmost
+	alias lm        = track leftmost
+	alias rightmost = track rightmost
+	alias rm        = track rightmost
+	alias left      = track left
+	alias l         = track left
+	alias right     = track right
+	alias r         = track right
+
+	# Nav shorts - Days
+	alias first     = day first
+	alias f         = day first
+	alias last      = day last
+	#alias l         = day last -- clash (left)
+	alias previous  = day previous
+	alias prev      = day previous
+	alias p         = day previous
+	alias next      = day next
+	alias n         = day next
+
+	officer item {
+	    private event {
+		description { Create a new fixed event for the schedule }
+		use .full-context
+		input description {
+		    The description of the new event
+		} { validate str }
+		input note {
+		    Additional notes for the new event
+		} { optional ; validate str }
+	    } [cm::call schedule item-add-event]
+
+	    private placeholder {
+		description { Create a new placeholder for the schedule }
+		use .full-context
+		input label {
+		    The label of the placeholder.
+		} { validate str }
+	    } [cm::call schedule item-add-placeholder]
+
+	    # edit operations -- interactive, item via active context.
+	    private remove {
+		description { Destroy the item in the schedule }
+		use .schedule-context
+		input ref {
+		    The identifier of the item to work with.
+		} { validate [cm::vt pschedule-item] }
+	    } [cm::call schedule item-remove]
+	    alias drop
+
+	    private rename {
+		description { Rename the specified item }
+		use .schedule-context
+		input ref {
+		    The identifier of the item to work with.
+		} { validate [cm::vt pschedule-item] }
+		input newname {
+		    The new description or label of the item
+		} { validate str }
+	    } [cm::call schedule item-rename]
+	}
+	alias event       = item event
+	alias placeholder = item placeholder
+
+	# TODO : Interactive operations.
+	##
+	# Navigation - Active item, day, track, time
+	#
+	# - Three axes: day, time, track
+	#
+	# - Day (numerically ordered 0, 1, ...):
+	#   - f(irst), l(ast),
+	#   - p(rev(ious)), n(ext)
+	#
+	# - Time (numerically ordered ascending from midnight):
+	#   - t(op), b(ottom),
+	#   - u(p)/f(orw(ard)), d(own)/back(ward)
+	#
+	# - Track (lexicographically ordered by name):
+	#   - l(eft)m(ost), r(ight)m(ost)
+	#   - l(eft), r(ight)
+	##
+	# Selection
+	# - SetMark, FromMark, Include, Exclude
+	# - Copy, Cut, Paste
+	# = Selection limits: Single day, track ?
+	# Enter/Close
+	##
+	# Pinning
+	# - Interactive entry of new items - movable by default ?!
+	# - Bulk        entry of new items - pinned  by default !?
+
+    }
+    alias schedules = schedule list
+
+    # # ## ### ##### ######## ############# ######################
     ## Developer support, feature test and repository inspection.
 
     officer test {
@@ -1497,6 +2119,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	common *all* -extend {
 	    section Advanced Testing
 	}
+
+	# - -- --- ----- -------- -------------
 
 	private mail-address {
 	    description {
@@ -1518,6 +2142,39 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private schedule-known {
+	    description {Print validation dictionary}
+	} [cm::call schedule test-known]
+
+	private schedule-select {
+	    description {Print selection dictionary}
+	} [cm::call schedule test-select]
+
+	common .schedule {
+	    input schedule {
+		Name of the schedule to inspect
+	    } { validate [cm::vt pschedule] }
+	}
+
+	private schedule-track-known {
+	    description {Print validation dictionary}
+	    use .schedule
+	} [cm::call schedule test-track-known]
+
+	private schedule-track-select {
+	    description {Print selection dictionary}
+	    use .schedule
+	} [cm::call schedule test-track-select]
+
+	private schedule-item-day-max {
+	    description {Print day validation information}
+	    use .schedule
+	} [cm::call schedule test-item-day-max]
+
+	# - -- --- ----- -------- -------------
     }
 
     # # ## ### ##### ######## ############# ######################
@@ -1545,6 +2202,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		Force all mail addresses into lower-case.
 	    }
 	} [cm::call contact cmd_mail_fix]
+
+	private speakers {
+	    description {
+		Show speaker information inserted into the overview page.
+	    }
+	} [cm::call conference cmd_debug_speakers]
     }
 }
 

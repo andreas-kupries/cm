@@ -110,6 +110,12 @@ proc run {args} {
     run-core [Where] {*}$args
 }
 
+proc run-sql {args} {
+    # run sqlite3 command on the cm database, with arguments.
+    # Maliciously edit the database to provoke validation failures.
+    run-core [WhereSqlite] [thedb] {*}$args
+}
+
 proc run-core {args} {
     # args = command to run...
     variable verbose
@@ -173,6 +179,12 @@ proc Where {} {
     #variable ::kt::localprefix
     #set exe $localprefix/bin/cm
     proc Where {} [list return $exe]
+    return $exe
+}
+
+proc WhereSqlite {} {
+    set exe [auto_execok sqlite3]
+    proc WhereSqlite {} [list return $exe]
     return $exe
 }
 

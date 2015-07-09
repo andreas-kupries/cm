@@ -1,0 +1,12 @@
+We have negotiated a reduced room rate for attendees of the
+conference, of @r:rate@ @r:currency@ per night from @r:begin@ to @r:end@.
+
+To register for a room at the hotel you can use phone (@h:bookphone@),
+fax (@h:bookfax@), or their [website](@h:booklink@).
+Be certain to mention that you are with the Tcl/Tk Conference to
+get the Tcl/Tk Conference room rate. Our coupon code is __@r:group@__.
+
+These rooms will be released to the general public after __@r:deadline@__,
+so be sure to reserve your room before.
+
+@h:transport@

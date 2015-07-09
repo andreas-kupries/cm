@@ -1,0 +1,74 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - unselecting the active track in a schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-clear-select-1.0 {schedule track clear-select, wrong args, too many} -body {
+    run schedule track clear-select X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-clear-select-2.0 {schedule track clear-select, no schedules} -body {
+    run schedule track clear-select
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-track-clear-select-2.1 {schedule track clear-select, schedule, not active} -body {
+    run schedule track clear-select -n
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto active
+    run schedule clear-select ;# force inactive
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-track-clear-select-2.2 {schedule track clear-select, active schedule, no tracks} -body {
+    run schedule track clear-select
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active track, operation ignored.}
+
+test schedule-track-clear-select-2.3 {schedule track clear-select, active schedule, track, not active} -body {
+    run schedule track clear-select
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE ;# auto active
+    run schedule track add TRACK    ;# auto active
+    run schedule track clear-select ;# force inactive
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active track, operation ignored.}
+
+test schedule-track-clear-select-2.4 {schedule track clear-select, active schedule and track} -body {
+    run schedule track clear-select
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE ;# auto active
+    run schedule track add TRACK    ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Deactivating track "TRACK" ... OK}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
