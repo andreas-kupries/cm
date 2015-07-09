@@ -16,9 +16,19 @@
 
 package require Tcl 8.5
 package require TclOO
-package require struct::matrix
+package require debug
+package require debug::caller
 package require report
 package require cmdr::color
+package require struct::matrix
+
+# # ## ### ##### ######## ############# ######################
+
+debug level  table
+debug prefix table {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+## Styles used in the table reports.
 
 # Borders and header row.
 ::report::defstyle table/borders {} {
@@ -79,17 +89,30 @@ package require cmdr::color
 namespace eval ::cm::table {
     # Global style setting (plain yes/no)
     variable plain no
-    namespace export do dict plain
+
+    # Global print setting (command prefix)
+    variable showcmd puts
+
+    namespace export do dict plain show
 }
 
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::table::plain {v} {
+    debug.table {}
     variable plain $v
     return
 }
 
+proc ::cm::table::show {args} {
+    debug.table {}
+    variable showcmd $args
+    return
+}
+
 proc ::cm::table::do {v headings script} {
+    debug.table {}
+
     variable plain
     upvar 1 $v t
     set t [uplevel 1 [list ::cm::table new {*}$headings]]
@@ -102,6 +125,7 @@ oo::class create ::cm::table {
     # # ## ### ##### ######## #############
 
     constructor {args} {
+	debug.table {}
 	namespace import ::cmdr::color
 	# args = headings.
 
@@ -136,28 +160,39 @@ oo::class create ::cm::table {
 	return $result
     } ; export =
 
-    method show {{cmd puts}} {
-	uplevel 1 [list {*}$cmd [my String]]
+    method show {{cmd {}}} {
+	if {[llength [info level 0]] == 2} {
+	    variable ::cm::table::showcmd
+	    set cmd $::cm::table::showcmd
+	}
+	uplevel #0 [list {*}$cmd [my String]]
 	my destroy
 	return
     }
 
-    method show* {{cmd puts}} {
-	uplevel 1 [list {*}$cmd [my String]]
+    method show* {{cmd {}}} {
+	if {[llength [info level 0]] == 2} {
+	    variable ::cm::table::showcmd
+	    set cmd $::cm::table::showcmd
+	}
+	uplevel #0 [list {*}$cmd [my String]]
 	return
     }
 
     method plain {} {
+	debug.table {}
 	set myplain 1
 	return
     }
 
     method style {style} {
+	debug.table {}
 	set mystyle $style
 	return
     }
 
     method noheader {} {
+	debug.table {}
 	if {!$myheader} return
 	set myheader 0
 	M delete row 0
@@ -165,6 +200,7 @@ oo::class create ::cm::table {
     }
 
     method String {} {
+	debug.table {}
 	# Choose style (user-specified, plain y/n, header y/n)
 
 	if {$mystyle ne {}} {
@@ -204,6 +240,8 @@ oo::class create ::cm::table {
 # # ## ### ##### ######## ############# #####################
 
 proc ::cm::table::dict {v script} {
+    debug.table {}
+
     upvar 1 $v t
     variable plain
     set t [uplevel 1 [list ::cm::table/dict new]]
@@ -217,6 +255,7 @@ oo::class create ::cm::table/dict {
     superclass ::cm::table
 
     constructor {} {
+	debug.table {}
 	next Key Value
 	my noheader ;# suppress header row.
 	# Keys are the headers (side ways table).
