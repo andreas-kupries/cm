@@ -1,0 +1,53 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - unselecting the active schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-clear-select-1.0 {schedule clear-select, wrong args, too many} -body {
+    run schedule clear-select X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-clear-select-2.0 {schedule clear-select, no schedules} -body {
+    run schedule clear-select
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -match glob -result {*No active schedule, operation ignored.}
+
+test schedule-clear-select-2.1 {schedule clear-select, active schedule} -body {
+    run schedule clear-select
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto-active
+} -cleanup {
+    stage-close
+} -match glob -result {*Deactivating schedule "SCHEDULE" ... OK}
+
+test schedule-clear-select-2.2 {schedule clear-select, no active schedule} -body {
+    run schedule clear-select
+} -setup {
+    stage-open
+    run schedule add SCHEDULE ;# auto-active
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*No active schedule, operation ignored.}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

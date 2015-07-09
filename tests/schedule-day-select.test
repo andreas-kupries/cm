@@ -1,0 +1,105 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - selecting the active day in a schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-select-1.0 {schedule day select, wrong args, not enough} -body {
+    run schedule day select -n
+    # Note: name is optional.
+    #       - No days to select either.
+    # => undefined
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: day"
+
+test schedule-day-select-1.1 {schedule day select, wrong args, too many} -body {
+    run schedule day select DAY X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-day-select-1.2 {schedule day select, bogus day} -body {
+    run schedule day select BOGUS
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a day (== 0) for input "day", got "BOGUS"}
+
+test schedule-day-select-1.2 {schedule day select, bogus day} -body {
+    run schedule day select BOGUS
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule item event -D 0 E1
+    run schedule item event -D 1 E2
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a day (in 0..2) for input "day", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-select-2.0 {schedule day select, no active schedule} -body {
+    run schedule day select -n 0
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-day-select-2.1 {schedule day select} -body {
+    run schedule day select 0
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule day clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Activating day "0" ... OK}
+
+test schedule-day-select-2.2 {schedule day select, persistent} -body {
+    run schedule day select 0
+    run schedules
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-active-day.txt]
+
+test schedule-day-select-2.3 {schedule day select, persistent} -body {
+    run schedule day select 0
+    run schedule show       SCHEDULE
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/show-active-day.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

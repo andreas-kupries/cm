@@ -19,8 +19,8 @@ package require TclOO
 package require debug
 package require debug::caller
 package require report
-package require struct::matrix
 package require cmdr::color
+package require struct::matrix
 
 # # ## ### ##### ######## ############# ######################
 
@@ -30,7 +30,8 @@ debug prefix table {[debug caller] | }
 # # ## ### ##### ######## ############# ######################
 ## Styles used in the table reports.
 
-::report::defstyle table/table {} {
+# Borders and header row.
+::report::defstyle table/borders {} {
     data	set [split "[string repeat "| "   [columns]]|"]
     top		set [split "[string repeat "+ - " [columns]]+"]
     bottom	set [top get]
@@ -46,7 +47,8 @@ debug prefix table {[debug caller] | }
     return
 }
 
-::report::defstyle table/noheader {} {
+# Borders, no header row.
+::report::defstyle table/borders/nohdr {} {
     data	set [split "[string repeat "| "   [columns]]|"]
     top		set [split "[string repeat "+ - " [columns]]+"]
     bottom	set [top get]
@@ -54,6 +56,23 @@ debug prefix table {[debug caller] | }
     bottom	enable
     for {set i 0 ; set n [columns]} {$i < $n} {incr i} {
 	pad $i both { }
+    }
+    return
+}
+
+# No borders, with header row.
+::report::defstyle table/plain {} {
+    tcaption	1
+    for {set i 1 ; set n [columns]} {$i < $n} {incr i} {
+	pad $i left { }
+    }
+    return
+}
+
+# No borders, no header row
+::report::defstyle table/plain/nohdr {} {
+    for {set i 1 ; set n [columns]} {$i < $n} {incr i} {
+	pad $i left { }
     }
     return
 }
@@ -97,6 +116,7 @@ proc ::cm::table::do {v headings script} {
     variable plain
     upvar 1 $v t
     set t [uplevel 1 [list ::cm::table new {*}$headings]]
+    if {$plain} { $t plain }
     uplevel 1 $script
     return $t
 }
@@ -111,7 +131,11 @@ oo::class create ::cm::table {
 
 	struct::matrix [self namespace]::M
 	M add columns [llength $args]
-	M add row $args
+
+	set headings {}
+	foreach w $args { lappend headings [color heading $w] }
+
+	M add row $headings
 	set myplain 0
 	set myheader 1
 	set mystyle {}
@@ -129,6 +153,12 @@ oo::class create ::cm::table {
 	M add row $args
 	return
     }
+
+    method = {} {
+	set result [my String]
+	my destroy
+	return $result
+    } ; export =
 
     method show {{cmd {}}} {
 	if {[llength [info level 0]] == 2} {
@@ -174,20 +204,25 @@ oo::class create ::cm::table {
 	# Choose style (user-specified, plain y/n, header y/n)
 
 	if {$mystyle ne {}} {
-	    set r [report::report [self namespace]::R [M columns] style $mystyle]
-	    set str [M format 2string $r]
-	    $r destroy
+	    set thestyle $mystyle
 	} elseif {$myplain} {
-	    set str [M format 2string]
-	} elseif {$myheader} {
-	    set r [report::report [self namespace]::R [M columns] style table/table]
-	    set str [M format 2string $r]
-	    $r destroy
+	    if {$myheader} {
+		set thestyle table/plain
+	    } else {
+		set thestyle table/plain/nohdr
+	    }
 	} else {
-	    set r [report::report [self namespace]::R [M columns] style table/noheader]
-	    set str [M format 2string $r]
-	    $r destroy
+	    if {$myheader} {
+		set thestyle table/borders
+	    } else {
+		set thestyle table/borders/nohdr
+	    }
 	}
+
+	set r [report::report [self namespace]::R [M columns] style $thestyle]
+	set str [M format 2string $r]
+	$r destroy
+
 	return [string trimright $str]
     }
 

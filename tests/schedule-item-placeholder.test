@@ -1,0 +1,53 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - new items in schedules - placeholders
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-item-placeholder-1.0 {schedule item placeholder, wrong args, not enough} -body {
+    run schedule item placeholder
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-item-placeholder-1.1 {schedule item placeholder, wrong args, too many} -body {
+    run schedule item placeholder LABEL X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+## Create various bogus placeholders (validation type failures)
+
+# # ## ### ##### ######## ############# #####################
+## Create various bogus placeholders (db validation failures)
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-item-placeholder-4.0 {schedule item placeholder} -body {
+    run schedule item placeholder -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 22 LABEL
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-with-items.txt]
+
+# TODO --in(side) ... Have to get a better handle on state
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -215,6 +215,10 @@ CREATE TABLE conference (
 	sessionlen	INTEGER,		-- in #talks max  basic scheduling parameters.
 				 		-- 		  shorter talks => longer sessions.
 				 		-- 		  standard: 30 min x3
+	pschedule	INTEGER REFERENCES pschedule,
+						-- physical schedule PS to use for the conference.
+						-- the logical schedule filling the holes/placeholders
+						-- in the PS are stored in table "schedule".
 	rstatus		INTEGER NOT NULL REFERENCES rstatus
 
 	-- future expansion columns:
@@ -396,16 +400,6 @@ CREATE TABLE talk_state (	-- fixed contents
 INSERT OR IGNORE INTO talk_state VALUES (1,'pending');
 INSERT OR IGNORE INTO talk_state VALUES (2,'received');
 -- ---------------------------------------------------------------
-CREATE TABLE schedule (
-	conference	INTEGER NOT NULL REFERENCES conference,
-	day		INTEGER NOT NULL,		-- 2,3,4,... (offset from start of conference, 0-based)
-	session		INTEGER,			-- session within the day
-	slot		INTEGER,			-- slot within the session, null => whole session talk (keynotes)
-	talk		INTEGER REFERENCES talk,	-- While setting things up
-	UNIQUE (con, day, session, slot)
-	-- constraint: con == talk->con (== talk->submission->con)
-);
--- ---------------------------------------------------------------
 CREATE TABLE registered ( -- conference registrations <=> attendee register
 	conference	INTEGER NOT NULL REFERENCES conference,
 	contact		INTEGER	NOT NULL REFERENCES contact,		-- can_register
@@ -439,6 +433,90 @@ CREATE TABLE notes (
 -- speaker state is derivable from the contents of
 --	talk, registered, booked, plus notes
 --
--- should possibly also store (templated) text blocks, i.e. for web
--- site, cfp mail, various author mails (instructions, ping for booking,
--- ping for register, etc)
+-- Future:
+-- - Track fee schedule for tutorials (pull out of the template)
+-- - Track student/presenter discount flags
+--   - Presenter flag is not redundant, registration / acceptance race.
+-- - The storage of the tutorials for a registrant makes assumptions
+--   about number of T's. And code makes more assumptions about the used
+--   days/dayhalfs.
+-- 
+
+-- ---------------------------------------------------------------
+CREATE TABLE pschedule (
+	-- Common information for physical schedules:
+	-- Names.
+	-- The main scheduling information is found in the
+	-- "pschedule_item"s instead.
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
+,	name		TEXT	NOT NULL UNIQUE
+);
+-- ---------------------------------------------------------------
+CREATE TABLE pschedule_track (
+	-- Information for tracks of a physical schedule: Names.
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT	-- track identifier
+,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- schedule the track belongs to.
+,	name		TEXT	NOT NULL				-- track name, unique with a schedule.
+,	UNIQUE (pschedule, name)
+);
+-- ---------------------------------------------------------------
+CREATE TABLE pschedule_item (
+	-- A physical schedule consists of a set of items describing
+        -- the events of the schedule. They are called "physical"
+        -- because they specify exact timing of events, i.e. start/length,
+	-- plus track information. Events can be fixed, or placeholders.
+	-- The logical schedule of a specific conference will then reference
+	-- and fill the placeholders with the missing information.
+
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT	-- item identifier
+,	pschedule	INTEGER	NOT NULL REFERENCES pschedule		-- schedule the item is part of
+,	day		INTEGER NOT NULL				-- day of the event (0-based)
+,	track		INTEGER		 REFERENCES pschedule_track	-- track the event is in. NULL is for events spanning tracks.
+,	start		INTEGER NOT NULL				-- start of the event as offset in minutes from midnight
+,	length		INTEGER NOT NULL				-- length of the event in minutes - length==0 is allowed.
+,	group		INTEGER		 REFERENCES pschedule_item	-- Optional parent item - Must have matching day, track, schedule.
+,	label		TEXT						-- label for placeholder.     NULL implies fixed event.
+,	description	TEXT						-- event description.         NULL implies placeholder.
+,	speakerdesc	TEXT						-- event speaker description.
+	-- Notes and constraints.
+	--
+	-- * length 0 is allowed - Marker items
+	-- * A non-NULL "label" marks a placeholder item.
+	--   - "description" and "speakerdesc" will be ignored, and should be NULL.
+	-- * A fixed event is indicated by ("label" is NULL).
+	--   - "description" must not be NULL.
+	--   - "speakerdesc" can be NULL even so.
+	-- * An item in a group must have the same schedule|day|track information as the group.
+	-- * The item in a group must not have gaps between them.
+	-- * A group's start must match the lowest start of the items in the group.
+	-- * A group's length must match the sum of the lengths of the items in the group.
+	-- * A group item cannot be nested into another group.
+	-- * items in the same track must not overlap, except for groupings.
+	--   - items without group must not overlap each other.
+	--   - items within a group must not overlap each other.
+	--   - items within a group must overlap with their group.
+	-- * For the purposes of item overlap checking items with ("track" IS NULL) belong to _all_ tracks.
+	-- * Some of the constraints about overlapping can be captured in a unique constraint:
+,	UNIQUE (pschedule, day, track, start, length, group)
+	-- And the placeholder labels must be unique within their physical schedule as well.
+,	UNIQUE (pschedule, label)
+);
+-- ---------------------------------------------------------------
+CREATE TABLE schedule (
+	-- Logical schedule for a conference. Actually just items.
+	-- The physical schedule is stored in table "conference".
+	id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT	-- item identifier
+	conference	INTEGER NOT NULL REFERENCES conference		-- conference, implies physical schedule.
+,	label		TEXT	NOT NULL				-- placeholder label the slot refers to.
+	--	----------------------------------------------------------
+,	talk		INTEGER		 REFERENCES talk		--     talk for the slot, providing (speaker)description.
+,	tutorial	INTEGER		 REFERENCES tutorial_schedule	-- XOR tutorial for the slot.
+,	session		TEXT						-- XOR title for sessions (groups).
+	--	----------------------------------------------------------
+,	UNIQUE (conference, label)
+	-- constraint: conference == talk->submission->conference
+	-- constraint: conference == tutorial->conference
+	-- constraint: Cannot have more than one of "talk", "tutorial", "session" as not null. At least two must be null.
+	-- constraint: Must have items for all placeholders in the physical schedule.
+	-- constraint: Must have items for all tutorials in the con's tutorial_schedule.
+);

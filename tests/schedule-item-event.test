@@ -1,0 +1,114 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - new items in schedules - fixed events
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-item-event-1.0 {schedule item event, wrong args, not enough} -body {
+    run schedule item event
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-item-event-1.1 {schedule item event, wrong args, too many} -body {
+    run schedule item event DESC NOTE X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+## Create various bogus events (validation type failures)
+
+foreach {n opta optb} {
+    0 --child            --cross-tracks
+    1 --child            {--track TRACK}
+    2 --child            {--day 0}
+    3 --child            {--start-time 120}
+    4 --cross-tracks     --child
+    5 {--track TRACK}    --child
+    6 {--day 0}          --child
+    7 {--start-time 120} --child
+    8 {--track TRACK}    --cross-tracks
+    9 --cross-tracks     {--track T}
+} {
+    set oa [lindex $opta 0]
+    set ob [lindex $optb 0]
+    set msg "*cmdr: You cannot use \"$ob\" together with \"$oa\"."
+
+    test schedule-item-event-2.0.$n {schedule item event, option check $opta / $optb} -body {
+	run schedule item event {*}$opta {*}$optb
+    } -setup {
+	stage-open
+	run schedule add       SCHEDULE
+	run schedule track add TRACK
+	run schedule item event -B 09:00 -L 30 DESC ;# for --child to latch on to.
+    } -cleanup {
+	stage-close
+    } -returnCodes error -match glob -result $msg
+}
+
+test schedule-item-event-2.1 {schedule item event, --child without active item} -body {
+    run schedule item event --child
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cmdr: No usable parent found}
+
+# # ## ### ##### ######## ############# #####################
+## Create various bogus events (db validation failures)
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-item-event-4.0 {schedule item event, only major description} -body {
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 30 DESC
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-with-items.txt]
+
+test schedule-item-event-4.1 {schedule item event, major + minor descriptions} -body {
+    run schedule item event -S SCHEDULE -T TRACK -D 0 -B 09:00 -L 30 DESC NOTE
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-with-items.txt]
+
+test schedule-item-event-4.2 {schedule item event} -body {
+    run schedule item event -D 0 -B 09:00 -L 30 DESC NOTE
+    run schedule show SCHEDULE
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/show-with-items.txt]
+
+
+# TODO: --across --child
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,54 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - deleting tracks in schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-remove-1.0 {schedule track remove, wrong args, not enough} -body {
+    run schedule track remove
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-track-remove-1.1 {schedule track remove, wrong args, too many} -body {
+    run schedule track remove NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-track-remove-1.2 {schedule track remove, unknown schedule} -body {
+    run schedule track remove --schedule SCHEDULE BOGUS
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a track name for input "name", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-remove-2.0 {schedule track remove} -body {
+    run schedule track remove --schedule foo TRACK
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add foo
+    run schedule track add --schedule foo TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
