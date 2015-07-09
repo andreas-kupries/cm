@@ -1,0 +1,56 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - new tracks in schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-add-1.0 {schedule track add, wrong args, not enough} -body {
+    run schedule track add
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-track-add-1.1 {schedule track add, wrong args, too many} -body {
+    run schedule track add NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-add-2.0-IV_T_0002 {schedule track add, duplicate, case-insensitive <IV_T_0002>} -body {
+    run schedule track add --schedule SCHEDULE Foo
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+    run schedule track add --schedule SCHEDULE foo
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Found a problem with input "name": A track named "Foo" already exists. Please use a different name.}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-add-3.0 {schedule track add} -body {
+    run schedule track add --schedule SCHEDULE foo
+    run schedule list
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-with-tracks.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

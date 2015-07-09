@@ -1,0 +1,74 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - Printing the active track in a schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-selected-1.0 {schedule track selected, wrong args, too many} -body {
+    run schedule track selected X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-selected-2.0 {schedule track selected, no schedules} -body {
+    run schedule track selected
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-track-selected-2.1 {schedule track selected, no active schedule} -body {
+    run schedule track selected -n
+} -setup {
+    stage-open
+    run schedule add S
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-track-selected-2.2 {schedule track selected, active schedule, no tracks} -body {
+    run schedule track selected
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active track.}
+
+test schedule-track-selected-2.3 {schedule track selected, active schedule, no active track} -body {
+    run schedule track selected
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule track clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": No active track.}
+
+test schedule-track-selected-2.4 {schedule track selected, new track is made active} -body {
+    run schedule track selected
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Active track is "TRACK".}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

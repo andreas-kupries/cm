@@ -1,0 +1,72 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - validating/selecting schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-tests-1.0 {test schedule-known, wrong args, too many} -body {
+    run test schedule-known X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-tests-1.0 {test schedule-select, wrong args, too many} -body {
+    run test schedule-select X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-tests-2.0 {test schedule-known} -body {
+    run test schedule-known
+} -setup {
+    stage-open
+    run schedule add fox
+    run schedule add Foo
+    run schedule add bAr
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/known.txt]
+
+test schedule-tests-2.1 {test schedule-select} -body {
+    run test schedule-select
+} -setup {
+    stage-open
+    run schedule add fox
+    run schedule add Foo
+    run schedule add bAr
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/select.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-tests-3.0-IV_S_0005 {schedule validate, missing active schedule <IV_S_0005>} -body {
+    run schedule validate
+} -setup {
+    stage-open
+    run schedule add    fox
+    run schedule select fox
+
+    run-sql {DELETE FROM pschedule WHERE name = 'fox'}
+    # The active schedule is now gone, with the global config
+    # referencing nothing anymore.
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: Failed:\n:: The active schedule does not exist."
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

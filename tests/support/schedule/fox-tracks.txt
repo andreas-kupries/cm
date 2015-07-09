@@ -1,0 +1,9 @@
+~/.cm/managed
+
+Schedule "SCHEDULE":
++--------+------------+
+| Active |            |
+| Days   |            |
+| Tracks | -> fox (0) |
+| Items  |            |
++--------+------------+

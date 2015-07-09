@@ -1,0 +1,65 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - renaming tracks in schedules
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-rename-1.0 {schedule track rename, wrong args, not enough} -body {
+    run schedule track rename
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-track-rename-1.1 {schedule track rename, wrong args, too many} -body {
+    run schedule track rename NAME NEWNAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-track-rename-1.2 {schedule track rename, unknown origin track} -body {
+    run schedule track rename --schedule SCHEDULE BOGUS NEW
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a track name for input "name", got "BOGUS"}
+
+test schedule-track-rename-1.3 {schedule track rename, known destination track} -body {
+    run schedule track rename --schedule SCHEDULE foo bar
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+    run schedule track add --schedule SCHEDULE foo
+    run schedule track add --schedule SCHEDULE bar
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Found a problem with input "newname": A track named "bar" already exists. Please use a different name.}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-rename-2.0 {schedule track rename} -body {
+    run schedule track rename --schedule SCHEDULE FoO fox
+    run schedule show SCHEDULE
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+    run schedule track add --schedule SCHEDULE foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/fox-tracks.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

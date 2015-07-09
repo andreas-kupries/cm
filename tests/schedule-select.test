@@ -1,0 +1,76 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - selecting the active schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-select-1.0 {schedule select, wrong args, not enough} -body {
+    run schedule select
+    # Note: name is optional.
+    #       - No schedules to select either.
+    # => undefined
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test schedule-select-1.1 {schedule select, wrong args, too many} -body {
+    run schedule select NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-select-1.2 {schedule select, unknown schedule} -body {
+    run schedule select BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a schedule name for input "name", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-select-2.0 {schedule select} -body {
+    run schedule select fox
+} -setup {
+    stage-open
+    run schedule add fox
+} -cleanup {
+    stage-close
+} -result {~/.cm/managed
+
+Activating schedule "fox" ... OK}
+
+test schedule-select-2.1 {schedule select, persistent} -body {
+    run schedule select foo
+    run schedules
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-active.txt]
+
+test schedule-select-2.2 {schedule select, persistent} -body {
+    run schedule select foo
+    run schedule show   foo
+} -setup {
+    stage-open
+    run schedule add foo
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/foo-active.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

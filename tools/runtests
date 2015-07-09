@@ -1,0 +1,11 @@
+#!/bin/bash
+ftilde
+rtilde
+sleep 2
+clear
+echo
+rm -f X.*
+./build.tcl test --log X
+echo
+echo tested = $(date)
+echo
