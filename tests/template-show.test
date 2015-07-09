@@ -45,7 +45,7 @@ test template-show-2.0 {template show} -body {
     run template new foo fox
 } -cleanup {
     stage-close
-} -result [viewFile support/template-fox.txt]
+} -result [viewFile support/template/fox.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

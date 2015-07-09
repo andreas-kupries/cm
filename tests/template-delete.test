@@ -46,7 +46,7 @@ test template-delete-2.0 {template delete} -body {
     run template new foo bar
 } -cleanup {
     stage-close
-} -result [viewFile support/template-list-empty.txt]
+} -result [viewFile support/template/list-empty.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

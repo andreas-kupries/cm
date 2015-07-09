@@ -28,7 +28,7 @@ test config-list-2.0 {config list, defaults} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/config-list-defaults.txt]
+} -result [viewFile support/config/list-defaults.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
