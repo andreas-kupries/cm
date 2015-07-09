@@ -51,7 +51,7 @@ test location-show-2.0 {location show, current} -body {
     # auto current
 } -cleanup {
     stage-close
-} -result [viewFile support/location-nszcsn.txt]
+} -result [viewFile support/location/nszcsn.txt]
 
 test location-show-2.1 {location show, not current} -body {
     run location show N
@@ -63,7 +63,7 @@ test location-show-2.1 {location show, not current} -body {
     run location current-reset
 } -cleanup {
     stage-close
-} -result [viewFile support/location-nszcsn.txt]
+} -result [viewFile support/location/nszcsn.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

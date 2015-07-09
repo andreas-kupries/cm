@@ -59,7 +59,7 @@ test location-delete-2.0 {location delete} -body {
     run location new N S Z {C, S, N}
 } -cleanup {
     stage-close
-} -result [viewFile support/location-list-empty.txt]
+} -result [viewFile support/location/list-empty.txt]
 
 # TODO: Deletion of location in use by conference.
 

@@ -41,7 +41,7 @@ test location-contact-2.0 {location contact} -body {
     # auto-current
 } -cleanup {
     stage-close
-} -result [viewFile support/location-nszcsn-contact.txt]
+} -result [viewFile support/location/nszcsn-contact.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
