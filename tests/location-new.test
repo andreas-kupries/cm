@@ -50,7 +50,7 @@ test location-new-2.0 {location new} -body {
     run city new C S N
 } -cleanup {
     stage-close
-} -result [viewFile support/location-list.txt]
+} -result [viewFile support/location/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

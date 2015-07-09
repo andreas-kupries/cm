@@ -59,7 +59,7 @@ test location-note-set-2.0 {location note-set, argument} -body {
     # auto-current
 } -cleanup {
     stage-close
-} -result [viewFile support/location-nszcsn-note.txt]
+} -result [viewFile support/location/nszcsn-note.txt]
 
 test location-note-set-2.1 {location note-set, stdin} -body {
     run location note-set N << {NOTE NOTE NOTE NOTE}
@@ -71,7 +71,7 @@ test location-note-set-2.1 {location note-set, stdin} -body {
     # auto-current
 } -cleanup {
     stage-close
-} -result [viewFile support/location-nszcsn-note.txt]
+} -result [viewFile support/location/nszcsn-note.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
