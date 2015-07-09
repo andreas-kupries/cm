@@ -35,7 +35,7 @@ namespace eval ::cm::db {
     namespace ensemble create
 }
 namespace eval ::cm::db::timeline {
-    namespace export 2name 2key known select
+    namespace export 2name 2key known select setup
     namespace ensemble create
 
     namespace import ::cm::db

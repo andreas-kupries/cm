@@ -2152,7 +2152,7 @@ proc ::cm::conference::cmd_website_make {config} {
 	puts "Speakers:  [color bad None]"
     }
 
-    if {[cm::tutorial have-some $conference]} {
+    if {[tutorial scheduled $conference]} {
 	puts "Tutorials: [color good Yes]"
     } else {
 	puts "Tutorials: [color bad None]"
@@ -2738,7 +2738,7 @@ proc ::cm::conference::the-speakers {conference} {
     foreach {dname tag bio} [keynotes $conference] {
 	dict set map $dname $tag
     }
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+    foreach {dname tag bio} [tutorial speakers* $conference] {
 	dict set map $dname $tag
     }
     foreach {dname tag bio} [general-talks $conference] {
@@ -2786,7 +2786,7 @@ proc ::cm::conference::speaker-listing {conference} {
 
     # Tutorials...
     set first 1
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+    foreach {dname tag bio} [tutorial speakers* $conference] {
 	if {$dname eq $mgmt} continue
 	if {$first} {
 	    append text "## Tutorials\n\n"
