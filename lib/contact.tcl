@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::table
 package require cmdr::ask
 package require debug
 package require debug::caller
@@ -26,7 +27,6 @@ package require try
 package provide cm::contact 0 ; # campaign and contact are circular
 
 package require cm::campaign
-package require cm::table
 package require cm::db
 package require cm::util
 
@@ -54,8 +54,7 @@ namespace eval ::cm::contact {
     namespace import ::cm::db
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################

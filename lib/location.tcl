@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
+package require cmdr::table
 package require debug
 package require debug::caller
 package require dbutil
@@ -26,7 +27,6 @@ package require try
 package require cm::city
 package require cm::config::core
 package require cm::db
-package require cm::table
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -52,8 +52,7 @@ namespace eval ::cm::location {
     namespace import ::cm::config::core
     rename core config
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################

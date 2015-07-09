@@ -4,7 +4,6 @@
 ## Notes
 ## - Snarfed from Cmdr.
 
-
 # @@ Meta Begin
 # Package cm::util 0
 # Meta author   {Andreas Kupries}
@@ -25,14 +24,13 @@
 package require Tcl 8.5
 package require cmdr::ask
 package require cmdr::color
+package require cmdr::table
 package require cmdr::validate::common
 package require debug
 package require debug::caller
 package require linenoise
 package require struct::list
 package require textutil::adjust
-
-package require cm::table
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -55,8 +53,7 @@ namespace eval ::cm::util {
     namespace import ::cmdr::validate::common::complete-substr
     namespace import ::cmdr::validate::common::complete-enum
 
-    namespace import ::cm::table::dict
-    rename dict table/d
+    namespace import ::cmdr::table::dict ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# #####################

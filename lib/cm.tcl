@@ -27,13 +27,11 @@ package require cmdr
 package require debug
 package require debug::caller
 package require lambda
-package require cm::table
+package require cmdr::table
 
 cmdr color define heading =bold ;# Table header color.
-
-cm::table::show ::cmdr pager
-
-cmdr color define heading =bold ;# Table header color.
+cmdr table show \
+    ::cmdr pager
 
 #package require cm::seen  ; # set-progress
 
