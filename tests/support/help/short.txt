@@ -1,6 +1,43 @@
 cm [OPTIONS]
     The cm command line client
 
+cm accepted
+    Show accepted submissions, aka presentations for the current conference
+
+cm booked
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
+cm booking
+    Manage the hotel bookings by people.
+
+cm booking add <person> [<hotel>]
+    Add contact as having booked a hotel for the conference. The hotel
+    defaults to the conference hotel.
+
+cm booking drop <person>
+    Drop contact from the list of people who booked their hotel for the
+    conference.
+
+cm booking exit
+    Exit the shell. No-op if not in a shell.
+
+cm booking help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm booking list
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
+cm booking remove <person>
+    Drop contact from the list of people who booked their hotel for the
+    conference.
+
+cm bookings
+    Show the set of people having booked a hotel room for the conference, and
+    where.
+
 cm campaign
     Manage the campaign for a conference. All commands assume a "current
     conference".
@@ -50,6 +87,9 @@ cm city create <name> <state> <nation>
 cm city delete [<city>]
     Delete the specified city
 
+cm city drop [<city>]
+    Delete the specified city
+
 cm city exit
     Exit the shell. No-op if not in a shell.
 
@@ -65,6 +105,9 @@ cm city new <name> <state> <nation>
 
 cm city remove [<city>]
     Delete the specified city
+
+cm city show [<city>]
+    Show the details for the specified city
 
 cm conference
     Manage conferences
@@ -175,6 +218,9 @@ cm config
 cm config exit
     Exit the shell. No-op if not in a shell.
 
+cm config get <key>
+    Print the current value of the specified setting to stdout
+
 cm config help [OPTIONS] [<cmdname>...]
     Retrieve help for a command or command set. Without arguments help for all
     commands is given. The default format is --full.
@@ -183,10 +229,10 @@ cm config list
     Show the current state of all settings
 
 cm config set <key> <value>
-    Change setting
+    Change the value of the specified setting.
 
 cm config unset <key>
-    Drop setting back to its default
+    Drop the value of the specified setting back to its default.
 
 cm contact
     Manage the contacts used in campaigns and other contexts. I.e. conference
@@ -300,6 +346,9 @@ cm debug levels
     List all the debug levels known to the system, which we can enable to gain
     a (partial) narrative of the application-internal actions.
 
+cm debug speakers
+    Show speaker information inserted into the overview page.
+
 cm exit
     Exit the shell. No-op if not in a shell.
 
@@ -339,7 +388,7 @@ cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
 cm location add-staff [<position>] [<name>] [<phone>] [<email>]
-    Add one or more staff to the location
+    Add one or more staff to the specified or current location
 
 cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]
     Set the contact information of the current location
@@ -347,18 +396,27 @@ cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<loca
 cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
-cm location delete [<location>]
-    Delete the specified location
+cm location current
+    Print the current location, if any
 
-cm location directions
+cm location current-reset
+    Unset the current location, if any
+
+cm location delete [<location>]
+    Delete the specified or current location
+
+cm location directions [<location>]
     Return the map and other hotel specific data.
 
-cm location directions-set
+cm location directions-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
+cm location drop [<location>]
+    Delete the specified or current location
+
 cm location drop-staff [<name>]
-    Remove one or more staff
+    Remove one or more staff from the specified or current location.
 
 cm location exit
     Exit the shell. No-op if not in a shell.
@@ -370,53 +428,288 @@ cm location help [OPTIONS] [<cmdname>...]
 cm location list
     Show a table of all known locations
 
-cm location map
+cm location map [<location>]
     Return the map and other hotel specific data.
 
-cm location map-set
+cm location map-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
 cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]
     Create a new location
 
-cm location note
+cm location note [<location>]
     Return the map and other hotel specific data.
 
-cm location note-set
+cm location note-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
 cm location remove [<location>]
-    Delete the specified location
+    Delete the specified or current location
 
 cm location select [<location>]
     Select a specific location for further operation
 
-cm location show
-    Show the details of the current location
+cm location show [<location>]
+    Print the details of the specified or current location
 
-cm location staff
-    Show staff for current location
+cm location staff [<location>]
+    Print staff information for the specified or current location
 
-cm location transport
+cm location transport [<location>]
     Return the map and other hotel specific data.
 
-cm location transport-set
+cm location transport-set <location> [<map>]
     Set the map, directions, transport information of the current location.
     Note: The data is read from stdin.
 
 cm locations
     Show a table of all known locations
 
+cm register [OPTIONS] <person>
+    Register contact with the conference. Options for setting up presenter
+    discount, taken tutorials, walkin fee, etc.
+
+cm registered
+    Show the set of registered people.
+
+cm registration
+    Manage the registrations
+
+cm registration add [OPTIONS] <person>
+    Register contact with the conference. Options for setting up presenter
+    discount, taken tutorials, walkin fee, etc.
+
+cm registration drop <person>
+    Drop contact from the list of registered people
+
+cm registration exit
+    Exit the shell. No-op if not in a shell.
+
+cm registration help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm registration list
+    Show the set of registered people.
+
+cm registration remove <person>
+    Drop contact from the list of registered people
+
 cm save <destination>
     Save database as readable and executable Tcl script
+
+cm schedule
+    Manage conference schedules.
+
+cm schedule add <name>
+    Create a new, empty named schedule
+
+cm schedule clear-select
+    Clear active schedule
+
+cm schedule create <name>
+    Create a new, empty named schedule
+
+cm schedule day
+
+cm schedule day clear-select [OPTIONS]
+    Clear active day
+
+cm schedule day exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule day first [OPTIONS]
+    Activate the first day
+
+cm schedule day help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule day last [OPTIONS]
+    Activate the last day
+
+cm schedule day next [OPTIONS]
+    Activate the next day
+
+cm schedule day previous [OPTIONS]
+    Activate the previous day
+
+cm schedule day select [OPTIONS] [<day>]
+    Activate the named day
+
+cm schedule day selected [OPTIONS]
+    Tell which day is active
+
+cm schedule drop [<name>]
+    Destroy the named schedule
+
+cm schedule event [OPTIONS] <description> [<note>]
+    Create a new fixed event for the schedule
+
+cm schedule exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule f [OPTIONS]
+    Activate the first day
+
+cm schedule first [OPTIONS]
+    Activate the first day
+
+cm schedule help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule item
+
+cm schedule item drop [OPTIONS] <ref>
+    Destroy the item in the schedule
+
+cm schedule item event [OPTIONS] <description> [<note>]
+    Create a new fixed event for the schedule
+
+cm schedule item exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule item help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule item placeholder [OPTIONS] <label>
+    Create a new placeholder for the schedule
+
+cm schedule item remove [OPTIONS] <ref>
+    Destroy the item in the schedule
+
+cm schedule item rename [OPTIONS] <ref> <newname>
+    Rename the specified item
+
+cm schedule l [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule last [OPTIONS]
+    Activate the last day
+
+cm schedule left [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule leftmost [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule list
+    Show a table of all known schedules
+
+cm schedule lm [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule n [OPTIONS]
+    Activate the next day
+
+cm schedule next [OPTIONS]
+    Activate the next day
+
+cm schedule p [OPTIONS]
+    Activate the previous day
+
+cm schedule placeholder [OPTIONS] <label>
+    Create a new placeholder for the schedule
+
+cm schedule prev [OPTIONS]
+    Activate the previous day
+
+cm schedule previous [OPTIONS]
+    Activate the previous day
+
+cm schedule r [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule remove [<name>]
+    Destroy the named schedule
+
+cm schedule rename <name> <newname>
+    Rename the named schedule
+
+cm schedule right [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule rightmost [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule rm [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule select [<name>]
+    Activate the named schedule
+
+cm schedule selected
+    Tell which schedule is active
+
+cm schedule show [<name>]
+    Show information about the named schedule
+
+cm schedule start [<time>]
+    Show and/or set a global start-time
+
+cm schedule track
+
+cm schedule track add [OPTIONS] <name>
+    Create a new track for the schedule
+
+cm schedule track clear-select [OPTIONS]
+    Clear active track
+
+cm schedule track create [OPTIONS] <name>
+    Create a new track for the schedule
+
+cm schedule track drop [OPTIONS] <name>
+    Destroy the named track in the schedule
+
+cm schedule track exit
+    Exit the shell. No-op if not in a shell.
+
+cm schedule track help [OPTIONS] [<cmdname>...]
+    Retrieve help for a command or command set. Without arguments help for all
+    commands is given. The default format is --full.
+
+cm schedule track left [OPTIONS]
+    Activate the lexicographically previous track
+
+cm schedule track leftmost [OPTIONS]
+    Activate the lexicographically first track
+
+cm schedule track remove [OPTIONS] <name>
+    Destroy the named track in the schedule
+
+cm schedule track rename [OPTIONS] <name> <newname>
+    Rename the named track
+
+cm schedule track right [OPTIONS]
+    Activate the lexicographically next track
+
+cm schedule track rightmost [OPTIONS]
+    Activate the lexicographically last track
+
+cm schedule track select [OPTIONS] [<name>]
+    Activate the named track
+
+cm schedule track selected [OPTIONS]
+    Tell which track is active
+
+cm schedule validate
+    Validate schedule information
+
+cm schedules
+    Show a table of all known schedules
 
 cm submission
     Manage the submissions
 
 cm submission accept [OPTIONS] [<submission>]
     Accept the specified submission
+
+cm submission accepted
+    Show accepted submissions, aka presentations for the current conference
 
 cm submission add [OPTIONS] <title> [<author>...]
     Submit a paper/talk proposal. The abstract is read from stdin.
@@ -495,13 +788,13 @@ cm submit [OPTIONS] <title> [<author>...]
     Submit a paper/talk proposal. The abstract is read from stdin.
 
 cm template
-    Manage the text templates used for mail campaigns.
+    Manage the text templates used for mail campaigns and web-site generation.
 
-cm template add <name>
-    Create a new template. The text is read from stdin.
+cm template add <name> [<text>]
+    Create a new template.
 
-cm template create <name>
-    Create a new template. The text is read from stdin.
+cm template create <name> [<text>]
+    Create a new template.
 
 cm template delete <name>
     Remove the named template
@@ -519,29 +812,35 @@ cm template help [OPTIONS] [<cmdname>...]
 cm template list
     Show a table of all known templates
 
-cm template new <name>
-    Create a new template. The text is read from stdin.
+cm template new <name> [<text>]
+    Create a new template.
 
 cm template remove <name>
     Remove the named template
 
-cm template replace <name>
-    Update the named template. The text is read from stdin.
+cm template replace <name> [<text>]
+    Update the contents of the named template.
 
-cm template set <name>
-    Update the named template. The text is read from stdin.
+cm template set <name> [<text>]
+    Update the contents of the named template.
 
 cm template show <name>
     Show the text of the named template
 
-cm template update <name>
-    Update the named template. The text is read from stdin.
+cm template update <name> [<text>]
+    Update the contents of the named template.
 
 cm templates
     Show a table of all known templates
 
 cm test
     Various commands to test the system and its configuration.
+
+cm test city-known
+    Print validation dict
+
+cm test city-select
+    Print selection dict
 
 cm test exit
     Exit the shell. No-op if not in a shell.
@@ -550,12 +849,39 @@ cm test help [OPTIONS] [<cmdname>...]
     Retrieve help for a command or command set. Without arguments help for all
     commands is given. The default format is --full.
 
+cm test location-known
+    Print validation dict
+
+cm test location-select
+    Print selection dict
+
+cm test location-staff-known
+    Print validation dict, stafff of current location
+
+cm test location-staff-select
+    Print selection dict, staff of current location
+
 cm test mail-address <address>
     Parse the specified address into parts, and determine if it is lexically
     ok for us, or not, and why not in case of the latter.
 
 cm test mail-setup <destination>
     Generate a test mail and send it using the current mail configuration.
+
+cm test schedule-item-day-max <schedule>
+    Print day validation information
+
+cm test schedule-known
+    Print validation dictionary
+
+cm test schedule-select
+    Print selection dictionary
+
+cm test schedule-track-known <schedule>
+    Print validation dictionary
+
+cm test schedule-track-select <schedule>
+    Print selection dictionary
 
 cm tutorial
     Manage the tutorials we can or have offered in conferences.
@@ -608,6 +934,9 @@ cm tutorial show [<name>]
 
 cm tutorials
     Show a table of all known tutorials
+
+cm unregister <person>
+    Drop contact from the list of registered people
 
 cm unsubmit [<submission>...]
     Remove one or more specified submissions

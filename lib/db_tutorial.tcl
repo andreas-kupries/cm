@@ -21,6 +21,8 @@ package require debug::caller
 package require dbutil
 package require try
 
+package provide cm::db::tutorial 0 ;# break circle
+
 package require cm::db
 package require cm::db::dayhalf
 package require cm::contact
@@ -36,7 +38,7 @@ namespace eval ::cm::db::tutorial {
     namespace export \
 	all new title= desc= req= tag= 2name get update select \
 	known known-tag known-title dayrange trackrange cell speakers \
-	scheduled schedule unschedule
+	scheduled schedule unschedule \
 	issues setup dump
     namespace ensemble create
 

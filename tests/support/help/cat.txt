@@ -43,35 +43,103 @@ Conference Management
         cm campaign test <template>      Check generation of campaign mails
 
         Template Management
-            cm template add <name>        Create a new template
-            cm template create <name>     Create a new template
-            cm template delete <name>     Remove the named template
-            cm template drop <name>       Remove the named template
-            cm template list              Show a table of all known templates
-            cm template new <name>        Create a new template
-            cm template remove <name>     Remove the named template
-            cm template replace <name>    Update the named template
-            cm template set <name>        Update the named template
-            cm template show <name>       Show the text of the named template
-            cm template update <name>     Update the named template
-            cm templates                  Show a table of all known templates
+            cm template add <name> [<text>]        Create a new template
+            cm template create <name> [<text>]     Create a new template
+            cm template delete <name>              Remove the named template
+            cm template drop <name>                Remove the named template
+            cm template list                       Show a table of all known templates
+            cm template new <name> [<text>]        Create a new template
+            cm template remove <name>              Remove the named template
+            cm template replace <name> [<text>]    Update the contents of the named template
+            cm template set <name> [<text>]        Update the contents of the named template
+            cm template show <name>                Show the text of the named template
+            cm template update <name> [<text>]     Update the contents of the named template
+            cm templates                           Show a table of all known templates
+
+    Schedules
+        cm schedule add <name>                           Create a new, empty named schedule
+        cm schedule clear-select                         Clear active schedule
+        cm schedule create <name>                        Create a new, empty named schedule
+        cm schedule day clear-select                     Clear active day
+        cm schedule day first                            Activate the first day
+        cm schedule day last                             Activate the last day
+        cm schedule day next                             Activate the next day
+        cm schedule day previous                         Activate the previous day
+        cm schedule day select [<day>]                   Activate the named day
+        cm schedule day selected                         Tell which day is active
+        cm schedule drop [<name>]                        Destroy the named schedule
+        cm schedule event <description> [<note>]         Create a new fixed event for the schedule
+        cm schedule f                                    Activate the first day
+        cm schedule first                                Activate the first day
+        cm schedule item drop <ref>                      Destroy the item in the schedule
+        cm schedule item event <description> [<note>]    Create a new fixed event for the schedule
+        cm schedule item placeholder <label>             Create a new placeholder for the schedule
+        cm schedule item remove <ref>                    Destroy the item in the schedule
+        cm schedule item rename <ref> <newname>          Rename the specified item
+        cm schedule l                                    Activate the lexicographically previous track
+        cm schedule last                                 Activate the last day
+        cm schedule left                                 Activate the lexicographically previous track
+        cm schedule leftmost                             Activate the lexicographically first track
+        cm schedule list                                 Show a table of all known schedules
+        cm schedule lm                                   Activate the lexicographically first track
+        cm schedule n                                    Activate the next day
+        cm schedule next                                 Activate the next day
+        cm schedule p                                    Activate the previous day
+        cm schedule placeholder <label>                  Create a new placeholder for the schedule
+        cm schedule prev                                 Activate the previous day
+        cm schedule previous                             Activate the previous day
+        cm schedule r                                    Activate the lexicographically next track
+        cm schedule remove [<name>]                      Destroy the named schedule
+        cm schedule rename <name> <newname>              Rename the named schedule
+        cm schedule right                                Activate the lexicographically next track
+        cm schedule rightmost                            Activate the lexicographically last track
+        cm schedule rm                                   Activate the lexicographically last track
+        cm schedule select [<name>]                      Activate the named schedule
+        cm schedule selected                             Tell which schedule is active
+        cm schedule show [<name>]                        Show information about the named schedule
+        cm schedule start [<time>]                       Show and/or set a global start-time
+        cm schedule track add <name>                     Create a new track for the schedule
+        cm schedule track clear-select                   Clear active track
+        cm schedule track create <name>                  Create a new track for the schedule
+        cm schedule track drop <name>                    Destroy the named track in the schedule
+        cm schedule track left                           Activate the lexicographically previous track
+        cm schedule track leftmost                       Activate the lexicographically first track
+        cm schedule track remove <name>                  Destroy the named track in the schedule
+        cm schedule track rename <name> <newname>        Rename the named track
+        cm schedule track right                          Activate the lexicographically next track
+        cm schedule track rightmost                      Activate the lexicographically last track
+        cm schedule track select [<name>]                Activate the named track
+        cm schedule track selected                       Tell which track is active
+        cm schedule validate                             Validate schedule information
+        cm schedules                                     Show a table of all known schedules
 
 Backup
     cm save <destination>    Save database as readable and executable Tcl script
+
+Booking Management
+    cm booked                            Show the set of people having booked a hotel room for the conference, and where
+    cm booking add <person> [<hotel>]    Add contact as having booked a hotel for the conference
+    cm booking drop <person>             Drop contact from the list of people who booked their hotel for the conference
+    cm booking list                      Show the set of people having booked a hotel room for the conference, and where
+    cm booking remove <person>           Drop contact from the list of people who booked their hotel for the conference
+    cm bookings                          Show the set of people having booked a hotel room for the conference, and where
 
 City Management
     cm cities                                 Show a table of all known cities
     cm city add <name> <state> <nation>       Create a new city for locations
     cm city create <name> <state> <nation>    Create a new city for locations
     cm city delete [<city>]                   Delete the specified city
+    cm city drop [<city>]                     Delete the specified city
     cm city list                              Show a table of all known cities
     cm city new <name> <state> <nation>       Create a new city for locations
     cm city remove [<city>]                   Delete the specified city
+    cm city show [<city>]                     Show the details for the specified city
 
 Configuration
+    cm config get <key>            Print the current value of the specified setting to stdout
     cm config list                 Show the current state of all settings
-    cm config set <key> <value>    Change setting
-    cm config unset <key>          Drop setting back to its default
+    cm config set <key> <value>    Change the value of the specified setting
+    cm config unset <key>          Drop the value of the specified setting back to its default
 
 Contact Management
     cm contact add-affiliate [<name>] [<company>...]       Add one or more companies as the affiliations of the specified person
@@ -114,29 +182,43 @@ Location Management
     cm facilities                                                                                           Show a table of all known locations
     cm hotels                                                                                               Show a table of all known locations
     cm location add [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
-    cm location add-staff [<position>] [<name>] [<phone>] [<email>]                                         Add one or more staff to the location
+    cm location add-staff [<position>] [<name>] [<phone>] [<email>]                                         Add one or more staff to the specified or current location
     cm location contact [<bookphone>] [<bookfax>] [<booklink>] [<localphone>] [<localfax>] [<locallink>]    Set the contact information of the current location
     cm location create [<name>] [<streetaddress>] [<zipcode>] [<city>]                                      Create a new location
-    cm location delete [<location>]                                                                         Delete the specified location
-    cm location directions                                                                                  Return the map and other hotel specific data
-    cm location directions-set                                                                              Set the map, directions, transport information of the current location
-    cm location drop-staff [<name>]                                                                         Remove one or more staff
+    cm location current                                                                                     Print the current location, if any
+    cm location current-reset                                                                               Unset the current location, if any
+    cm location delete [<location>]                                                                         Delete the specified or current location
+    cm location directions [<location>]                                                                     Return the map and other hotel specific data
+    cm location directions-set <location> [<map>]                                                           Set the map, directions, transport information of the current location
+    cm location drop [<location>]                                                                           Delete the specified or current location
+    cm location drop-staff [<name>]                                                                         Remove one or more staff from the specified or current location
     cm location list                                                                                        Show a table of all known locations
-    cm location map                                                                                         Return the map and other hotel specific data
-    cm location map-set                                                                                     Set the map, directions, transport information of the current location
+    cm location map [<location>]                                                                            Return the map and other hotel specific data
+    cm location map-set <location> [<map>]                                                                  Set the map, directions, transport information of the current location
     cm location new [<name>] [<streetaddress>] [<zipcode>] [<city>]                                         Create a new location
-    cm location note                                                                                        Return the map and other hotel specific data
-    cm location note-set                                                                                    Set the map, directions, transport information of the current location
-    cm location remove [<location>]                                                                         Delete the specified location
+    cm location note [<location>]                                                                           Return the map and other hotel specific data
+    cm location note-set <location> [<map>]                                                                 Set the map, directions, transport information of the current location
+    cm location remove [<location>]                                                                         Delete the specified or current location
     cm location select [<location>]                                                                         Select a specific location for further operation
-    cm location show                                                                                        Show the details of the current location
-    cm location staff                                                                                       Show staff for current location
-    cm location transport                                                                                   Return the map and other hotel specific data
-    cm location transport-set                                                                               Set the map, directions, transport information of the current location
+    cm location show [<location>]                                                                           Print the details of the specified or current location
+    cm location staff [<location>]                                                                          Print staff information for the specified or current location
+    cm location transport [<location>]                                                                      Return the map and other hotel specific data
+    cm location transport-set <location> [<map>]                                                            Set the map, directions, transport information of the current location
     cm locations                                                                                            Show a table of all known locations
 
+Registration Management
+    cm register <person>               Register contact with the conference
+    cm registered                      Show the set of registered people
+    cm registration add <person>       Register contact with the conference
+    cm registration drop <person>      Drop contact from the list of registered people
+    cm registration list               Show the set of registered people
+    cm registration remove <person>    Drop contact from the list of registered people
+    cm unregister <person>             Drop contact from the list of registered people
+
 Submission Management
+    cm accepted                                                   Show accepted submissions, aka presentations for the current conference
     cm submission accept [<submission>]                           Accept the specified submission
+    cm submission accepted                                        Show accepted submissions, aka presentations for the current conference
     cm submission add <title> [<author>...]                       Submit a paper/talk proposal
     cm submission add-speaker <submission> [<speaker>...]         Add one or more speakers to an accepted submission
     cm submission add-submitter <submission> [<submitter>...]     Add one or more submitters to a submission
@@ -182,27 +264,49 @@ Advanced
     Debugging
         cm debug fix-mails    Force all mail addresses into lower-case
         cm debug levels       List all the debug levels known to the system, which we can enable to gain a (partial) narrative of the application-internal actions
+        cm debug speakers     Show speaker information inserted into the overview page
 
     Testing
-        cm test mail-address <address>      Parse the specified address into parts, and determine if it is lexically ok for us, or not, and why not in case of the latter
-        cm test mail-setup <destination>    Generate a test mail and send it using the current mail configuration
+        cm test city-known                          Print validation dict
+        cm test city-select                         Print selection dict
+        cm test location-known                      Print validation dict
+        cm test location-select                     Print selection dict
+        cm test location-staff-known                Print validation dict, stafff of current location
+        cm test location-staff-select               Print selection dict, staff of current location
+        cm test mail-address <address>              Parse the specified address into parts, and determine if it is lexically ok for us, or not, and why not in case of the latter
+        cm test mail-setup <destination>            Generate a test mail and send it using the current mail configuration
+        cm test schedule-item-day-max <schedule>    Print day validation information
+        cm test schedule-known                      Print validation dictionary
+        cm test schedule-select                     Print selection dictionary
+        cm test schedule-track-known <schedule>     Print validation dictionary
+        cm test schedule-track-select <schedule>    Print selection dictionary
 
 Miscellaneous
-    cm campaign      Manage the campaign for a conference
-    cm city          Manage the cities containing relevant locations
-    cm conference    Manage conferences
-    cm config        Manage the conference-independent configuration of the application
-    cm contact       Manage the contacts used in campaigns and other contexts
-    cm debug         Various commands to help debugging the system itself and its configuration
-    cm history       
-    cm location      Manage hotels and facilities
-    cm submission    Manage the submissions
-    cm template      Manage the text templates used for mail campaigns
-    cm test          Various commands to test the system and its configuration
-    cm tutorial      Manage the tutorials we can or have offered in conferences
+    cm booking           Manage the hotel bookings by people
+    cm campaign          Manage the campaign for a conference
+    cm city              Manage the cities containing relevant locations
+    cm conference        Manage conferences
+    cm config            Manage the conference-independent configuration of the application
+    cm contact           Manage the contacts used in campaigns and other contexts
+    cm debug             Various commands to help debugging the system itself and its configuration
+    cm history           
+    cm location          Manage hotels and facilities
+    cm registration      Manage the registrations
+    cm schedule          Manage conference schedules
+    cm schedule day      
+    cm schedule item     
+    cm schedule track    
+    cm submission        Manage the submissions
+    cm template          Manage the text templates used for mail campaigns and web-site generation
+    cm test              Various commands to test the system and its configuration
+    cm tutorial          Manage the tutorials we can or have offered in conferences
 
 Global Options
     --color MODE           Set color mode (always|auto|never) of the application. The default of "auto" activates color depending on the environment, active when talking to a tty, and otherwise not.
     --database DATABASE    Path to the database of managed conferences
     --db DATABASE          Alias of --database.
+    --no-prompt            Disable interactive queries.
+    --non-interactive      Alias of --no-prompt.
+    --noprompt             Alias of --no-prompt.
     -D DATABASE            Alias of --database.
+    -n                     Alias of --no-prompt.

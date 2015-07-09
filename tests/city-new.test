@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## city management - new citys
+## city management - new cities
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -55,7 +55,7 @@ test city-new-1.4 {city new, duplicate, case-insensitive} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test city-new-2.0 {city new, argument} -body {
+test city-new-2.0 {city new} -body {
     run city new C S N
     run city list
 } -setup {

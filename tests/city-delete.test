@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## city management - deleting citys
+## city management - deleting cities
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -39,6 +39,8 @@ test city-delete-2.0 {city delete} -body {
 } -cleanup {
     stage-close
 } -result [viewFile support/city/list-empty.txt]
+
+# TODO: Deletion of city in use by location and/or conference.
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

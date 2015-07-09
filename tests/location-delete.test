@@ -1,0 +1,67 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - deleting locations
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-delete-1.0 {location delete, wrong args, not enough, interactive impossible} -body {
+    # We have no locations to select interactively, so that fails too!
+    run location delete
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-delete-1.1 {location delete, wrong args, too many} -body {
+    run location delete N X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test location-delete-1.2 {location delete, bogus name} -body {
+    run location delete BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a location name for input "location", got "BOGUS"}
+
+test location-delete-1.3 {location delete, ambiguous name} -body {
+    run location delete N
+} -setup {
+    stage-open
+    run city new C S N
+    run location new Na S1 Z {C, S, N}
+    run location new Nb S2 Z {C, S, N}
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected an unambiguous location name for input "location", got "N"}
+
+# # ## ### ##### ######## ############# #####################
+
+test location-delete-2.0 {location delete} -body {
+    run location delete N
+    run location list
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list-empty.txt]
+
+# TODO: Deletion of location in use by conference.
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

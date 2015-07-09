@@ -1,0 +1,56 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - new locations
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-new-1.0 {location new, wrong args, too many} -body {
+    run location new N S Z C X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test location-new-1.1 {location new, duplicate name, case-insensitive} -body {
+    run location new Name Street1 Zip {C, S, N}
+} -setup {
+    stage-open
+    run city new C S N
+    run location new nAME sTREET2 zIP {C, S, N}
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: UNIQUE constraint failed: location.city, location.name}
+
+test location-new-1.2 {location new, duplicate street, case-insensitive} -body {
+    run location new Name1 Street Zip {C, S, N}
+} -setup {
+    stage-open
+    run city new C S N
+    run location new nAME2 sTREET zIP {C, S, N}
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: UNIQUE constraint failed: location.city, location.streetaddress}
+
+# # ## ### ##### ######## ############# #####################
+
+test location-new-2.0 {location new} -body {
+    run location new N S Z {C, S, N}
+    run location list
+} -setup {
+    stage-open
+    run city new C S N
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
