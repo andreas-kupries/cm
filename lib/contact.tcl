@@ -203,6 +203,7 @@ proc ::cm::contact::cmd_list {config} {
 
     set pattern  [string trim [$config @pattern]]
     set withmail [$config @with-mails]
+    set types    [$config @only] ;# type-codes!
 
     set titles {\# Type Tag Name Mails Flags Relations}
 
@@ -226,6 +227,8 @@ proc ::cm::contact::cmd_list {config} {
 	    AND   CT.id = C.type
 	    ORDER BY name
 	} {
+	    if {[llength $types] && ($typecode ni $types)} continue
+
 	    incr counter
 
 	    set related [related-formatted $contact $typecode]

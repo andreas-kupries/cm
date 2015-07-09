@@ -18,14 +18,16 @@
 # @@ Meta End
 
 package require Tcl 8.5
-package require cmdr::color ; # color activation
-package require cmdr::history
-package require cmdr::help::tcl
 package require cmdr::actor 1.3 ;# Need -extend support for common/use blocks.
+package require cmdr::color ; # color activation
+package require cmdr::help::tcl
+package require cmdr::history
 package require cmdr
 package require debug
 package require debug::caller
 package require lambda
+
+cmdr color define heading =bold ;# Table header color.
 
 #package require cm::seen  ; # set-progress
 
@@ -1502,6 +1504,10 @@ cmdr create cm::cm [file tail $::argv0] {
 		Filter list by the glob pattern
 	    } { optional ; default * }
 	    option with-mails {Show mail addresses} { presence }
+	    option only {
+		Show only entries of the requested type(s).
+		If not specified show all.
+	    } { list ; validate [cm::vt contact-type] }
 	} [cm::call contact cmd_list]
 
 	private show {
