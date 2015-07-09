@@ -22,12 +22,16 @@ package require cmdr::actor 1.3 ;# Need -extend support for common/use blocks.
 package require cmdr::color ; # color activation
 package require cmdr::help::tcl
 package require cmdr::history
+package require cmdr::pager 1.1
 package require cmdr
 package require debug
 package require debug::caller
 package require lambda
+package require cm::table
 
 cmdr color define heading =bold ;# Table header color.
+
+cm::table::show ::cmdr pager
 
 #package require cm::seen  ; # set-progress
 
