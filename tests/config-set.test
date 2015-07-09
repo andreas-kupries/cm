@@ -53,7 +53,7 @@ test config-set-2.0 {config set} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/config-set.txt]
+} -result [viewFile support/config/set.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

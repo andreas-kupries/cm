@@ -38,7 +38,7 @@ test city-delete-2.0 {city delete} -body {
     run city new City State Nation
 } -cleanup {
     stage-close
-} -result [viewFile support/city-list-empty.txt]
+} -result [viewFile support/city/list-empty.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

@@ -37,7 +37,7 @@ test city-show-2.0 {city show} -body {
     run city new C S N
 } -cleanup {
     stage-close
-} -result [viewFile support/city-csn.txt]
+} -result [viewFile support/city/csn.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
