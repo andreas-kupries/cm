@@ -1,0 +1,7 @@
+#!/bin/bash
+ftilde
+rtilde
+rm -f X.* tests/*.err tests/*.out
+echo
+echo cleaned = $(date)
+echo

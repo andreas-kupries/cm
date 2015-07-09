@@ -1,0 +1,93 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - selecting the active track in a schedule
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-select-1.0 {schedule track select, wrong args, not enough} -body {
+    run schedule track select -n
+    # Note: name is optional.
+    #       - No tracks to select either.
+    # => undefined
+} -setup {
+    stage-open
+    run schedule add fox
+    run schedule track add hound
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test schedule-track-select-1.1 {schedule track select, wrong args, too many} -body {
+    run schedule track select NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+test schedule-track-select-1.2 {schedule track select, unknown schedule} -body {
+    run schedule track select BOGUS
+} -setup {
+    stage-open
+    run schedule add fox
+    run schedule track add hound
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a track name for input "name", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-track-select-2.0 {schedule track select, no active schedule} -body {
+    run schedule track select -n TRACK
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+test schedule-track-select-2.1 {schedule track select} -body {
+    run schedule track select TRACK
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule track clear-select
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Activating track "TRACK" ... OK}
+
+test schedule-track-select-2.2 {schedule track select, persistent} -body {
+    run schedule track select TRACK
+    run schedules
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/list-active-track.txt]
+
+test schedule-track-select-2.3 {schedule track select, persistent} -body {
+    run schedule track select TRACK
+    run schedule show         SCHEDULE
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/show-active-track.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

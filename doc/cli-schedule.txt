@@ -1,0 +1,654 @@
+
+# Specification of schedules
+
+## Use cases
+
+(1) Non-interactive bulk insertion of a schedule (like from a state dump)
+(2) (Semi-)interactive entry and editing of a schedule.
+
+### Case 1 Notes
+
+* Replication of data in the command line arguments is of no
+  consequence.  I.e. each command can repeat schedule, day, track,
+  etc. information.
+
+* Need only a minimal set of commands: creation of schedules, tracks,
+  and items.
+
+### Case 2 Notes
+
+* Avoid re-entry of data as much as possible
+
+  * Implies storage of state information which persists between
+    commands.
+
+* Need rich set of commands to create, edit, and delete schedules,
+  tracks, and items. Plus additional commands to navigate and select
+  items.
+
+## Entities and concepts
+
+### Schedules
+
+* Each schedule has a unique __name__.
+* Each schedule has zero or more __tracks__.
+* Each schedule has zero or more __items__.
+* At most one of all existing schedules is __current__, i.e. the focus
+  of interactive operations.
+* At most one item in the schedule is __current__ making it the focus
+  of interactive operations, if the schedule itself is current.
+* The current item, if specified, can __closed__ or __open__,
+  influencing how new items are added during interactive editing of
+  the schedule.
+* Each schedule has one or more days. This has to match the length of
+  the conferences using the schedule.
+* At most one of the days in a schedule is the __current day__ of that
+  schedule, making it the focus of interactive operations, if the
+  schedule itself is current.
+  This day is implied by the __current item__, except when no item is
+  current.
+* At most one of all existing tracks in a schedule is __current__,
+  i.e. the focus of interactive operations if that schedule is current.
+  This day is implied by the __current item__, except when no item is
+  current, or the item belongs to the NULL track.
+
+### Tracks
+
+* Tracks are timelines running in parallel, consisting of __items__.
+* Each track belongs to a __schedule__.
+* Each track has a __name__, unique within the schedule it belongs to.
+* The tracks of a schedule belong to all days of a conference.
+* The NULL track is implicit within each schedule, i.e. it does not
+  exist physically, but can be selected as the current track.
+
+### Items
+
+* Items are the fundamental parts of a schedule, organized as a table
+  by day, track, and starting time.
+* Implied in the above, each item belongs to a __schedule__.
+* Implied in the above, each item belongs to a __track__.  This may be
+  the NULL track.  The latter indicates an item which exists across /
+  belongs to __all__ tracks of the schedule.
+* Items can be __events__ or __placeholders__.
+* Events have a fixed major description and possibly a minor
+  description (like speaker, or other notes).
+* Placeholders have no descriptions, but a __label__ instead, which
+  identifies them uniquely, within the schedule they belong to.
+* Items can be nested in each other, but only one level deep. IOW an
+  item may have a parent item, but only if that parent has no parent
+  of its own.
+* A parent item may have multiple children.
+* An item without a parent is called __toplevel__.
+* All items have a starting time.
+  * This starting time identifies the item within its track and parent
+    (if any).
+  * For the children of a parent exactly one child must have the same
+    starting time as the parent.
+* All items have a length (in minutes).
+  * The __range__ of an item is the start time (inclusive) to the end
+    time (exclusive), where end time is starting time plus length.
+  * The ranges of all items within a track and parent (if any) must
+    not overlap.
+    __Reminder__: items with the NULL track are part of __all__ tracks.
+  * The length of a parent to a set of children must be the sum of the
+    length of all its children.
+    This implies that there must be __no gaps__ between the children
+    of a parent.
+    Toplevel items on the other hand may have gaps between them.
+* Toplevel items can be __pinned__, i.e. locked against movement in
+  time. This becomes important during interactive editing, as it
+  determines how items move as their environment changes and/or they
+  may block changes to said environment.
+
+
+## Schema
+
+### pschedule
+
+* id      -- row-id
+* name    -- text, unique
+* citem   -- integer, references pschedule_item   -- current item
+* cday    -- integer,                             -- current day, ignored for citem NOT NULL
+* ctrack  -- integer, references pschedule_track, -- current track, ignored for citem NOT NULL
+* copen   -- integer (bool) -- open-status if citem
+
+### pschedule_global
+
+* key      -- text, unique -- 1 row, key "current"
+* schedule -- integer, references pschedule -- current schedule
+
+* key      -- text, unique -- 1 row, key "start"
+* schedule -- integer, global starting time for schedules (minutes from midnight).
+
+### pschedule_track
+
+* id        -- row-id
+* pschedule -- integer, references pschedule -- owner
+* name      -- name, unique (schdeule, name)
+
+### pschedule_item
+
+* id        -- row-id
+* pschedule -- integer, references pschedule -- owner
+* day       -- integer
+* track     -- integer, references pschedule_track (within same schedule)
+* parent    -- integer, references pschedule_item
+* pinned    -- integer (bool)
+* start     -- integer, offset from midnight, in minutes
+* length    -- integer, minutes
+* label     -- text NULL => event, NOT NULL => placeholder
+* desc1     -- text
+* desc2     -- text
+
+## Constraint checks
+
+###
+###
+###
+###
+###
+
+### VALIDATE (schedule)
+
+```
+```
+
+
+## Item operations, and checks
+
+### OVERLAP_PINNED (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __pinned__ items overlapping
+the range
+
+  [start, start+length)
+
+within the ```schedule```.
+
+Return these items (sorted by start time, ascending).
+For good error reporting.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+### OVERLAP_BEFORE (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __unpinned__ items
+overlapping the range
+
+  [start, start+length)
+
+within the ```schedule```, with a start time less than ```start```.
+Return these items (sorted by start time, ascending).
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+### OVERLAP_AFTER (schedule, start, length, parent, track)
+
+Test if ```parent``` and ```track``` have __unpinned__ items
+overlapping the range
+
+  [start, start+length)
+
+within the ```schedule```, with a start time greater than ```start```.
+Return these items (sorted by start time, descending).
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## SIBLINGS_BEFORE (item)
+
+Find and return the siblings of ```item``` with a starting time less
+than item itself.
+
+Return these items (sorted by start time, ascending).
+
+Siblings are items with the same parent and track as the item itself.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## SIBLINGS_AFTER (item)
+
+Find and return the siblings of ```item``` with a starting time
+greater than item itself.
+
+Return these items (sorted by start time, descending).
+
+Siblings are items with the same parent and track as the item itself.
+
+TODO -- Write the queries (four), based on the (NOT) NULL state of
+TODO -- parent and track.
+
+## CHILDREN (item)
+
+Find and return the children of ```item```.
+Return these items (sorted by start time, ascending).
+
+Children are items which have this item as their parent.
+
+### EXTEND (item, delta)
+
+Extend the length of the specified ```item``` by ```delta```, a positive number
+
+```
+SELECT (item) => schedule, start, length, parent, track)
+
+conflictors = OVERLAP_PINNED (schedule, start, length + delta, parent, track)
+if NOT EMPTY (conflictors)
+then FAIL (conflictors)
+
+foreach conflictor
+in OVERLAP_AFTER (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+UPDATE item : length += delta
+
+VALIDATE
+COMMIT
+```
+
+-- conflictor returned in descending order (see OVERLAP_AFTER) means
+   that the items farther away get moved first, making room for the
+   nearer items. This ensures that the movement of the nearer items
+   will not trigger further (recursive) movement.
+
+-- As we extend at towards the end OVERLAP_BEFORE cannot trigger.
+
+-- For a toplevel with children the extension opens a gap at the end
+   which must be filled immediately with a new item to avoid
+   constraint violation for groups.
+
+### SHRINK (item, delta)
+
+Reduce the length of the specified ```item``` by ```delta```, a positive number.
+
+-- TODO: move siblings up to close gap
+-- TODO: move parent siblings up (if a child), to close gap, until finding a pinned item.
+
+### MOVE (item, delta)
+
+Move the starting time specified ```item``` by ```delta```.
+
+```
+SELECT (item) => schedule, start, length, parent, track
+
+conflictors = OVERLAP_PINNED (schedule, start, length + delta, parent, track)
+if NOT EMPTY (conflictors)
+then FAIL (conflictors)
+
+foreach conflictor
+in OVERLAP_BEFORE (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+foreach conflictor
+in OVERLAP_AFTER (schedule, start, length + delta, parent, track)
+do MOVE (conflictor, delta)
+
+UPDATE item : start += delta
+
+VALIDATE
+COMMIT
+```
+
+### INSERT (schedule, item, start, length)
+
+-- match schedule with item -- 
+-- open? toplevel ?
+-- where to insert, what to extend
+
+### ADD (track, day, start, length, parent)
+
+
+### REMOVE (item)
+
+-- toplevel ? - shrink? move?
+
+
+
+
+cli api for specification of schedules
+======================================
+
+2 use cases
+
+(1) restoration of a schedule from a dump
+(2) interactive definition/entry of a schedule.
+
+Different needs:
+
+(Ad 1): Just needs commands to define
+- schedule
+- tracks in schedule
+- items in schedule
+with ability to reference schedule and track (names).
+Replication of schedule and track names is irrelevant.
+
+(Ad 2): Needs to be easy on a user, entering items quickly without
+having to (re-)enter lots of things (schedule, track name, day, time,
+... Commands have to maintain state between them which can be used to
+deduce information, allowing it to be missing.
+
+
+
+Restoration
+===========
+
+cm schedule new|create         ?NAME?
+cm schedule (new|create)-track SCHEDULE ?NAME?
+cm schedule (new|create|-item  ?--in ITEM? SCHEDULE DAY TRACK START LENGTH DESC ?SPEAKER?
+cm schedule (new|create)-hole  ?--in ITEM? SCHEDULE DAY TRACK START LENGTH LABEL
+-- empty string for track ==> NULL, crossing tracks
+
+
+START = integer|(hour:minute)
+
+Interactive
+===========
+
+STATE:
+
+* Much of the state we need can be found in the databvase itself, in
+  the set of already entered items!
+* We need:
+
+  - ref to current schedule
+  - ref to current day           (in schedule)
+  - ref to current track         (in schedule, day)
+  - ref to current item          (in schedule, track, day)
+  - flag if current item is open (in schedule, track, day)
+
+  Time data is NOT needed most of the time as it is implied by the
+  current item and openess. It is needed for when we add the first
+  item, because we have nothing to anchor to ... Ideas:
+
+  - Global default (General start time)
+  - Require start time (option) for first item, reject missing.
+    (and/or ask interactively for it when needed)
+
+= Actually, the entire state can be put into the database in some way:
+
+(1) table "pschedule_current" - Ref to current schedule.
+    Reject when more than one entry, or none.
+
+(2) table "pschedule" - Add columns for current track, day, item, and open-state of the latter.
+
+=> All state manipulation can now be done on the database.
+=> Validation, i.e. checking the constraints can be done with suitable queries.
+
+
+
+Commands (leaving out the prefix 'cm schedule')...
+
+All commands show the relevant state as their last action before ending ...
+Set is designed for interactive use, either from terminal, or from within
+an interactive shell in the cm cli.
+
+	new    ?NAME?
+	create ?NAME?
+	|	create new schedule
+	|	new schedule becomes current
+	|	initialize state for new schedule (day 0 track NULL, no item, no openess)
+	|	<<show state>>
+
+	rename ?NAME?
+	|      rename current schedule
+
+	new-track    ?NAME?
+	create-track ?NAME?
+	+track       ?NAME?
+	|	create new track
+	|	new track becomes current track
+	|	initialize state (no item, no openess)
+	|	<<show state>>
+
+	rename-track   ?NAME?
+	|	rename the current track
+
+	change-track ?--unset? ?NAME?
+	set-track    ?--unset? ?NAME?
+	track=       ?--unset? ?NAME?
+	|	chosen track becomes current, --unset for NULL
+	|	<<show state>>
+
+	tracks
+	|	show list of tracks
+
+	next
+	|	move current day forward by one
+	|	initialize state, if day is new (track NULL, no item, no openess)
+	|	<<show state>>
+
+	change-day DAY
+	set-day    DAY
+	day=       DAY
+	|	set current day
+	|	<<show state>>
+
+	start TIME
+	first TIME
+	|	set a global time to use for the first item in a day/track
+
+	placeholder ?LENGTH? LABEL
+	event       ?LENGTH? DESC ?SPEAKERDESC?
+	|	add an item to the schedule
+	|	<<show state>>
+
+	|	LOGIC
+	|	1st item!
+	|	=>	start = global start time
+	|		length as per spec, default is 0.
+	|	current item is open
+	|	=>	insert new item as child, and set length
+	|		of the parent.
+	|		make new item the current item (is closed)
+	|	current item is closed
+	|	=>	insert new item after current item
+	|		inherit group/parent information.
+	|		extend the parent's length, if any.
+	|
+	|	For track NULL the new item's start is at the end of
+	|	the highest end time across all tracks.
+	|	The new item is placed as current in __all__ tracks.
+
+	open
+	|	open the current item
+	|	fail/reject if it has a parent
+	|	fail/reject if its length is > 0, and without children
+	|	(group length is derived from children).
+	|	<<show state>>
+
+	close
+	|	close current group
+	|	ignore if item has no parent
+	|	else:	make parent the current item, note closed.
+	|	<<show state>>
+
+	drop
+	remove
+	|	remove the current item (and possibly its children)
+	|	make the previous non-child item in time the current item
+	|	NOTE: I.e. after the undo we are adding after a group, not
+	|	      extending the group (no implicit 'open').
+	|	<<show state>>
+
+	pin
+	|	pin the current item to it start.
+	|	i.e. make it impossible to "move".
+	|	can only pin items outside of a group.
+	|	cannot pin items in a group.
+
+	retitle ?--speaker?TEXT
+	|	change desc or label of current item, depending on type
+	|	fail if using --speaker for placeholder item
+	|	<<show state>>
+
+	extend LENGTH
+	|	extend length of current item
+	|	fail if it is a group, i.e. parent to children.
+	|		extend the parent's length, if any.
+	|	<<show state>>
+
+	move	TIME
+	|	move current item to the given start time. Move
+	|	all children with it. Pinned items cannot be
+	|	moved.
+	|	<<show state>>
+
+	NOTE:
+	-	As given the current item is either the fully last item
+		added, or the last item added excluding children.
+		Regardless, it is the last item in time.
+
+	-	We currently have no command to change the current
+                item to something in the middle of the timeline. This
+                means that moving an item, or extending it does __not__
+		have to care about items coming after it.
+
+	Nav commands to move the current item ?
+	(See WIBNI below)
+	yank, copy commands ?
+
+	yank ?FROM? ?TO?
+	|	Remember current item (and children) in a buffer.
+	|	Or, if specified, all items beginning with FROM to current, or TO
+
+	insert ?--keep-track?
+	|	Insert copy of item in the yank-buffer into
+	|	current day and track, or just current day.
+	|	- Timing data is copied unchanged!
+	|	- Track is kept unchanged when --keep-track is specified.
+	|	Copy will fail if generated item violates constraints.
+
+????	mark REF
+
+	forw(ard)	down	++
+	back(ward)	up	--
+	|	Move the current item
+
+	goto REF
+	|	Make REF the current item
+
+	-	When implementing navigation all commands
+
+		- inserting an item  - event, placeholder
+		- extending an item  - extend
+		- moving an item     - move
+		- removing an item   - undo
+
+		(generally: changing time (start/length) attributes of
+		an item)
+
+		have to be modified to take the items after the
+		current item into account (i.e. move them
+		appropriately to keep the contraints inviolate)
+
+	show
+	|	<<show state>>
+
+Example
+===========
+Tcl 2014 Schedule, entered interactively ...
+
+% cm schedule
+> new Tcl'2014
+> start 9:00
+> +track 'Tutorial A'
+> +track 'Tutorial B'
+> +track 'Tech Session'
+> +track 'Community'
+> track= 'Tutorial A'
+> event Tutorials
+> open
+> placeholder 3:30 @T0m0
+> close
+> track= 'Tutorial B'
+> event Tutorials
+> open
+> placeholder 3:30 @T0m1
+> close
+> track= --unset
+> event 'Lunch Break'
+> open
+> event 60 Lunch Provided
+> close
+> track= 'Tutorial A'
+> event Tutorials
+> open
+> placeholder 3:30 @T0a0
+> close
+> track= 'Tutorial B'
+> event Tutorials
+> open
+> placeholder 3:30 @T0a1
+> close
+> track= 'Tutorial A'
+> event 60 'Free Tutorial'
+> track= Community
+> event 'Social and BOFs'
+> move 19:00
+> open
+> event 5:00 "Hospitality suite" "Tcl Community Association"
+> close
+
+> ;## WIBNI to duplicate this ((group) item) across days
+> yank
+> day= 1
+> insert --keep-track
+> next
+> insert --keep-track
+> next
+> insert --keep-track
+> next
+> insert --keep-track
+> day= 0
+
+> ;## WIBNI to duplicate an entire day
+> ;## COST  -- placeholder uniqueness required auto-modify.
+> ;## COST  -- need command to edit other than current item
+> ;## COST  -- or command to switch current item into middle.
+> ;## COST  -- and either restrict editing to non-time attributes
+> ;## COST  -- or handle movement of items after current one.
+> next
+> ;# -- ENTER day 1 - tutorial day 2
+> next
+> track= 'Tech Session'
+> event 'Welcome and Keynote'
+> open
+> event 'Welcome and Announcements' Host
+> placeholder 1:30 @K1
+> close
+> event Break
+> open
+> event 15 Break
+> close
+> placeholder @S1
+> open
+> event 30 @S1.1
+> event 30 @S1.2
+> event 30 @S1.3
+> close
+> event 'Lunch Break'
+> open
+> event 1:00 'Conference Luncheon' "Tcl Community Association"
+> close
+> placeholder @S2
+> open
+> event 30 @S2.1
+> event 30 @S2.2
+> event 30 @S2.3
+> close
+> placeholder @S3
+> open
+> event 30 @S3.1
+> event 30 @S3.2
+> event 30 @S3.3
+> close
+> event 'Dinner Break'
+> open
+> event 2:30 "See registration for suggestions" "On your own"
+> close
+> ;## -- enter hospitality suite
+> ;# enter day 3 - conference day 4
+> ;# enter day 4 - conference day 5
