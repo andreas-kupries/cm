@@ -16,6 +16,8 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require debug
+package require debug::caller
 package require cm::db::city
 package require cm::util
 package require cmdr::validate::common
@@ -42,10 +44,23 @@ namespace eval ::cm::validate::city {
 
 # # ## ### ##### ######## ############# ######################
 
+debug level  cm/validate/city
+debug prefix cm/validate/city {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::validate::city::default  {p}   { return {} }
 proc ::cm::validate::city::release  {p x} { return }
 proc ::cm::validate::city::validate {p x} {
-    switch -exact -- [util match-substr id [city known] nocase $x] {
+    debug.cm/validate/city {}
+
+    set known [city known]
+    debug.cm/validate/city {known = ($known)}
+
+    set match [util match-substr id $known nocase $x]
+    debug.cm/validate/city {match $match}
+
+    switch -exact -- $match {
 	ok        { return $id }
 	fail      { fail $p CITY "a city name"              $x }
 	ambiguous { fail $p CITY "an unambiguous city name" $x }

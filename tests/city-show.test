@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## city management - printing citys
+## city management - printing cities
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -27,6 +27,16 @@ test city-show-1.1 {city show, bogus name} -body {
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result {* cmdr: Expected a city name for input "city", got "BOGUS"}
+
+test city-show-1.2 {city show, ambiguous name} -body {
+    run city show C
+} -setup {
+    stage-open
+    run city new Ca S N
+    run city new Cb S N
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected an unambiguous city name for input "city", got "C"}
 
 # # ## ### ##### ######## ############# #####################
 

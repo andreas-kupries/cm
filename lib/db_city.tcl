@@ -141,7 +141,7 @@ proc ::cm::db::city::known {} {
     } {
 	# csnkey : list (name, state, nation)
 	#        : state may be the empty string.
-	#        : lower-case normalized
+	#        : all lower-case normalized
 
 	if {[lindex $csnkey 1] == {}} {
 	    set csnkey [lreplace $csnkey 1 1]

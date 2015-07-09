@@ -1,0 +1,47 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - location contact information
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-contact-1.0 {location contact, wrong args, not enough, interactive impossible} -body {
+    # We have no locations to select interactively, so that fails too!
+    run location contact
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-contact-1.1 {location contact, wrong args, too many} -body {
+    run location contact BP BF BL LP LF LL X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test location-contact-2.0 {location contact} -body {
+    run location contact BP BF BL LP LF LL
+    run location show
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/nszcsn-contact.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
