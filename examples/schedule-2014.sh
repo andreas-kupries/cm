@@ -26,20 +26,20 @@ cms day select 0
 
 cms track select     'Tutorial A'
 cms item event       Tutorials
-cms item placeholder @T0m0     -L 03:30 --child
+cms item placeholder @T1m1     -L 03:30 --child
 cms track select     'Tutorial B'
 cms item event       Tutorials
-cms item placeholder @T0m1     -L 03:30 --child
+cms item placeholder @T1m2     -L 03:30 --child
 
 cms item event 'Lunch Break'    --across
 cms item event 'Lunch Provided' -L 60 --child
 
 cms track select     'Tutorial A'
 cms item event       Tutorials
-cms item placeholder @T0a0     -L 03:30 --child
+cms item placeholder @T1a1     -L 03:30 --child
 cms track select     'Tutorial B'
 cms item event       Tutorials
-cms item placeholder @T0a1     -L 03:30 --child
+cms item placeholder @T1a2     -L 03:30 --child
 
 cms track select     'Tutorial A'
 cms item event       'Free Tutorial' -L 60
@@ -53,24 +53,24 @@ cms day next
 
 cms track select     'Tutorial A'
 cms item event       Tutorials
-cms item placeholder @T1m0     -L 03:30 --child
+cms item placeholder @T2m1     -L 03:30 --child
 cms track select     'Tutorial B'
 cms item event       Tutorials
-cms item placeholder @T1m1     -L 03:30 --child
+cms item placeholder @T2m2     -L 03:30 --child
 
 cms item event 'Lunch Break'    --across
 cms item event 'Lunch Provided' -L 60 --child
 
 cms track select     'Tutorial A'
 cms item event       Tutorials
-cms item placeholder @T1a0     -L 03:30 --child
+cms item placeholder @T2a1     -L 03:30 --child
 cms track select     'Tutorial B'
 cms item event       Tutorials
-cms item placeholder @T1a1     -L 03:30 --child
+cms item placeholder @T2a2     -L 03:30 --child
 
 cms track select     'Tutorial A'
 cms item event       'Certification Exam' -B 19:30
-cms item placeholder @T1e1     -L 60 --child
+cms item placeholder @T2e1     -L 60 --child
 
 cms track select Community
 cms item event   'Social and BOFs' -B 19:00

@@ -43,7 +43,7 @@ namespace eval ::cm::db::pschedule {
 	track-name-counts track-names track-known \
 	track-selection track-details track-piece \
 	item-new-event item-new-placeholder item-details item-piece \
-	item-all \
+	item-all item-placeholders \
 	day-max day-cover day-selection
 
     # select select_track select_day select_item
@@ -960,6 +960,18 @@ proc ::cm::db::pschedule::item-all {pschedule} {
 	ON              I.track = T.id
 	WHERE I.pschedule = :pschedule
 	ORDER BY I.day, I.start, T.dname, I.parent
+    }]
+}
+
+proc ::cm::db::pschedule::item-placeholders {pschedule} {
+    debug.cm/db/pschedule {}
+    setup
+
+    return [db do eval {
+	SELECT label
+	FROM   pschedule_item
+	WHERE  pschedule = :pschedule
+	AND    label IS NOT NULL
     }]
 }
 
