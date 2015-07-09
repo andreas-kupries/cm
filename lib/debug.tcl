@@ -15,8 +15,7 @@
 
 package require Tcl 8.5
 package require debug
-
-package require cm::table
+package require cmdr::table
 
 # # ## ### ##### ######## #############
 
@@ -29,8 +28,7 @@ namespace eval ::cm::debug {
     namespace export thelevels
     namespace ensemble create
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## #############
@@ -64,7 +62,6 @@ proc ::cm::debug::thelevels {} {
     package require cm::location
     package require cm::mailer
     package require cm::mailgen
-    package require cm::table
     package require cm::template
     package require cm::tutorial
     package require cm::util
@@ -96,11 +93,14 @@ proc ::cm::debug::thelevels {} {
 
     package require cmdr::ask
     package require cmdr::color
+    package require cmdr::pager
+    package require cmdr::table
     package require cmdr::tty
     package require cmdr::validate::date
     package require cmdr::validate::posint
     package require cmdr::validate::weekday
     package require cmdr::validate::year
+    package require cmdr::validate::time::minute
 
     return [debug names]
 }

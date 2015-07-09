@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::ask
 package require cmdr::color
+package require cmdr::table
 package require cmdr::validate::date
 package require cmdr::validate::weekday
 package require dbutil
@@ -37,7 +38,6 @@ package require cm::db
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
-package require cm::table
 package require cm::template
 package require cm::tutorial
 package require cm::util
@@ -91,8 +91,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::config::core
     rename core config
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################
