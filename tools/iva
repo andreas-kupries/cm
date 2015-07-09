@@ -1,0 +1,50 @@
+#!/usr/bin/env tclsh
+# -*- tcl -*-
+# IV Analysis
+package require Tcl 8.5
+
+# GOAL: Mostly automatic creation of the IV_worksheet
+
+set top [file dirname [file dirname [file normalize [info script]]]]
+cd $top
+
+foreach line [split [exec grep -rn IV_ .] \n] {
+
+    if {![regexp {^\./([^:]*):([^:]*):(.*)$} $line -> file lno payload]} {
+	puts "BAD: $line"
+	continue
+    }
+
+    if {[string match doc/* $file]} continue
+
+    set location [list $file $lno]
+
+    set line $payload
+    set defs {}
+    while {[regexp {\[(IV_[STI]_\d*)\]} $line -> def]} {
+	regsub -- "\[$def\]" $line {} line
+	lappend defs $def
+    }
+    foreach def $defs {
+	dict append defined $def $payload\n
+    }
+    # TODO defs: possibly nice formatting, extraction of just the text.
+
+    # TODO: Automatically find the equivalences => uses in defs, reference graph.
+
+    set uses {}
+    while {[regexp {<(IV_[STI]_\d*)>} $line -> use]} {
+	regsub -- "<${use}>" $line {} line
+	lappend uses $use
+    }
+    foreach use $uses {
+	dict lappend used $use $location
+    }
+    # TODO: separate by code vs tests.
+
+}
+
+
+array set d $defined ; parray d
+array set u $used    ; parray u
+

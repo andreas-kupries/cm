@@ -1,0 +1,59 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - selecting the active day in a schedule - first day
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-first-1.0 {schedule day first, wrong args, too many} -body {
+    run schedule day first X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-first-2.0 {schedule day first, no active schedule} -body {
+    run schedule day first -n
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+    run schedule clear-select
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* Undefined: schedule}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-day-first-2.1 {schedule day first} -body {
+    run schedule day first
+} -setup {
+    stage-open
+    run schedule add SCHEDULE
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Activating day "0" ... OK}
+
+test schedule-day-first-2.2 {schedule day first, persistent} -body {
+    run schedule day first
+} -setup {
+    stage-open
+    run schedule add       SCHEDULE
+    run schedule track add TRACK
+    run schedule item event -D 0 E1
+    run schedule item event -D 1 E2
+} -cleanup {
+    stage-close
+} -match glob -result {*Schedule "SCHEDULE": Activating day "0" ... OK}
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

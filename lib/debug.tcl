@@ -96,11 +96,11 @@ proc ::cm::debug::thelevels {} {
     package require cm::validate::rstatus
     package require cm::validate::speaker
     package require cm::validate::sponsor
-    package require cm::validate::staffrole
+    package require cm::validate::staff-role
     package require cm::validate::submission
     package require cm::validate::submitter
-    package require cm::validate::talkstate
-    package require cm::validate::talktype
+    package require cm::validate::talk-state
+    package require cm::validate::talk-type
     package require cm::validate::template
     package require cm::validate::timeline
     package require cm::validate::tutorial

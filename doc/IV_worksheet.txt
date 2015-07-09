@@ -1,0 +1,23 @@
+Invariants, and their status
+============================
+
+Label		Defined	Checked		Tested
+-----		-------	-------		------
+IV_S_0001	*	db/tcl		*
+IV_S_0002	*	db		*
+IV_S_0003	*	db			X - item tests needed
+IV_S_0004	*	db			X - schedule tests (select /activate - unset/deactivate)
+IV_S_0005	*	  tcl		*
+-----		-------	-------		------
+IV_T_0001	^IV_S_0002
+IV_T_0002	*	db/tcl		*
+IV_T_0003	*				X - item tests needed
+IV_T_0004	*				X - code and tests needed
+-----		-------	-------		------
+IV_I_0001	^IV_S_0003
+IV_I_0002	*				X - code and tests needed
+IV_I_0003	^IV_T_0003
+IV_I_0004	*				X - code and tests needed
+IV_I_0005	*				X - code and tests needed
+-----		-------	-------		------
+Label		Defined	Checked		Tested
