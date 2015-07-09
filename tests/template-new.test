@@ -46,7 +46,7 @@ test template-new-2.0 {template new, argument} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/template-list.txt]
+} -result [viewFile support/template/list.txt]
 
 test template-new-2.1 {template new, stdin} -body {
     run template new foo << bar
@@ -55,7 +55,7 @@ test template-new-2.1 {template new, stdin} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/template-list.txt]
+} -result [viewFile support/template/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

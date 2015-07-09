@@ -46,7 +46,7 @@ test config-unset-2.0 {config unset} -body {
     run config set port 333
 } -cleanup {
     stage-close
-} -result [viewFile support/config-unset.txt]
+} -result [viewFile support/config/unset.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

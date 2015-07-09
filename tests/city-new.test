@@ -44,7 +44,7 @@ test city-new-1.3 {city new, wrong args, too many} -body {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
 
-test city-new-1.2 {city new, duplicate, case-insensitive} -body {
+test city-new-1.4 {city new, duplicate, case-insensitive} -body {
     run city new cIty stAte natION
 } -setup {
     stage-open
@@ -62,7 +62,7 @@ test city-new-2.0 {city new} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/city-list.txt]
+} -result [viewFile support/city/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

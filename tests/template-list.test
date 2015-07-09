@@ -28,7 +28,7 @@ test template-list-2.0 {template list, defaults, empty} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/template-list-empty.txt]
+} -result [viewFile support/template/list-empty.txt]
 
 test template-list-2.1 {template list, not empty} -body {
     run template list
@@ -37,7 +37,7 @@ test template-list-2.1 {template list, not empty} -body {
     run template new foo bar
 } -cleanup {
     stage-close
-} -result [viewFile support/template-list.txt]
+} -result [viewFile support/template/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
