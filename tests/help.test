@@ -18,15 +18,15 @@ kt source support/common.tcl
 
 test help-1.0 {help, categorized} -body {
     run help --width 300
-} -result [viewFile support/h-cat.txt]
+} -result [viewFile support/help/cat.txt]
 
 test help-1.1 {help, short} -body {
     run help --width 79 --short
-} -result [viewFile support/h-short.txt]
+} -result [viewFile support/help/short.txt]
 
 test help-1.2 {help, list} -body {
     run help --width 79 --list
-} -result [viewFile support/h-list.txt]
+} -result [viewFile support/help/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

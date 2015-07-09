@@ -44,7 +44,7 @@ test config-get-2.0 {config get} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/config-get.txt]
+} -result [viewFile support/config/get.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

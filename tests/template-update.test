@@ -38,7 +38,7 @@ test template-update-2.0 {template update, argument} -body {
     run template new foo bar
 } -cleanup {
     stage-close
-} -result [viewFile support/template-fox.txt]
+} -result [viewFile support/template/fox.txt]
 
 test template-update-2.1 {template update, stdin} -body {
     run template update foo << fox
@@ -48,7 +48,7 @@ test template-update-2.1 {template update, stdin} -body {
     run template new Foo bar
 } -cleanup {
     stage-close
-} -result [viewFile support/template-fox.txt]
+} -result [viewFile support/template/fox.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

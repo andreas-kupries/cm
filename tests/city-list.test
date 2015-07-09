@@ -28,7 +28,7 @@ test city-list-2.0 {city list, defaults, empty} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result [viewFile support/city-list-empty.txt]
+} -result [viewFile support/city/list-empty.txt]
 
 test city-list-2.1 {city list, not empty} -body {
     run city list
@@ -37,7 +37,7 @@ test city-list-2.1 {city list, not empty} -body {
     run city new C S N
 } -cleanup {
     stage-close
-} -result [viewFile support/city-list.txt]
+} -result [viewFile support/city/list.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
