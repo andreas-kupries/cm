@@ -4513,13 +4513,11 @@ proc ::cm::conference::current {} {
     try {
 	set id [config get @current-conference]
     } trap {CM CONFIG GET UNKNOWN} {e o} {
-	puts [color bad "No conference chosen, please \"select\" a conference"]
-	::exit 0
+	util user-error "No conference chosen, please \"select\" a conference"
     }
     if {[has $id]} { return $id }
 
-    puts [color bad "Bad conference index, please \"select\" a conference"]
-    ::exit 0
+    util user-error "Bad conference index, please \"select\" a conference"
 }
 
 proc ::cm::conference::has {id} {
