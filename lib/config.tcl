@@ -17,12 +17,12 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::table
 package require debug
 package require debug::caller
 package require dbutil
 package require try
 
-package require cm::table
 package require cm::db
 package require cm::config::core
 package require cm::validate::config
@@ -39,8 +39,7 @@ namespace eval ::cm::config {
     namespace import ::cm::validate::config
     rename config vt-config
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################

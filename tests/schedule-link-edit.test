@@ -1,0 +1,119 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - linking schedules and conferences, edit logical schedule.
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-edit-1.0 {conference schedule-edit, wrong args, not enough} -body {
+    run conference schedule-edit
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-link-edit-1.1 {conference schedule-edit, wrong args, not enough} -body {
+    run conference schedule-edit NAME
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-link-edit-1.2 {conference schedule-edit, wrong args, not enough} -body {
+    run conference schedule-edit NAME TYPE
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test schedule-link-edit-1.3 {conference schedule-edit, wrong args, too many} -body {
+    run conference schedule-edit NAME TYPE VALUE X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-edit-2.0 {conference schedule-edit, no conference} -body {
+    run conference schedule-edit label fixed string
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test schedule-link-edit-2.1 {conference schedule-edit, active conference, no linked schedule} -body {
+    run conference schedule-edit label fixed string
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a slot name for input "label", got "label"}
+# no schedule linked => no placeholders aka slots => validation fails.
+
+# TODO: bad edit type
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-edit-3.0 {conference schedule-edit, active conference, linked schedule} -body {
+    run conference schedule-edit @K fixed string
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @K
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-edit-fixed.txt]
+
+test schedule-link-edit-3.1 {conference schedule-edit, active conference, linked schedule} -body {
+    run conference schedule-edit @K tutorial @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @K
+    run tutorial add me foo FOO FUBAR
+    run conference add-tutorial 1 morning 1 @me:foo
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-edit-tutorial.txt]
+
+test schedule-link-edit-3.2 {conference schedule-edit, active conference, linked schedule} -body {
+    run conference schedule-edit @K talk TALK
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @K
+    run submit TALK me << ABSTRACT ;# TODO fix
+    run submission accept TALK
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-edit-talk.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
