@@ -208,7 +208,8 @@ proc ::cm::conference::cmd_create {config} {
 			:length,
 			30,       -- minutes per talk
 			3,        -- talks per session
-			1         -- registration pending
+			1,        -- registration pending
+			NULL      -- No linked schedule.
 	        )
 	    }
 	}
@@ -4929,6 +4930,8 @@ proc ::cm::conference::Setup {} {
     ::cm::city::Setup
     ::cm::location::Setup
     ::cm::contact::Setup
+
+    ::cm::tutorial::Setup
 
     cm::db::booked::Setup     ;# possible loop, these two refer back to
     cm::db::registered::Setup ;# conference.
