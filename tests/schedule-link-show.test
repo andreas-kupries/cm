@@ -1,0 +1,64 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - linking schedules and conferences, show logical schedule.
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-show-1.0 {conference schedule-show, wrong args, too many} -body {
+    run conference schedule-show X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-show-2.0 {conference schedule-show, no conference} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test schedule-link-show-2.1 {conference schedule-show, active conference, no linked schedule} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No schedule defined}
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-show-3.0 {conference schedule-show, active conference, linked schedule} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @S1
+    run schedule item placeholder @K1
+    run schedule item placeholder @T1m1
+    run tutorial add me foo FOO FUBAR
+    run conference add-tutorial 1 morning 1 @me:foo
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-show.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
