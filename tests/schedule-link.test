@@ -1,0 +1,80 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - linking schedules and conferences
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-1.0 {conference schedule, wrong args, not enough} -body {
+    run conference -n schedule
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test schedule-link-1.1 {conference schedule, wrong args, too many} -body {
+    run conference schedule S X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-2.0 {conference schedule, no conference} -body {
+    run conference -n schedule S
+} -setup {
+    stage-open
+    run schedule add S
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test schedule-link-2.1 {conference schedule, active conference, bogus schedule} -body {
+    run conference schedule S
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a schedule name for input \"name\", got \"S\""
+
+# # ## ### ##### ######## ############# #####################
+
+test schedule-link-3.0 {conference schedule, active conference, have schedule} -body {
+    run conference schedule S
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+} -cleanup {
+    stage-close
+} -match glob -result {*Conference "C": Linking to schedule "S" ... OK}
+
+test schedule-link-3.1 {conference schedule, active conference, have schedule, empty} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-empty.txt]
+
+# TODO: phys schedule with placeholders, demo heuristiscs (sessions, tutorials)
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
