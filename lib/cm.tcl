@@ -27,13 +27,11 @@ package require cmdr
 package require debug
 package require debug::caller
 package require lambda
-package require cm::table
+package require cmdr::table
 
 cmdr color define heading =bold ;# Table header color.
-
-cm::table::show ::cmdr pager
-
-cmdr color define heading =bold ;# Table header color.
+cmdr table show \
+    ::cmdr pager
 
 #package require cm::seen  ; # set-progress
 
@@ -824,6 +822,40 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
+	private schedule {
+	    section {Conference Management}
+	    description { Link a schedule to the conference }
+	    input name {
+		The name of the schedule to use.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+	} [cm::call conference cmd_schedule_set]
+
+	private schedule-show {
+	    section {Conference Management}
+	    description { Show the current logical schedule for the conference }
+	} [cm::call conference cmd_schedule_show]
+
+	private schedule-edit {
+	    section {Conference Management}
+	    description { Edit the logical schedule for the conference }
+	    input label {
+		Name of the slot to edit.
+	    } { validate [cm::vt schedule-slot] }
+	    input type {
+		New type of the slot
+	    } { validate [cm::vt schedule-slot-type] }
+	    input value {
+		New value of the slot, type-dependent interpretation.
+	    } { validate [cm::vt schedule-slot-value] }
+	} [cm::call conference cmd_schedule_edit]
+
+	# TODO: Drop physical schedule, integrated drop of logical entries.
 	# - -- --- ----  -------- ------------- ----------------------
 
 	private rate {

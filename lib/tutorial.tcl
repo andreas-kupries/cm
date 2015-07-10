@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
+package require cmdr::table
 package require debug
 package require debug::caller
 package require dbutil
@@ -27,7 +28,6 @@ package provide cm::tutorial 0 ;# circular through contact, campaign, conference
 
 package require cm::contact
 package require cm::db
-package require cm::table
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -40,7 +40,7 @@ namespace eval ::cm::tutorial {
     namespace export \
 	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
 	cmd_settag known known-tag known-title get details select \
-	known-half get-half have-some dayrange trackrange \
+	known-half get-half have-some dayrange trackrange get-scheduled \
 	cell speakers scheduled
     namespace ensemble create
 
@@ -50,8 +50,7 @@ namespace eval ::cm::tutorial {
     namespace import ::cm::contact
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -559,8 +558,23 @@ proc ::cm::tutorial::cell {conference day half track} {
     Setup
 
     # Get data from the exactly addressed cell in the schedule.
-    return [db do eval {
+    return [db do onecolumn {
 	SELECT tutorial
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+	AND    day        = :day
+	AND    half       = :half
+	AND    track      = :track
+    }]
+}
+
+proc ::cm::tutorial::cell-id {conference day half track} {
+    debug.cm/tutorial {}
+    Setup
+
+    # Get data from the exactly addressed cell in the schedule.
+    return [db do onecolumn {
+	SELECT id
 	FROM   tutorial_schedule
 	WHERE  conference = :conference
 	AND    day        = :day
@@ -583,6 +597,18 @@ proc ::cm::tutorial::speakers {conference} {
 		     WHERE S.conference = :conference
 		     AND   S.tutorial   = T.id)
 	ORDER BY dname
+    }]
+}
+
+proc ::cm::tutorial::get-scheduled {id} {
+    debug.cm/tutorial {}
+    Setup
+    return [db do onecolumn {
+	SELECT title
+	FROM   tutorial
+	WHERE  id IN (SELECT tutorial
+		      FROM   tutorial_schedule
+		      WHERE  id = :id)
     }]
 }
 

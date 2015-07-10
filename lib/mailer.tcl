@@ -15,13 +15,13 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::table
 package require tls
 package require smtp
 package require mime
 package require cm::config::core
 package require cm::db
 package require cm::mailgen
-package require cm::table
 package require cm::validate::config
 
 debug level  cm/mailer
@@ -51,8 +51,7 @@ namespace eval ::cm::mailer {
     namespace import ::cm::config::core
     rename core config
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################

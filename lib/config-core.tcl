@@ -46,6 +46,7 @@ debug prefix cm/config/core {[debug caller] | }
 
 proc ::cm::config::core::assign {key value} {
     debug.cm/config/core {}
+    Setup
 
     # Tricky code handling setting a value for a non-existing key, or
     # overwriting the value of an existing one.
@@ -65,8 +66,8 @@ proc ::cm::config::core::assign {key value} {
 	    VALUES (:key, :value);
 
 	    UPDATE config
-	    SET   value = :value
-	    WHERE key = :key
+	    SET    value = :value
+	    WHERE  key = :key
 	}
     }
     return
@@ -82,10 +83,12 @@ proc ::cm::config::core::assign {key value} {
 
 proc ::cm::config::core::drop {key} {
     debug.cm/config/core {}
+    Setup
+
     db do transaction {
 	db do eval {
 	    DELETE
-	    FROM config
+	    FROM  config
 	    WHERE key = :key
 	}
     }
@@ -94,10 +97,12 @@ proc ::cm::config::core::drop {key} {
 
 proc ::cm::config::core::drop-glob {pattern} {
     debug.cm/config/core {}
+    Setup
+
     db do transaction {
 	db do eval {
 	    DELETE
-	    FROM config
+	    FROM  config
 	    WHERE key GLOB :pattern
 	}
     }
@@ -106,13 +111,18 @@ proc ::cm::config::core::drop-glob {pattern} {
 
 proc ::cm::config::core::get-list {} {
     debug.cm/config/core {}
+    Setup
+
     return [db do eval {
-	SELECT key, value FROM config
+	SELECT key
+	,      value
+	FROM   config
     }]
 }
 
 proc ::cm::config::core::get {key} {
     debug.cm/config/core {}
+    Setup
 
     if {![has $key]} {
 	return -code error \
@@ -122,12 +132,13 @@ proc ::cm::config::core::get {key} {
     return [db do onecolumn {
 	SELECT value
 	FROM   config
-	WHERE key = :key
+	WHERE  key = :key
     }]
 }
 
 proc ::cm::config::core::get* {key default} {
     debug.cm/config/core {}
+    Setup
 
     if {![has $key]} {
 	return $default
@@ -135,34 +146,40 @@ proc ::cm::config::core::get* {key default} {
     return [db do onecolumn {
 	SELECT value
 	FROM   config
-	WHERE key = :key
+	WHERE  key = :key
     }]
 }
 
 proc ::cm::config::core::has {key} {
     debug.cm/config/core {}
+    Setup
+
     return [db do exists {
 	SELECT value
 	FROM   config
-	WHERE key = :key
+	WHERE  key = :key
     }]
 }
 
 proc ::cm::config::core::has-glob {pattern} {
     debug.cm/config/core {}
+    Setup
+
     return [db do exists {
 	SELECT value
 	FROM   config
-	WHERE key GLOB :pattern
+	WHERE  key GLOB :pattern
     }]
 }
 
 proc ::cm::config::core::names {pattern} {
     debug.cm/config/core {}
+    Setup
+
     return [db do eval {
 	SELECT name
 	FROM   config
-	WHERE key GLOB :pattern
+	WHERE  key GLOB :pattern
     }]
 }
 
