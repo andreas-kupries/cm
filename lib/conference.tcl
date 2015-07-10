@@ -1996,8 +1996,7 @@ proc ::cm::conference::cmd_schedule_show {config} {
     flush stdout
 
     if {$xpschedule eq {}} {
-	puts [color bad {No schedule defined}]
-	return
+	util user-error {No schedule defined}
     }
 
     set pslabel [pschedule piece $xpschedule dname]
@@ -2039,8 +2038,7 @@ proc ::cm::conference::cmd_schedule_edit {config} {
     flush stdout
 
     if {$xpschedule eq {}} {
-	puts [color bad {No schedule defined}]
-	return
+	util user-error {No schedule defined}
     }
 
     set pslabel [pschedule piece $xpschedule dname]
