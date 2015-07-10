@@ -1,0 +1,2 @@
+~/.cm/managed
+Create person "Myself" ... OK

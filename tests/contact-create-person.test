@@ -1,0 +1,46 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contact, create-person
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-create-person-1.0 {contact create-person, wrong args, not enough} -body {
+    run contact create-person
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test contact-create-person-1.1 {contact create-person, wrong args, too many} -body {
+    run contact create-person NAME TAG X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# TODO: duplicate person
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-create-person-3.0 {contact create-person} -body {
+    run contact create-person -E me@myself.org Myself me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/create-person.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

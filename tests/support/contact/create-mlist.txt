@@ -1,0 +1,2 @@
+~/.cm/managed
+Create list "Myself" with mail "me@myself.org" ... OK
