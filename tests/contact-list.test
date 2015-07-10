@@ -1,0 +1,59 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contact, create-person
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-list-1.0 {contact list, wrong args, too many} -body {
+    run contacts PATTERN X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# TODO Bad filter options.
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-list-3.0 {contact list, person} -body {
+    run contact list
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-person.txt]
+
+test contact-list-3.1 {contact list, mailing list} -body {
+    run contacts
+} -setup {
+    stage-open
+    run contact create-list Myself me@myself.org
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-mlist.txt]
+
+test contact-list-3.2 {contact list, company} -body {
+    run contacts
+} -setup {
+    stage-open
+    run contact create-company -E me@myself.org Myself
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-company.txt]
+
+# TODO Filtering
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
