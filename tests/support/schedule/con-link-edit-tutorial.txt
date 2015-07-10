@@ -1,0 +1,3 @@
+~/.cm/managed
+
+Conference "C": Schedule "S": Slot "@K" := Tutorial "FOO" ... OK
