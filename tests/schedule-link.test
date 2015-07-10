@@ -74,7 +74,63 @@ test schedule-link-3.1 {conference schedule, active conference, have schedule, e
     stage-close
 } -result [viewFile support/schedule/con-link-empty.txt]
 
-# TODO: phys schedule with placeholders, demo heuristiscs (sessions, tutorials)
+test schedule-link-3.2 {conference schedule, active conference, have schedule, session heuristics} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @S1
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-session.txt]
+
+test schedule-link-3.3 {conference schedule, active conference, have schedule, general string} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @K1
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-fixed.txt]
+
+test schedule-link-3.4 {conference schedule, active conference, have schedule, missing tutorial} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @T1m1
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-tutorial-missing.txt]
+
+test schedule-link-3.5 {conference schedule, active conference, have schedule, link tutorial} -body {
+    run conference schedule-show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run schedule add S
+    run schedule track add T
+    run schedule item placeholder @T1m1
+    run tutorial add me foo FOO FUBAR
+    run conference add-tutorial 1 morning 1 @me:foo
+    run conference schedule S
+} -cleanup {
+    stage-close
+} -result [viewFile support/schedule/con-link-tutorial-link.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests
