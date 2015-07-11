@@ -31,7 +31,7 @@ namespace eval ::cm::db {
     namespace ensemble create
 }
 namespace eval ::cm::db::registered {
-    namespace export listing add remove pupil-of
+    namespace export listing add remove pupil-of setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -46,6 +46,8 @@ debug prefix cm/db/registered {[debug caller] | }
 
 proc ::cm::db::registered::pupil-of {registration slot tutorial} {
     debug.cm/db/registered {}
+    setup
+
     # tutorial => tutorial_schedule.id -- check conference vs registration conference.
 
     lappend map @@@ tut$slot
@@ -88,6 +90,9 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
 
 # MOVE this to the tutorial db layer FUTURE TODO
 proc ::cm::db::registered::get-t-title {id} {
+    debug.cm/db/registered {}
+    setup
+
     if {$id eq {}} { return {} }
     if {$id < 0} { return {} }
     return [db do onecolumn {
@@ -101,6 +106,7 @@ proc ::cm::db::registered::get-t-title {id} {
 
 proc ::cm::db::registered::listing {conference} {
     debug.cm/db/registered {}
+    setup
 
     set r {}
     db do eval {
@@ -161,6 +167,8 @@ proc ::cm::db::registered::listing {conference} {
 
 proc ::cm::db::registered::add {conference contact walkin} {
     debug.cm/db/registered {}
+    setup
+
     db do eval {
 	INSERT
 	INTO registered
@@ -175,6 +183,8 @@ proc ::cm::db::registered::add {conference contact walkin} {
 
 proc ::cm::db::registered::remove {conference contact} {
     debug.cm/db/registered {}
+    setup
+
     db do eval {
 	DELETE
 	FROM registered
@@ -186,7 +196,7 @@ proc ::cm::db::registered::remove {conference contact} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::registered::Setup {} {
+proc ::cm::db::registered::setup {} {
     debug.cm/db/registered {}
 
     # TODO: registered - setup conference
@@ -220,22 +230,16 @@ proc ::cm::db::registered::Setup {} {
     }
 
     # Shortcircuit further calls
-    proc ::cm::db::registered::Setup {args} {}
+    proc ::cm::db::registered::setup {args} {}
     return
 }
 
-proc ::cm::db::registered::Dump {} {
+proc ::cm::db::registered::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/registered {}
+    setup
 
-    db do eval {
-	SELECT name, state, nation
-	FROM   city
-	ORDER BY nation, state, name
-    } {
-	cm dump save \
-	    city create $name $state $nation
-    }
+    # TODO future - call from conference dump /arg: conference.
     return
 }
 
