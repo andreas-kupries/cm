@@ -31,7 +31,7 @@ namespace eval ::cm::db {
     namespace ensemble create
 }
 namespace eval ::cm::db::booked {
-    namespace export listing add remove
+    namespace export listing add remove setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -46,6 +46,8 @@ debug prefix cm/db/booked {[debug caller] | }
 
 proc ::cm::db::booked::listing {conference} {
     debug.cm/db/booked {}
+    setup
+
     return [db do eval {
 	SELECT CO.dname        AS dname
 	,      L.id            AS location
@@ -71,6 +73,8 @@ proc ::cm::db::booked::listing {conference} {
 
 proc ::cm::db::booked::add {conference contact hotel} {
     debug.cm/db/booked {}
+    setup
+
     db do eval {
 	INSERT
 	INTO booked
@@ -84,6 +88,8 @@ proc ::cm::db::booked::add {conference contact hotel} {
 
 proc ::cm::db::booked::remove {conference contact} {
     debug.cm/db/booked {}
+    setup
+
     db do eval {
 	DELETE
 	FROM booked
@@ -95,7 +101,7 @@ proc ::cm::db::booked::remove {conference contact} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::booked::Setup {} {
+proc ::cm::db::booked::setup {} {
     debug.cm/db/booked {}
 
     # TODO: booked - setup conference
@@ -120,22 +126,17 @@ proc ::cm::db::booked::Setup {} {
     }
 
     # Shortcircuit further calls
-    proc ::cm::db::booked::Setup {args} {}
+    proc ::cm::db::booked::setup {args} {}
     return
 }
 
-proc ::cm::db::booked::Dump {} {
+proc ::cm::db::booked::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/booked {}
+    setup
 
-    db do eval {
-	SELECT name, state, nation
-	FROM   city
-	ORDER BY nation, state, name
-    } {
-	cm dump save \
-	    city create $name $state $nation
-    }
+    # TODO future - call from conference dump /arg: conference.
+
     return
 }
 

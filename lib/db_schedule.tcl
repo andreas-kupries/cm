@@ -232,6 +232,8 @@ proc ::cm::db::schedule::setup {} {
 
     # schedule - Linkage conference </> pschedule
 
+    # TODO !! Change label into a 'pschedule_item' reference, placeholder, same phys schedule as the conference.
+
     if {![dbutil initialize-schema ::cm::db::do error schedule {
 	{
 	    -- Logical schedule linking a physical schedule with the
@@ -271,11 +273,13 @@ proc ::cm::db::schedule::setup {} {
     return
 }
 
-proc ::cm::db::schedule::Dump {} {
+proc ::cm::db::schedule::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/schedule {}
 
-    error NYI/schedule
+    # TODO: call from conference
+
+    error nyi/schedule
     return
 }
 

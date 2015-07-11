@@ -4931,8 +4931,8 @@ proc ::cm::conference::Setup {} {
 
     ::cm::tutorial::Setup
 
-    cm::db::booked::Setup     ;# possible loop, these two refer back to
-    cm::db::registered::Setup ;# conference.
+    cm::db::booked::setup     ;# possible loop, these two refer back to
+    cm::db::registered::setup ;# conference.
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{
@@ -5329,7 +5329,7 @@ proc ::cm::conference::Dump {} {
 	SELECT id, title, year, management, submission,
 	       city, hotel, facility,
 	       startdate, enddate, alignment, length,
-	       talklength, sessionlen, rstatus
+	       talklength, sessionlen, rstatus, pschedule
 	FROM   conference
 	ORDER BY title
     } {
@@ -5552,14 +5552,120 @@ proc ::cm::conference::Dump {} {
 			   -encoding binary \
 			   -translation binary]
 	    }
+	}
 
+	# booked
+	set first 1
+	db do eval {
+	    SELECT C.dname  AS contact
+	    ,      L.name   AS name
+	    ,      Y.name   AS city
+	    ,      Y.state  AS state
+	    ,      Y.nation AS nation
+	    FROM   booked   B
+	    ,      contact  C
+	    ,      location L
+	    ,      city     Y
+	    WHERE B.conference = :id
+	    AND   B.contact    = C.id
+	    AND   B.hotel      = L.id
+	    AND   L.city       = Y.id
+	    ORDER BY contact, name, city, state, nation
+	} {
+	    if {$first} { cm dump step  ; set first 0 }
 
+	    if {$state ne {}} {
+		set hname "$name $city $state $nation"
+	    } else {
+		set hname "$name $city $nation"
+	    }
+
+	    cm dump save \
+		booking add $contact $hname
+	}
+
+	# registered
+	set first 1
+	db do eval {
+	    SELECT C.dname  AS contact
+	    ,      R.walkin AS walkin
+	    ,      R.tut1   AS t1
+	    ,      R.tut2   AS t2
+	    ,      R.tut3   AS t3
+	    ,      R.tut4   AS t4
+	    FROM   registered R
+	    ,      contact    C
+	    WHERE R.conference = :id
+	    AND   R.contact    = C.id
+	    ORDER BY contact
+	} {
+	    if {$first} { cm dump step  ; set first 0 }
+
+	    set taken {}
+	    if {$t1 ne {}} { lappend taken --taking [TN $t1] }
+	    if {$t2 ne {}} { lappend taken --taking [TN $t2] }
+	    if {$t3 ne {}} { lappend taken --taking [TN $t3] }
+	    if {$t4 ne {}} { lappend taken --taking [TN $t4] }
+
+	    set walkin [expr {$walkin ? "--walkin" : ""}]
+
+	    cm dump save \
+		registration add $contact {*}$walkin {*}$taken
+	}
+
+	# logical schedule
+	# A - linked physical schedule
+
+	if {$pschedule ne {}} {
+	    cm dump step
+	    cm dump save \
+		configure schedule [pschedule piece $pschedule dname]
+
+	    # logical schedule B - schedule entries
+	    set first 1
+	    db do eval {
+		SELECT label
+		,      talk
+		,      tutorial
+		,      session
+		FROM   schedule
+		WHERE  conference = :id
+		ORDER BY label
+	    } {
+		if {$first} { cm dump step  ; set first 0 }
+
+		if {$talk ne {}} {
+		    set type  talk
+		    set value [get-talk-title $talk]
+		} elseif {$tutorial ne {}} {
+		    set type  tutorial
+		    set value [cm::tutorial get-scheduled $tutorial]
+		} elseif {$session ne {}} {
+		    set type  fixed
+		    set value $session
+		} else {
+		    set type  fixed
+		    set value {}
+		}
+
+		cm dump save \
+		    conference schedule-edit $label $type $value
+	    }
 	}
 
 	cm dump step 
     }
     return
 }
+
+proc ::cm::conference::TN {tid} {
+    return [cm tutorial get [db do onecolumn {
+	SELECT tutorial
+	FROM   tutorial_schedule
+	WHERE  id = :tid
+    }]]
+}
+
 
 # # ## ### ##### ######## ############# ######################
 package provide cm::conference 0

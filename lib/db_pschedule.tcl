@@ -19,6 +19,7 @@ package require Tcl 8.5
 package require dbutil
 package require try
 package require cm::db
+package require cmdr::validate::time::minute
 
 # # ## ### ##### ######## ############# ######################
 
@@ -32,7 +33,7 @@ namespace eval ::cm::db {
 }
 namespace eval ::cm::db::pschedule {
     namespace export \
-        setup validate \
+        setup dump validate \
 	start-set start-get active-set active-get \
 	new remove rename all known selection details piece focus \
 	track-active-set track-active-get \
@@ -50,6 +51,7 @@ namespace eval ::cm::db::pschedule {
     namespace ensemble create
 
     namespace import ::cm::db
+    namespace import ::cmdr::validate::time::minute
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -1285,11 +1287,102 @@ proc ::cm::db::pschedule::setup {} {
     return
 }
 
-proc ::cm::db::pschedule::Dump {} {
+proc ::cm::db::pschedule::dump {} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/pschedule {}
 
-    error NYI/pschedule
+    # Notes
+    # - Not saving global active schedule.
+    # - Not saving active location (day, track, time, item) of schedule
+    # - Not saving focus history data!
+    # All these not relevant to a bulk save/restore.
+
+    db do eval {
+	SELECT id, dname
+	FROM   pschedule
+	ORDER BY dname
+    } {
+	cm dump save \
+	    schedule add $dname
+
+	# Tracks
+	set first 1
+	db do eval {
+	    SELECT dname AS tname 
+	    FROM   pschedule_track
+	    WHERE  pschedule = :id
+	    ORDER BY tname
+	} {
+	    if {$first} { cm dump step ; set first 0 }
+	    cm dump save \
+		schedule track add $tname
+	}
+
+	# Items (toplevel only), children are nested.
+	set first 1
+	set lastday 0
+	db do eval {
+	    SELECT id, day, track, start, length, label, desc_major, desc_minor
+	    FROM   pschedule_item
+	    WHERE  pschedule = :id
+	    AND    parent IS NULL  -- toplevel items only.
+	    ORDER BY day, start, track
+	} {
+	    if {$first} { cm dump step ; set first 0 }
+	    if {$day != $lastday} { cm dump step ; set lastday $day }
+	    DumpItem $id $day $track $start $length $label $desc_major $desc_minor 0
+	}
+
+	cm dump step
+    }
+    return
+}
+
+proc ::cm::db::pschedule::DumpItem {id day track start length label major minor child} {
+    if {$label ne {}} {
+	lappend other placeholder $label
+    } else {
+	lappend other event $major
+	if {$minor ne {}} { lappend other $minor }
+    }
+
+    if {$length > 60} { set length [minute 2external $length] }
+
+    if {!$child} {
+	set children [db do eval {
+	    SELECT length, label, desc_major, desc_minor
+	    FROM   pschedule_item
+	    WHERE  parent = :id
+	    ORDER BY start
+	}]
+
+	lappend other --day    $day
+	lappend other --start  [minute 2external $start]
+
+	if {![llength $children]} {
+	    lappend other --length $length
+	}
+
+	if {$track eq {}} {
+	    lappend other --cross-tracks
+	} else {
+	    lappend other --track [track-piece $track dname]
+	}
+    }
+
+    if {$child} {
+	lappend other --length $length
+	lappend other --child
+    }
+
+    cm dump save \
+	schedule item {*}$other
+
+    if {$child} return
+
+    foreach {length label major minor} $children {
+	DumpItem {} {} {} {} $length $label $major $minor 1
+    }
     return
 }
 
