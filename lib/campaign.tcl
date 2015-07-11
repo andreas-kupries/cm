@@ -638,6 +638,81 @@ proc ::cm::campaign::Setup {} {
     return
 }
 
+
+proc ::cm::campaign::Dump {conference} {
+    debug.cm/campaign {}
+    ::cm::conference::Setup
+    ::cm::contact::Setup
+    ::cm::template::Setup
+
+    # campaign             (id, ^con,      active)
+    # campaign_destination (id, ^campaign, ^email) -- contact.email
+    # campaign_mailrun     (id, ^campaign, ^template, date)
+    # campaign_received    (id, ^mailrun,  ^email) -- contact.email
+
+    # -- cm has no bulk load commands. Only commands performing the
+    #    campaign and auto-loading the tables.
+    #
+    # campaign setup -> (campaign + destination)
+    #      ... mail  -> (mailrun + received)
+
+    db do eval {
+	SELECT id, active
+	FROM   campaign
+	WHERE  con = :conference
+    } {
+	cm dump step
+	if {$active} {
+	    cm dump save campaign setup --empty
+	} else {
+	    cm dump save campaign setup --empty --inactive
+	}
+
+	# Destinations for the campaign. Explicitly loaded.
+	db do eval {
+	    SELECT E.email AS email
+	    FROM   campaign_destination D
+	    ,      email                E
+	    WHERE  D.campaign = :id
+	    AND    D.email    = E.id
+	    ORDER BY E.email
+	} {
+	    cm dump save \
+		campaign destination $email
+	}
+
+	# Mail runs. Explicitly loaded.
+	db do eval {
+	    SELECT M.id   AS rid
+	    ,      M.date AS date
+	    ,      T.name AS tname
+	    FROM   campaign_mailrun M
+	    ,      template         T
+	    WHERE  M.campaign = :id
+	    AND    M.template = T.id
+	    ORDER BY date
+	} {
+	    cm dump step
+	    cm dump save \
+		campaign mail $tname --at $date ;# implies empty!
+
+	    # Mail run receivers
+	    db do eval {
+		SELECT E.email AS email
+		FROM   campaign_received R
+		,      email             E
+		WHERE R.mailrun = :rid
+		AND   R.email   = E.id
+		ORDER BY E.email
+	    } {
+		cm dump save \
+		    campaign received $date $email
+	    }
+	}
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 package provide cm::campaign 0
 return
