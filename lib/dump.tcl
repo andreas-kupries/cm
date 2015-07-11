@@ -71,7 +71,7 @@ proc ::cm::dump::cmd {config} {
     #       - booked
     #       - registered
     #       - linked physical & logical schedule.
-    # TODO dump campaign
+    #       - campaign
     Trailer
 
     close $chan

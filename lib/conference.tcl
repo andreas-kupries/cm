@@ -5653,6 +5653,9 @@ proc ::cm::conference::Dump {} {
 	    }
 	}
 
+	# Campaign for the conference.
+	cm::campaign::Dump $id
+
 	cm dump step 
     }
     return
