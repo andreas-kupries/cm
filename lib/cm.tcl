@@ -2176,6 +2176,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Show speaker information inserted into the overview page.
 	    }
+	    option mail {
+		When present show speaker information inserted into a CFP.
+	    } { presence }
 	} [cm::call conference cmd_debug_speakers]
     }
 }
