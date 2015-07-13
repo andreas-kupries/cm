@@ -569,20 +569,12 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     set conference [current]
 
-    puts "Timeline of \"[color name [get $conference]]\":"
+    set sql [TimelineSQL $conference]
+
+    puts "Conference \"[color name [get $conference]]\", timeline:"
     [table t {Done Event When} {
-	#$t style table/html ;# quick testing
-	db do eval {
-	    SELECT T.date     AS date,
-	           E.text     AS text,
-	           E.ispublic AS ispublic,
-	           T.done     AS done
-	    FROM   timeline      T,
-	           timeline_type E
-	    WHERE T.con  = :conference
-	    AND   T.type = E.id
-	    ORDER BY T.date
-	} {
+	#$t style cmdr/table/html ;# quick testing
+	db do eval $sql {
 	    set date [hdate $date]
 	    set done [expr {$done
 			    ? "[color good Yes]"
@@ -3247,6 +3239,8 @@ proc ::cm::conference::make_admin {conference} {
     make_admin_timeline    $conference text events
 
     # What else ...
+
+    debug.cm/conference {/done}
     return $text
 }
 
@@ -3304,36 +3298,28 @@ proc ::cm::conference::make_admin_booked {conference textvar tag} {
 
 proc ::cm::conference::make_admin_timeline {conference textvar tag} {
     debug.cm/conference {}
-    upvar 1 $textvar text
+    upvar 1 $textvar textresult
     # Full timeline, including the non-public events.
 
     set now [clock seconds]
     set pastnow 0
 
-    append text \n
-    append text [anchor $tag] \n
-    append text "# Events\n\n"
+    append textresult \n
+    append textresult [anchor $tag] \n
+    append textresult "# Events\n\n"
+
+    set sql [TimelineSQL $conference]
 
     set first 1
-    db do eval {
-	SELECT T.date     AS date,
-               E.ispublic AS ispublic,
-	       E.text     AS what,
-	       T.done     AS done
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	ORDER BY T.date
-    } {
+    db do eval $sql {
 	if {$first} {
-	    append text |Done|What|When|\n|-|-|-|\n
+	    append textresult |Done|What|When|\n|-|-|-|\n
 	    set first 0
 	}
 
 	if {!$pastnow && ($date > $now)} {
 	    set pastnow yes
-	    append text ||||\n||__Today__| [hdate $now] |\n||||\n
+	    append textresult ||||\n||__Today__| [hdate $now] |\n||||\n
 	}
 
 	set date [hdate $date]
@@ -3343,17 +3329,19 @@ proc ::cm::conference::make_admin_timeline {conference textvar tag} {
 
 	if {$ispublic} {
 	    set date __${date}__
-	    set what __${what}__
+	    set text __${text}__
 	}
 
-	append text | $done | $date | $what |\n
+	append textresult | $done | $date | $text |\n
     }
 
     if {$first} {
-	append text "__No events defined__"
+	append textresult "__No events defined__"
     }
 
-    append text \n
+    append textresult \n
+
+    debug.cm/conference {/done}
     return
 }
 
@@ -3643,22 +3631,24 @@ proc ::cm::conference::make_sidebar {conference} {
     #append sidebar <tr><td> "Email contact" </td><td> "<a href='mailto:@c:contact@'>" @c:contact@</a></td></tr>
 
     append sidebar [[table t {Event When} {
-	$t style table/html
+	$t style cmdr/table/html
 	$t noheader
 
 	switch -exact -- [set m [registration-mode $conference]] {
 	    pending {
-		set sql [sidebar_reg_show]
+		set sql [sidebar_reg_show $conference]
 	    }
 	    open - closed {
 		set r Registration
 		if {$m eq "open"} { set r "<a href='register.html'>$r</a>" }
 		append sidebar "\n<tr><th colspan=2>" "Registration is $m" </th></tr>
-		set sql [sidebar_reg_excluded]
+		set sql [sidebar_reg_excluded $conference]
 	    }
 	}
 	#append sidebar "\n<tr><td colspan=2><hr/></strong></td></tr>"
 	db do eval $sql {
+	    set text [string map {{Public Room} {Hotel Room}} $text]
+
 	    $t add "$text" [hdate $date]
 	}
     }] show return]
@@ -3679,33 +3669,30 @@ proc ::cm::conference::anchor {key} {
     return "<a name='$key'></a>"
 }
 
-proc ::cm::conference::sidebar_reg_excluded {} {
+proc ::cm::conference::sidebar_reg_excluded {conference} {
     debug.cm/conference {}
-    return {
-	SELECT T.date AS date,
-	       E.text AS text
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	AND   E.ispublic
-	AND   E.key != 'regopen'
-	ORDER BY T.date
-    }
+
+    lappend mapa \
+	{AND   T.type = E.id} \
+	{AND   T.type = E.id AND E.key != 'regopen'}
+    lappend mapb @@@ [string map $mapa [TimelineSQL $conference]]
+
+    return [string map $mapb {
+	SELECT date, text
+	FROM (@@@)
+	WHERE ispublic
+    }]
 }
 
-proc ::cm::conference::sidebar_reg_show {} {
+proc ::cm::conference::sidebar_reg_show {conference} {
     debug.cm/conference {}
-    return {
-	SELECT T.date AS date,
-	       E.text AS text
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	AND   E.ispublic
-	ORDER BY T.date
-    }
+
+    lappend map @@@ [TimelineSQL $conference]
+    return [string map $map {
+	SELECT date, text
+	FROM (@@@)
+	WHERE ispublic
+    }]
 }
 
 proc ::cm::conference::have-talks {conference} {
@@ -3904,7 +3891,7 @@ proc ::cm::conference::insert {id text} {
     +map @c:sponsors:md@       [web-sponsors-bullet $id $xmgmt]
     +map @c:sponsors:md:short@ [web-sponsors-inline $id $xmgmt]
 
-    if {[have-speakers $conference]} {
+    if {[have-speakers $id]} {
 	+map @c:speakers@ [mail-speaker-listing $id]
     } else {
 	+map @c:speakers@ {}
@@ -5757,6 +5744,62 @@ proc ::cm::conference::TN {tid} {
     }]]
 }
 
+proc ::cm::conference::TimelineSQL {conference} {
+    set details [details $conference]
+    dict with details {}
+
+    if {$xhotel eq {}} {
+	# No rate information available. Generate only the basic core
+	# timeline.
+
+	set sql {
+	    SELECT T.date     AS date,
+	           E.text     AS text,
+	           E.ispublic AS ispublic,
+	           T.done     AS done
+	    FROM   timeline      T,
+	           timeline_type E
+	    WHERE T.con  = :conference
+	    AND   T.type = E.id
+	    ORDER BY T.date
+	}
+    } else {
+	# Rate information is present, this includes the room
+	# deadlines.  Generate fake timeline entries for these and
+	# merge with the core timeline.
+
+	set sql [string map [list :xhotel $xhotel] {
+	    SELECT date, text, ispublic, done
+	    FROM (SELECT T.date     AS date
+		  ,      E.text     AS text
+		  ,      E.ispublic AS ispublic
+		  ,      T.done     AS done
+		  FROM   timeline      T,
+		  timeline_type E
+		  WHERE T.con  = :conference
+		  AND   T.type = E.id
+		UNION
+		  SELECT deadline       AS date
+		  ,      'Room Release' AS text
+		  ,      0              AS ispublic
+		  ,      0              AS done
+		  FROM   rate R
+		  WHERE  R.conference = :conference
+		  AND    R.location   = :xhotel
+		UNION
+		  SELECT pdeadline             AS date
+		  ,      'Public Room Release' AS text
+		  ,      1                     AS ispublic
+		  ,      0                     AS done
+		  FROM   rate R
+		  WHERE  R.conference = :conference
+		  AND    R.location   = :xhotel)
+	    ORDER BY date
+	}]
+    }
+
+    return $sql
+}
 
 # # ## ### ##### ######## ############# ######################
 package provide cm::conference 0
