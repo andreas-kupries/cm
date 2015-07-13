@@ -2774,7 +2774,11 @@ proc ::cm::conference::cmd_debug_speakers {config} {
     Setup
     db show-location
 
-    puts [speaker-listing [current]]
+    if {[$config @mail]} {
+	puts [mail-speaker-listing [current]]
+    } else {
+	puts [speaker-listing [current]]
+    }
     return
 }
 
@@ -3001,7 +3005,7 @@ proc ::cm::conference::speaker-listing {conference} {
     foreach {dname tag bio} [general-talks $conference] {
 	if {$dname eq $mgmt} continue
 	if {$first} {
-	    append text "## Keynotes\n\n"
+	    append text "## Presentations\n\n"
 	    set first 0
 	}
 
@@ -3011,6 +3015,63 @@ proc ::cm::conference::speaker-listing {conference} {
     }
     if {!$first} { append text \n }
 
+    return $text
+}
+
+
+proc ::cm::conference::mail-speaker-listing {conference} {
+    debug.cm/conference {}
+    # speaker-listing - TODO - general presenters
+
+    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+
+    append text "\[\[ Known Speakers\n"
+
+    # Keynotes...
+    set first 1
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Keynotes\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [keynotes-of $conference $tag] T abstracts.html]
+    }
+    #if {!$first} { append text \n }
+
+    # Tutorials...
+    set first 1
+    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Tutorials\n\n"
+	    set first 0
+	}
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for tutorial speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [tutorials-of $conference $tag] ${tag}: tutorials.html]
+    }
+    #if {!$first} { append text \n }
+
+    # Presenters...
+    set first 1
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Presentations\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for general speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [talks-of $conference $tag] T abstracts.html]
+    }
+    #if {!$first} { append text \n }
+
+    append text \]\]\n
     return $text
 }
 
@@ -3030,6 +3091,27 @@ proc ::cm::conference::fmt-speakers {dname tag talks tpfx tlink} {
 	append text ")"
     }
     append text \n
+    return $text
+}
+
+proc ::cm::conference::fmt-mail-speakers {dname tag talks tpfx tlink} {
+    # talks = (tag title...)
+
+    append text "  * "
+
+    set blank [string repeat { } [string length $dname]]
+
+    if {[llength $talks]} {
+	set pre "$dname - "
+	foreach {ttag title} $talks {
+	    set title [string map {&mdash; ---} $title]
+	    append text $pre $title \n
+	    set pre "    $blank   "
+	}
+	append text \n
+    } else {
+	append text $dname \n
+    }
     return $text
 }
 
@@ -3821,6 +3903,12 @@ proc ::cm::conference::insert {id text} {
     +map @c:sponsors@          [mail-sponsors $id]
     +map @c:sponsors:md@       [web-sponsors-bullet $id $xmgmt]
     +map @c:sponsors:md:short@ [web-sponsors-inline $id $xmgmt]
+
+    if {[have-speakers $conference]} {
+	+map @c:speakers@ [mail-speaker-listing $id]
+    } else {
+	+map @c:speakers@ {}
+    }
 
     # Execute the accumulated substitutions
 
