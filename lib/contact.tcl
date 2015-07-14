@@ -55,6 +55,7 @@ namespace eval ::cm::contact {
     namespace import ::cm::util
 
     namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -73,7 +74,7 @@ proc ::cm::contact::cmd_show {config} {
 
     set w [util tspace [expr {[string length {Can Receive Mail}]+7}] 60]
 
-    [table t {Property Value} {
+    [table/d t {
 	db do eval {
 	    SELECT C.id           AS id,
                    C.tag          AS tag,

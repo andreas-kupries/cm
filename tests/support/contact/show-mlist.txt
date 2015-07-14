@@ -1,0 +1,10 @@
+~/.cm/managed
++-----------+---------------+
+| Tag       |               |
+| Name      | Myself        |
+| Type      | Mailinglist   |
+| Flags     | Receive       |
+| Biography |               |
+| Emails    |               |
+| -         | me@myself.org |
++-----------+---------------+
