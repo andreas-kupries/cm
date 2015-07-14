@@ -589,11 +589,13 @@ proc ::cm::tutorial::speakers {conference} {
 
     # Get data from the exactly addressed cell in the schedule.
     return [db do eval {
-	SELECT dname, tag, biography
-	FROM contact
+	SELECT dname
+	,      tag
+	,      biography
+	FROM   contact
 	WHERE id IN (SELECT DISTINCT T.speaker
-		     FROM  tutorial_schedule S,
-		           tutorial          T
+		     FROM  tutorial_schedule S
+		     ,     tutorial          T
 		     WHERE S.conference = :conference
 		     AND   S.tutorial   = T.id)
 	ORDER BY dname
