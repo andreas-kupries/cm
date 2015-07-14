@@ -1,0 +1,97 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - creating conferences
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-create-1.0 {conference create, wrong args, not enough} -body {
+    run conference create -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: title"
+
+test conference-create-1.1 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: year"
+
+test conference-create-1.2 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME 2015
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: start"
+
+test conference-create-1.3 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME 2015 mon
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: start"
+
+test conference-create-1.4 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME 2015 mon 2015-09-01
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: length"
+
+test conference-create-1.5 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME 2015 mon 2015-09-01 5
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: manager"
+
+test conference-create-1.6 {conference create, wrong args, not enough} -body {
+    run conference create -n NAME 2015 mon 2015-09-01 5 me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: submission"
+
+test conference-create-1.7 {conference create, wrong args, too many} -body {
+    run conference create NAME 2015 mon 2015-09-01 5 me me@myself.org X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# TODO: duplicate, bad values for various arguments (year, weekday, isodate, contact, email)
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-create-3.0 {conference create} -body {
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/create.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
