@@ -1,0 +1,85 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, enable details
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-enable-2.0 {contact enable, unknown contact} -body {
+    run contact enable me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-enable-3.0 {contact enable, person} -body {
+    run contact enable me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/enable-contact.txt]
+
+test contact-enable-3.1 {contact enable, mailing list} -body {
+    run contact enable me
+} -setup {
+    stage-open
+    run contact create-list Myself me@myself.org
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/enable-contact-notag.txt]
+
+test contact-enable-3.2 {contact enable, company} -body {
+    run contact enable me
+} -setup {
+    stage-open
+    run contact create-company -E me@myself.org Myself
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/enable-contact-notag.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-enable-4.0 {contact enable, person, show} -body {
+    run contact enable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-person.txt]
+
+test contact-enable-4.1 {contact enable, mailing list, show} -body {
+    run contact enable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-list Myself me@myself.org
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-mlist.txt]
+
+test contact-enable-4.2 {contact enable, company, show} -body {
+    run contact enable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-company -E me@myself.org Myself
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-company.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
