@@ -1,0 +1,85 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, disable details
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-disable-2.0 {contact disable, unknown contact} -body {
+    run contact disable me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-disable-3.0 {contact disable, person} -body {
+    run contact disable me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/disable-contact.txt]
+
+test contact-disable-3.1 {contact disable, mailing list} -body {
+    run contact disable me
+} -setup {
+    stage-open
+    run contact create-list Myself me@myself.org
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/disable-contact-notag.txt]
+
+test contact-disable-3.2 {contact disable, company} -body {
+    run contact disable me
+} -setup {
+    stage-open
+    run contact create-company -E me@myself.org Myself
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/disable-contact-notag.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-disable-4.0 {contact disable, person, show} -body {
+    run contact disable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-disabled-person.txt]
+
+test contact-disable-4.1 {contact disable, mailing list, show} -body {
+    run contact disable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-list Myself me@myself.org
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-disabled-mlist.txt]
+
+test contact-disable-4.2 {contact disable, company, show} -body {
+    run contact disable me
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-company -E me@myself.org Myself
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-disabled-company.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

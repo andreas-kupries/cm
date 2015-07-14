@@ -18,7 +18,7 @@ test contact-show-1.0 {contact show, wrong args, not enough} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result {} ;#-returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
 
 test contact-show-1.1 {contact show, wrong args, too many} -body {
     run contact show -n NAME X

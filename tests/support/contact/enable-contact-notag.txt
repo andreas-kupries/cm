@@ -1,0 +1,2 @@
+~/.cm/managed
+Enabling contact "Myself" ... OK

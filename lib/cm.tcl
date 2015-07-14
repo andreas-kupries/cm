@@ -1549,7 +1549,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		List of the contact to disable
 	    } { list ; optional ; interact ; validate [cm::vt contact] }
-	} [cm::call contact cmd_disable]
+	} [cm::call contact cmd_enable]
 
 	private list {
 	    section {Contact Management}
@@ -1569,7 +1569,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Show the details of the specified contact}
 	    input name {
 		Name of the contact to show.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_show]
 
 	private retype {
