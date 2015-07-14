@@ -628,11 +628,12 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	    input title {
 		Name of the conference
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 
 	    input year {
 		Year of the conference
-	    } { optional ; interact ; validate [cm::cvt year] }
+	    } { optional ; interact ; validate [cm::cvt year]
+		generate [stop!] }
 
 	    input alignment {
 		Alignment within the week
@@ -640,19 +641,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	    input start {
 		Start date
-	    } { optional ; interact ; validate [cm::cvt date] }
+	    } { optional ; interact ; validate [cm::cvt date]
+		generate [stop!] }
 
 	    input length {
 		Length in days
-	    } { optional ; interact ; validate [cm::cvt posint] }
+	    } { optional ; interact ; validate [cm::cvt posint]
+		generate [stop!] }
 
 	    input manager {
 		Person or organization managing the conference
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 
 	    input submission {
 		Email address for submissions to be sent to.
-	    } { optional ; interact ; validate [cm::vt email] }
+	    } { optional ; interact ; validate [cm::vt email]
+		generate [stop!] }
 
 	    # Set later: hotel, facility, city
 

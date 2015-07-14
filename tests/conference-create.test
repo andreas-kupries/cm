@@ -18,7 +18,7 @@ test conference-create-1.0 {conference create, wrong args, not enough} -body {
     stage-open
 } -cleanup {
     stage-close
-} -result {} ;#-returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: title"
 
 test conference-create-1.1 {conference create, wrong args, not enough} -body {
     run conference create -n NAME
@@ -26,52 +26,54 @@ test conference-create-1.1 {conference create, wrong args, not enough} -body {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: year"
 
 test conference-create-1.2 {conference create, wrong args, not enough} -body {
-    run conference create -n NAME YEAR
+    run conference create -n NAME 2015
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: start"
 
 test conference-create-1.3 {conference create, wrong args, not enough} -body {
-    run conference create -n NAME YEAR WDAY
+    run conference create -n NAME 2015 mon
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: start"
 
 test conference-create-1.4 {conference create, wrong args, not enough} -body {
-    run conference create -n NAME YEAR WDAY DATE
+    run conference create -n NAME 2015 mon 2015-09-01
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: length"
 
 test conference-create-1.5 {conference create, wrong args, not enough} -body {
-    run conference create -n NAME YEAR WDAY DATE LEN
+    run conference create -n NAME 2015 mon 2015-09-01 5
 } -setup {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: manager"
 
 test conference-create-1.6 {conference create, wrong args, not enough} -body {
-    run conference create -n NAME YEAR WDAY DATE LEN CONTACT
+    run conference create -n NAME 2015 mon 2015-09-01 5 me
 } -setup {
     stage-open
+    run contact create-person -E me@myself.org Myself me
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+} -returnCodes error -match glob -result "* cmdr: Undefined: submission"
 
 test conference-create-1.7 {conference create, wrong args, too many} -body {
-    run conference create NAME YEAR WDAY DATE LEN CONTACT EMAIL X
+    run conference create NAME 2015 mon 2015-09-01 5 me me@myself.org X
 } -setup {
     stage-open
+    run contact create-person -E me@myself.org Myself me
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
