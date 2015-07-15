@@ -1347,6 +1347,20 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt template] }
 	} [cm::call campaign cmd_mail]
 
+	private run {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Create an empty campaign mail run for a specific time.
+		To be bulk-loaded with emails via "campaign received".
+	    }
+	    input epoch {
+		Timestamp for the new mail run.
+	    } { validate [cm::cvt time] }
+	    input template {
+		Name of the template to use for the mail.
+	    } { validate [cm::vt template] }
+	} [cm::call campaign cmd_mailrun]
+
 	private test {
 	    section {Conference Management} {Mail Campaign}
 	    description {
@@ -1405,8 +1419,8 @@ cmdr create cm::cm [file tail $::argv0] {
 		This is for bulk-loading from "cm save" dumps.
 	    }
 	    input epoch {
-		The timestamp identifying the mail run, as epoch value.
-	    } { validate [cm::cvt posint] }
+		The timestamp identifying the mail run.
+	    } { validate [cm::cvt time] }
 	    input entry {
 		The list of emails to add.
 	    } { list ; validate [cm::vt email] }
