@@ -115,13 +115,18 @@ proc ::cm::contact::cmd_show {config} {
 	    # Emails for the contact
 	    set first 1
 	    db do eval {
-		SELECT email
+		SELECT email, inactive
 		FROM   email
 		WHERE  contact = :id
 	    } {
 		if {$first} { $t add Emails {} }
 		set first 0
-		$t add - $email
+
+		if {$inactive} {
+		    $t add - "$email ([color bad Disabled])"
+		} else {
+		    $t add - $email
+		}
 	    }
 
 	    # Links for the contact
@@ -749,7 +754,7 @@ proc ::cm::contact::cmd_add_liaison {config} {
 	puts "Extend representatives of \"[color name [get $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "+ \"[color name [get $contact]]\" ..."
+	    puts -nonewline "+ \"[color name [get $contact]]\" ... "
 	    flush stdout
 
 	    add-liaison $company $contact
@@ -771,7 +776,7 @@ proc ::cm::contact::cmd_drop_liaison {config} {
 	puts "Reduce representatives of \"[color name [get $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "- \"[color name [get $contact]]\" ..."
+	    puts -nonewline "- \"[color name [get $contact]]\" ... "
 	    flush stdout
 
 	    drop-liaison $company $contact
@@ -892,6 +897,8 @@ proc ::cm::contact::related-formatted {contact type} {
 	    }
 	}
     }
+
+    # TODO: List the inverted relations also ?
 
     return $related
 }

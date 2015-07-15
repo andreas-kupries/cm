@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::validate::email 0
+# Package cm::validate::notcontact 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -26,10 +26,10 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::validate {
-    namespace export email
+    namespace export notcontact
     namespace ensemble create
 }
-namespace eval ::cm::validate::email {
+namespace eval ::cm::validate::notcontact {
     namespace export release validate default complete
     namespace ensemble create
 
@@ -40,38 +40,19 @@ namespace eval ::cm::validate::email {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::validate::email::default  {p}   { return {} }
-proc ::cm::validate::email::release  {p x} { return }
-proc ::cm::validate::email::validate {p x} {
-    set known   [contact known-email]
+proc ::cm::validate::notcontact::complete {p x} { return {} }
+proc ::cm::validate::notcontact::default  {p}   { return {} }
+proc ::cm::validate::notcontact::release  {p x} { return }
+proc ::cm::validate::notcontact::validate {p x} {
+    set known   [contact known validation]
     set matches [complete-enum [dict keys $known] 1 $x]
 
     set n [llength $matches]
-    if {!$n} {
-	fail $p EMAIL "an email identifier" $x
-    }
+    if {!$n} { return $x }
 
-    # Multiple matches may map to the same id. Conversion required to
-    # distinguish between unique/ambiguous.
-    set idmatches {}
-    foreach m $matches {
-	lappend idmatches [dict get $known $m]
-    }
-    set idmatches [lsort -unique $idmatches]
-    set n [llength $idmatches]
-
-    if {$n > 1} {
-	fail $p EMAIL "an unambigous email identifier" $x
-    }
-
-    # Uniquely identified
-    return [lindex $idmatches 0]
-}
-
-proc ::cm::validate::email::complete {p x} {
-    complete-enum [dict keys [contact known-email]] 1 $x
+    fail $p NOTCONTACT "an unused contact name" $x
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::validate::email 0
+package provide cm::validate::notcontact 0
 return

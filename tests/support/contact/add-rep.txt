@@ -1,0 +1,3 @@
+~/.cm/managed
+Extend representatives of "Company" ...
++ "(@me) Myself" ... OK

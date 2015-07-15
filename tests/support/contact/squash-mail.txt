@@ -1,0 +1,2 @@
+~/.cm/managed
+Deleting email "me@myself.org" ... OK

@@ -1,0 +1,74 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, set tag
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-tag-1.0 {contact set-tag, wrong args, not enough} -body {
+    run contact set-tag -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test contact-set-tag-1.1 {contact set-tag, wrong args, not enough} -body {
+    run contact set-tag -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: tag"
+
+test contact-set-tag-1.2 {contact set-tag, wrong args, too many} -body {
+    run contact set-tag -n NAME TAG X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-tag-2.0 {contact set-tag, unknown contact} -body {
+    run contact set-tag me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# TODO: Duplicate tag - Needs tag VT
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-tag-3.0 {contact set-tag} -body {
+    run contact set-tag me TAG
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/set-tag.txt]
+
+test contact-set-tag-3.1 {contact set-tag, persist} -body {
+    run contact set-tag me TAG
+    run contact show    me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-tag.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

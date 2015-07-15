@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - contacts, show lists
+## schedule management - contacts, show many, as list
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -52,6 +52,16 @@ test contact-list-3.2 {contact list, company} -body {
 } -cleanup {
     stage-close
 } -result [viewFile support/contact/list-company.txt]
+
+test contact-list-3.3 {contact list, show mails} -body {
+    run contact list --with-mails
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-mails.txt]
+
 
 # TODO Filtering
 

@@ -1,0 +1,11 @@
+~/.cm/managed
++-----------+---------------------------------------+
+| Tag       | me                                    |
+| Name      | Myself                                |
+| Type      | Person                                |
+| Flags     | Receive, Register, Book, Talk, Submit |
+| Biography |                                       |
+| Emails    |                                       |
+| -         | me@myself.org                         |
+| -         | myself@myself.org                     |
++-----------+---------------------------------------+

@@ -1,0 +1,82 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, rename
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-rename-1.0 {contact rename, wrong args, not enough} -body {
+    run contact rename -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test contact-rename-1.1 {contact rename, wrong args, not enough} -body {
+    run contact rename -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: newname"
+
+test contact-rename-1.2 {contact rename, wrong args, too many} -body {
+    run contact rename -n NAME NEW X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-rename-2.0 {contact rename, unknown origin contact} -body {
+    run contact rename me do
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+test contact-rename-2.1 {contact rename, duplicate destination contact} -body {
+    run contact rename me Done
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run contact create-person -E do@myself.org Done   do
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected an unused contact name for input "newname", got "Done"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-rename-3.0 {contact rename} -body {
+    run contact rename me do
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/rename.txt]
+
+test contact-rename-3.1 {contact rename, persist} -body {
+    run contact rename me Done
+    run contact show   me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-renamed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
