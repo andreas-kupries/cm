@@ -1365,8 +1365,21 @@ cmdr create cm::cm [file tail $::argv0] {
 		This does not affect future campaigns.
 	    }
 	    input entry {
+		The list of emails to remove.
 	    } { list ; optional ; interact ; validate [cm::vt email] }
 	} [cm::call campaign cmd_drop]
+
+	private destination {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Add one or more mail addresses to the campaign
+		for the current conference. This is for bulk-loading
+		from "cm save" dumps.
+	    }
+	    input entry {
+		The list of emails to add.
+	    } { list ; validate [cm::vt email] }
+	} [cm::call campaign cmd_destination]
 
 	private close {
 	    section {Conference Management} {Mail Campaign}

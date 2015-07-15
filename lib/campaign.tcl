@@ -80,9 +80,9 @@ proc ::cm::campaign::cmd_setup {config} {
 
     set empty [$config @empty]
 
-    set id [get-for $conference]
-    if {$id ne {}} {
-	if {[isactive $id]} {
+    set campaign [get-for $conference]
+    if {$campaign ne {}} {
+	if {[isactive $campaign]} {
 	    util user-error "Conference \"$clabel\" already has an active campaign" \
 		CAMPAIGN ALREADY ACTIVE
 	} else {
@@ -158,7 +158,6 @@ proc ::cm::campaign::cmd_close {config} {
     puts "[color good OK]"
     return
 }
-
 
 proc ::cm::campaign::cmd_reset {config} {
     debug.cm/campaign {}
@@ -425,6 +424,36 @@ proc ::cm::campaign::cmd_test {config} {
     return
 }
 
+proc ::cm::campaign::cmd_destination {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+
+    puts "Campaign \"[color name $clabel]\" ... "
+
+    foreach email [$config @entry] {
+	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
+	flush stdout
+
+	db do eval {
+	    INSERT
+	    INTO campaign_destination
+	    VALUES (NULL, :campaign, :email)
+	}
+	puts "[color good OK]"
+    }
+    return
+}
+
 proc ::cm::campaign::cmd_drop {config} {
     debug.cm/campaign {}
     Setup
@@ -443,10 +472,10 @@ proc ::cm::campaign::cmd_drop {config} {
 	    CAMPAIGN CLOSED
     }
 
-    puts "Campaign \"[color name $clabel]\" dropping ..."
+    puts "Campaign \"[color name $clabel]\" ..."
 
     foreach email [$config @entry] {
-	puts -nonewline "* [color name [cm::contact get-email $email]] ... "
+	puts -nonewline "* Dropping [color name [cm::contact get-email $email]] ... "
 	flush stdout
 
 	db do eval {
