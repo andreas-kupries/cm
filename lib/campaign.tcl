@@ -44,7 +44,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::campaign {
     namespace export cmd_setup cmd_close cmd_status cmd_mail \
-	cmd_test cmd_reset cmd_drop \
+	cmd_test cmd_reset cmd_drop cmd_destination cmd_received \
 	add-mail drop-mail get-for
     namespace ensemble create
 
@@ -298,7 +298,6 @@ proc ::cm::campaign::cmd_mail {config} {
     set template [$config @template]
     set tname    [template get $template]
 
-
     puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" ..."
 
     set destinations [db do eval {
@@ -420,6 +419,48 @@ proc ::cm::campaign::cmd_test {config} {
     if {$issues ne {}} {
 	puts =======================
 	puts $issues
+    }
+    return
+}
+
+proc ::cm::campaign::cmd_received {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+
+    puts "Campaign \"[color name $clabel]\" ... "
+
+    # Retrieve mail run for epoch -- TODO: Put this into a validation type.
+    set epoch [$config @epoch]
+    set run   [db do onecolumn {
+	SELECT id
+	FROM   campaign_mailrun
+	WHERE  campaign = :campaign
+	AND    date = :epoch
+    }]
+    if {$run eq {}} {
+	util user-error "No mail run for $epoch" \
+	    CAMPAIGN MAIL-RUN MISSING
+    }
+
+    foreach email [$config @entry] {
+	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
+	flush stdout
+
+	db do eval {
+	    INSERT INTO campaign_received
+	    VALUES (NULL, :run, :email)
+	}
+	puts "[color good OK]"
     }
     return
 }

@@ -1397,6 +1397,21 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	} [cm::call campaign cmd_reset]
 
+	private received {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Add one or more mail addresses to the campaign mail run 
+		for the current conference and identified by its timestamp.
+		This is for bulk-loading from "cm save" dumps.
+	    }
+	    input epoch {
+		The timestamp identifying the mail run, as epoch value.
+	    } { validate [cm::cvt posint] }
+	    input entry {
+		The list of emails to add.
+	    } { list ; validate [cm::vt email] }
+	} [cm::call campaign cmd_destination]
+
 	private status {
 	    section {Conference Management} {Mail Campaign}
 	    description {
