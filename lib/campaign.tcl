@@ -437,7 +437,7 @@ proc ::cm::campaign::cmd_drop {config} {
     puts "Campaign \"[color name $clabel]\" dropping ..."
 
     foreach email [$config @entry] {
-	puts -nonewline "* [color name [contact get-email $email]] ... "
+	puts -nonewline "* [color name [cm::contact get-email $email]] ... "
 	flush stdout
 
 	db do eval {
