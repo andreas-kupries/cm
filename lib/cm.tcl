@@ -1436,6 +1436,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Show the status of the campaign.
 	    }
+	    option detailed {
+		Show status in full detail, listing all mails, not just counts.
+	    } { presence }
 	} [cm::call campaign cmd_status]
 	default
     }
