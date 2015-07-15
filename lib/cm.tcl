@@ -1342,6 +1342,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Generate campaign mails.
 	    }
+	    option fake {
+		Create a fake mail run, in that the database gets
+		updated in full, but no mails are actuall send out.
+		This option is only for testing.
+	    } { presence }
 	    input template {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }

@@ -295,6 +295,7 @@ proc ::cm::campaign::cmd_mail {config} {
 	    CAMPAIGN CLOSED
     }
 
+    set fake     [$config @fake]
     set template [$config @template]
     set tname    [template get $template]
 
@@ -362,14 +363,15 @@ proc ::cm::campaign::cmd_mail {config} {
     }
     set run [db do last_insert_rowid]
 
-    set mconfig [mailer get-config]
+    if {!$fake} {
+	set mconfig [mailer get-config]
+    }
+
     mailer batch receiver address name $destinations {
 	# Insert address and name into the template
-
 	puts "To: $name [color name $address]"
 
-	if 1 {
-	    #TODO: non-dry
+	if {!$fake} {
 	    mailer send $mconfig \
 		[list $address] \
 		[mailgen call $address $name $text] \
