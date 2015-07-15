@@ -218,8 +218,101 @@ proc ::cm::campaign::cmd_status {config} {
 	    CAMPAIGN MISSING
     }
 
-    puts "Campaign \"[color name $clabel]\" status"
+    set details [$config @detailed]
 
+    puts "Campaign \"[color name $clabel]\" [expr {$details ? "details" : "summary"}]"
+
+    if {$details} {
+	StatusDetails $campaign
+    } else {
+	StatusSummary $campaign
+    }
+
+    return
+}
+
+proc ::cm::campaign::StatusDetails {campaign} {
+    debug.cm/campaign {}
+
+    # Sideways table:
+    # - First column => destinations
+    # - Second and further columns => One per mail run.
+    # - Data in the columns is the set of mail addresses.
+    # Note that destination addresses may be missing in a run, and
+    # vice versa, a run may contain addresses not in the destinations.
+
+    # => We need a union across destination and all runs, plus checks.
+
+    # Assemble table header/titles ... Also collect the mails for each run.
+    lappend reached [set mails [db do eval {
+	SELECT email
+	FROM   campaign_destination
+	WHERE  campaign = :campaign
+    }]]
+
+    lappend titles Destinations\n\n([struct::set size $mails])
+    db do eval {
+	SELECT M.id   AS mailrun
+	,      M.date AS date
+	,      T.name AS name
+	FROM   campaign_mailrun M
+	,      template         T
+	WHERE  M.campaign = :campaign
+	AND    M.template = T.id
+	ORDER BY date
+    } {
+	lappend reached [set mails [db do eval {
+	    SELECT email
+	    FROM   campaign_received
+	    WHERE  mailrun = :mailrun
+	}]]
+	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
+	lappend titles $name\n$date\n([struct::set size $mails])
+    }
+
+    # Collect mail information for destinations, and union.
+
+    # TODO: Make all(mails) fully as SQL.
+    set all [struct::set union {*}$reached]
+    set allmails {}
+    db do eval [string map [list @@ [join $all ,]] {
+	SELECT id, email
+	FROM   email
+	WHERE  id IN (@@)
+	ORDER BY email
+    }] {
+	dict set map $email $id
+	lappend allmails $email
+    }
+
+    [table t $titles {
+	foreach mail $allmails {
+	    set id [dict get $map $mail]
+	    set row {}
+	    set first 1
+	    foreach reach $reached {
+		set has [struct::set contains $reach $id]
+
+		if {!$has} {
+		    set note [color bad n/a]
+		} elseif {$first} {
+		    set note $mail
+		    set first 0
+		} else {
+		    set note [color good yes]
+		}
+
+		lappend row $note
+	    }
+
+	    $t add {*}$row
+	}
+    }] show
+    return
+}
+
+proc ::cm::campaign::StatusSummary {campaign} {
+    debug.cm/campaign {}
     # 1. Mailings performed ... when, template, #destinations
     # 2. Destinations in campaign vs destinations in mailings.
 
