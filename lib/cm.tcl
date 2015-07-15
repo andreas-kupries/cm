@@ -1329,6 +1329,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Initialize the campaign for the current conference.
 	    }
+	    option empty {
+		Create an empty campaign. Mail addresses will be loaded
+		into it via a series of "campaign destination" commands.
+		If this option is not present the new campaign will get
+		its mail addresses automatically from the known contacts.
+	    } { presence }
 	} [cm::call campaign cmd_setup]
 
 	private mail {

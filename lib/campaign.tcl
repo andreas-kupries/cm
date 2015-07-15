@@ -78,6 +78,8 @@ proc ::cm::campaign::cmd_setup {config} {
     set conference [conference current]
     set clabel     [conference get $conference]
 
+    set empty [$config @empty]
+
     set id [get-for $conference]
     if {$id ne {}} {
 	if {[isactive $id]} {
@@ -101,22 +103,29 @@ proc ::cm::campaign::cmd_setup {config} {
 	}
 	set campaign [db do last_insert_rowid]
 
-	db do eval {
-	    INSERT INTO campaign_destination
-	      SELECT NULL, :campaign, E.id
-	      FROM   email   E,
-	             contact C
-	      WHERE  E.contact = C.id	-- join
-	      AND    C.can_recvmail	-- contact must allow mails
-	      AND    NOT E.inactive	-- and mail address must be active too.
-	}	
+	if {!$empty} {
+	    db do eval {
+		INSERT
+		INTO campaign_destination
+		SELECT NULL
+		,      :campaign
+		,      E.id
+		FROM   email   E
+		,      contact C
+		WHERE  E.contact = C.id	-- join
+		AND    C.can_recvmail	-- contact must allow mails
+		AND    NOT E.inactive	-- and mail address must be active too.
+	    }
 
-	set new [db do changes]
-	if {!$new} {
-	    util user-error "Failed, empty" CAMPAIGN EMPTY
+	    set new [db do changes]
+	    if {!$new} {
+		util user-error "Failed, empty" CAMPAIGN EMPTY
+	    }
+
+	    puts "[color good OK] ($new entries)"
+	} else {
+	    puts "[color good OK] (empty)"
 	}
-
-	puts "[color good OK] ($new entries)"
     }
     return
 }
@@ -662,11 +671,7 @@ proc ::cm::campaign::Dump {conference} {
 	WHERE  con = :conference
     } {
 	cm dump step
-	if {$active} {
-	    cm dump save campaign setup --empty
-	} else {
-	    cm dump save campaign setup --empty --inactive
-	}
+	cm dump save campaign setup --empty
 
 	# Destinations for the campaign. Explicitly loaded.
 	db do eval {
@@ -708,6 +713,11 @@ proc ::cm::campaign::Dump {conference} {
 		cm dump save \
 		    campaign received $date $email
 	    }
+	}
+
+	if {!$active} {
+	    cm dump step
+	    cm dump save campaign close
 	}
     }
     return
