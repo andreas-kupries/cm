@@ -1445,7 +1445,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Add one or more companies as the affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
+		generate [stop!] }
 	    input company {
 		Names of the companies to add as affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
@@ -1457,7 +1458,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Remove one or more companies from the set of affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
+		generate [stop!] }
 	    input company {
 		Names of the companies to remove from the set of affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
@@ -1470,7 +1472,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Add one or more liaisons to the specified company}
 	    input company {
 		Name of the company to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only company
+		generate [stop!] }
 	    input name {
 		Name of the contacts to add as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
@@ -1483,7 +1486,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Remove one or more liaisons from the specified company}
 	    input company {
 		Name of the company to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only company
+		generate [stop!] }
 	    input name {
 		Name of the contacts to remove as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
@@ -1496,10 +1500,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Set tag of the specified contact}
 	    input name {
 		Name of the contact to tag
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding non-persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding non-persons
+		generate [stop!] }
 	    input tag {
 		Tag to set
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 	} [cm::call contact cmd_set_tag]
 
 	private set-bio {
@@ -1507,7 +1512,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Set biography of the specified contact. Read from stdin.}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
 	} [cm::call contact cmd_set_bio]
 
 	private add-mail {
@@ -1516,7 +1522,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .mails
 	    input name {
 		Name of the contact to extend. No mailing lists.
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
 	} [cm::call contact cmd_add_mail]
 
 	private add-link {
@@ -1525,7 +1532,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    input name {
 		Name of the contact to extend.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_add_link]
 
 	private disable-mail {
@@ -1594,10 +1602,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Rename the specified contact.}
 	    input name {
 		Name of the contact to modify.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	    input newname {
-		New name of the contact
-	    } { optional ; interact }
+		New name of the contact.
+	    } { optional ; interact ; validate [cm::vt notcontact]
+		generate [stop!] }
 	} [cm::call contact cmd_rename]
 
 	private merge {
@@ -1605,10 +1615,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Merge the secondary contacts into a primary}
 	    input primary {
 		Name of the primary contact taking the merged data.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	    input secondary {
 		Name of the secondary contacts to merge into the primary
-	    } { optional ; list ; interact ; validate [cm::vt contact] }
+	    } { optional ; list ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_merge]
 
 	# TODO: change flags?

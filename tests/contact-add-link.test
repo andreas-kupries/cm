@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - contacts, show single, details
+## schedule management - contacts, add links
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,16 +12,16 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-show-1.0 {contact show, wrong args, not enough} -body {
-    run contact show -n
+test contact-add-link-1.0 {contact add-link, wrong args, not enough} -body {
+    run contact add-link -n
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: Undefined: name"
 
-test contact-show-1.1 {contact show, wrong args, too many} -body {
-    run contact show -n NAME X
+test contact-add-link-1.1 {contact add-link, wrong args, too many} -body {
+    run contact add-link -n NAME X
 } -setup {
     stage-open
 } -cleanup {
@@ -30,8 +30,8 @@ test contact-show-1.1 {contact show, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-show-2.0 {contact show, unknown contact} -body {
-    run contact show me
+test contact-add-link-2.0 {contact add-link, unknown contact} -body {
+    run contact add-link me
 } -setup {
     stage-open
 } -cleanup {
@@ -40,32 +40,24 @@ test contact-show-2.0 {contact show, unknown contact} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-show-3.0 {contact show, person} -body {
-    run contact show me
+test contact-add-link-3.0 {contact add-link} -body {
+    run contact add-link me -L http://myself.org
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
 } -cleanup {
     stage-close
-} -result [viewFile support/contact/show-person.txt]
+} -result [viewFile support/contact/add-link.txt]
 
-test contact-show-3.1 {contact show, mailing list} -body {
-    run contact show me
+test contact-add-link-3.1 {contact add-link, persist} -body {
+    run contact add-link me -L http://myself.org
+    run contact show     me
 } -setup {
     stage-open
-    run contact create-list Myself me@myself.org
+    run contact create-person -E me@myself.org Myself me
 } -cleanup {
     stage-close
-} -result [viewFile support/contact/show-mlist.txt]
-
-test contact-show-3.2 {contact show, company} -body {
-    run contact show me
-} -setup {
-    stage-open
-    run contact create-company -E me@myself.org Myself
-} -cleanup {
-    stage-close
-} -result [viewFile support/contact/show-company.txt]
+} -result [viewFile support/contact/show-added-link.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

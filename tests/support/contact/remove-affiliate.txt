@@ -1,0 +1,3 @@
+~/.cm/managed
+Reduce affiliations of "(@me) Myself" ... 
+- "Company" ... OK

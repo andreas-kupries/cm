@@ -1,0 +1,88 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, add affiliations to persons
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-affiliate-1.0 {contact add-affiliate, wrong args, not enough} -body {
+    run contact add-affiliate -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-affiliate-2.0 {contact add-affiliate, unknown person} -body {
+    run contact add-affiliate me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+test contact-add-affiliate-2.1 {contact add-affiliate, unknown affiliation} -body {
+    run contact add-affiliate me com
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "company", got "com"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-affiliate-3.0 {contact add-affiliate} -body {
+    run contact add-affiliate me com
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/add-affiliate.txt]
+
+test contact-add-affiliate-3.1 {contact add-affiliate, persist} -body {
+    run contact add-affiliate me com
+    run contact show me
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-affiliate.txt]
+
+test contact-add-affiliate-3.2 {contact add-affiliate, persist, inverted} -body {
+    run contact add-affiliate me com
+    run contact show com
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-iaffiliate.txt]
+
+test contact-add-affiliate-3.3 {contact add-affiliate, persist} -body {
+    run contact add-affiliate me com
+    run contacts
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-affiliate.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
