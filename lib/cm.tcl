@@ -1355,7 +1355,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Remove one or more mail addresses from the campaign
-		for the crrent conference.
+		for the current conference.
 		This does not affect future campaigns.
 	    }
 	    input entry {
