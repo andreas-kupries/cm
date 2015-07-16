@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - campaign management, setup
+## schedule management - campaign management, reset
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,8 +12,8 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test campaign-setup-1.0 {campaign setup, wrong args, too many} -body {
-    run campaign setup X
+test campaign-reset-1.0 {campaign reset, wrong args, too many} -body {
+    run campaign reset -n X
 } -setup {
     stage-open
 } -cleanup {
@@ -22,106 +22,110 @@ test campaign-setup-1.0 {campaign setup, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test campaign-setup-2.0 {campaign setup, no conference} -body {
-    run campaign setup
+test campaign-reset-2.0 {campaign reset, no conference} -body {
+    run campaign reset -n
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
 
-test campaign-setup-2.1 {campaign setup, double} -body {
-    run campaign setup
+test campaign-reset-2.1 {campaign reset, no campaign} -body {
+    run campaign reset -n
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
-    run campaign setup
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result {*cm general: Conference "C" already has an active campaign}
-
-test campaign-setup-2.2 {campaign setup, closed} -body {
-    run campaign setup
-} -setup {
-    stage-open
-    run contact create-person -E me@myself.org Myself me
-    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
-    run campaign setup
-    run campaign close
-} -cleanup {
-    stage-close
-} -returnCodes error -match glob -result {*cm general: Conference "C" has a closed campaign}
-
-# Note: While setup checks against 'no contacts' that condition is not possible.
-#       setup needs a conference, a conference needs a contact (manager, and submission mail)
-#       therefore with the conference we have a contact going into the campaign.
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
 
 # # ## ### ##### ######## ############# #####################
 
-test campaign-setup-3.0 {campaign setup} -body {
-    run campaign setup
+test campaign-reset-3.0 {campaign reset} -body {
+    run campaign reset -n
 } -setup {
     stage-open
+    run template add T << TEMPLATE
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
-} -cleanup {
-    stage-close
-} -match glob -result [viewFile support/campaign/setup.txt]
-
-test campaign-setup-3.1 {campaign setup --empty} -body {
-    run campaign setup --empty
-} -setup {
-    stage-open
-    run contact create-person -E me@myself.org Myself me
-    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
-} -cleanup {
-    stage-close
-} -match glob -result [viewFile support/campaign/setup-empty.txt]
-
-test campaign-setup-3.2 {campaign setup, status, summary} -body {
     run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/reset.txt]
+
+test campaign-reset-3.2 {campaign reset, status, summary} -body {
+    run campaign reset -n
     run campaign status
 } -setup {
     stage-open
+    run template add T << TEMPLATE
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
 } -cleanup {
     stage-close
-} -match glob -result [viewFile support/campaign/status-setup-summary.txt]
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
 
-test campaign-setup-3.3 {campaign setup, status, details} -body {
-    run campaign setup
+test campaign-reset-3.3 {campaign reset, status, details} -body {
+    run campaign reset -n
     run campaign status --detailed
 } -setup {
     stage-open
+    run template add T << TEMPLATE
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
 } -cleanup {
     stage-close
-} -match glob -result [viewFile support/campaign/status-setup-detailed.txt]
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
 
-test campaign-setup-3.4 {campaign setup --empty, status, summary} -body {
-    run campaign setup --empty
+test campaign-reset-3.4 {campaign reset closed} -body {
+    run campaign reset -n
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+    run campaign close
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/reset.txt]
+
+test campaign-reset-3.5 {campaign reset closed, status, summary} -body {
+    run campaign reset -n
     run campaign status
 } -setup {
     stage-open
+    run template add T << TEMPLATE
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+    run campaign close
 } -cleanup {
     stage-close
-} -match glob -result [viewFile support/campaign/status-setup-empty-summary.txt]
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
 
-test campaign-setup-3.5 {campaign setup --empty, status, details} -body {
-    run campaign setup --empty
+test campaign-reset-3.6 {campaign reset closed, status, details} -body {
+    run campaign reset -n
     run campaign status --detailed
 } -setup {
     stage-open
+    run template add T << TEMPLATE
     run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+    run campaign close
 } -cleanup {
     stage-close
-} -match glob -result [viewFile support/campaign/status-setup-empty-detailed.txt]
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

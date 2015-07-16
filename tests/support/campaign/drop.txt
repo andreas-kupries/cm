@@ -1,0 +1,3 @@
+~/.cm/managed
+Campaign "C" ...
+* Dropping me@myself.org ... OK

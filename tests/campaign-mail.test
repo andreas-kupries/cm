@@ -1,0 +1,122 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, mail run setup
+## Always --fake, to prevent sending of mail by the test suite.
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-mail-1.0 {campaign mail, wrong args, not enough} -body {
+    run campaign mail --fake
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test campaign-mail-1.1 {campaign mail, wrong args, too many} -body {
+    run campaign mail --fake TEMPLATE X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-mail-2.0 {campaign mail, no conference} -body {
+    run campaign mail --fake T
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-mail-2.1 {campaign mail, no campaign} -body {
+    run campaign mail --fake T
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+test campaign-mail-2.2 {campaign mail, closed} -body {
+    run campaign mail --fake T
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Campaign "C" is closed, cannot be modified}
+
+# TODO: Bad template
+
+test campaign-mail-3.0 {campaign mail, template placeholder issues} -body {
+    run campaign mail -n --fake T
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/mail-template-issues.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-mail-3.0 {campaign mail} -body {
+    run campaign mail -n --force --fake T
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/mail.txt]
+
+test campaign-mail-3.1 {campaign mail, status, summary} -body {
+    run campaign mail -n --force --fake T
+    run campaign status
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-mail-summary.txt]
+
+test campaign-mail-3.2 {campaign mail, status, details} -body {
+    run campaign mail -n --force --fake T
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-mail-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
