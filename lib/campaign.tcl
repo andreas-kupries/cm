@@ -173,10 +173,14 @@ proc ::cm::campaign::cmd_reset {config} {
 	    CAMPAIGN MISSING
     }
 
-    if {![ask yn "Campaign \"[color name $clabel]\" [color bad RESET]" no]} {
+    if {[cmdr interactive?] &&
+	![ask yn "Campaign \"[color name $clabel]\" [color bad RESET]" no]} {
 	puts [color note Aborted]
 	return
     }
+
+    puts -nonewline "Clearing campaign \"[color name $clabel]\" ... "
+    flush stdout
 
     db do transaction {
 	db do eval {
@@ -442,14 +446,15 @@ proc ::cm::campaign::cmd_mail {config} {
     set issues [check-template $text]
     if {$issues ne {}} {
 	puts $issues
-	if {![ask yn "Continue with mail run ?" no]} {
-	    puts [color note Aborted]
+	if {[$config @force]} {
+	    puts [color warning {Forced run}]
+	} elseif {![cmdr interactive?] ||
+		  ![ask yn "Continue with mail run ?" no]} {
+	    puts [color bad Aborted]
 	    return
 	}
     }
 
-    # TODO: Check template for necessary/important placeholders.
-    # TODO: Warn about any missing.
     set text [conference insert $conference $text]
 
     db do eval {
@@ -568,6 +573,10 @@ proc ::cm::campaign::cmd_received {config} {
 	util user-error "Conference \"$clabel\" has no campaign" \
 	    CAMPAIGN MISSING
     }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
 
     puts "Campaign \"[color name $clabel]\" ... "
 
@@ -587,6 +596,16 @@ proc ::cm::campaign::cmd_received {config} {
     foreach email [$config @entry] {
 	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
 	flush stdout
+
+	if {[db do exists {
+	    SELECT id
+	    FROM   campaign_received
+	    WHERE  mailrun = :run
+	    AND    email   = :email
+	}]} {
+	    util user-error "Already present" \
+		CAMPAIGN RUN EMAIL DUPLICATE
+	}
 
 	db do eval {
 	    INSERT INTO campaign_received
@@ -610,12 +629,26 @@ proc ::cm::campaign::cmd_destination {config} {
 	util user-error "Conference \"$clabel\" has no campaign" \
 	    CAMPAIGN MISSING
     }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
 
     puts "Campaign \"[color name $clabel]\" ... "
 
     foreach email [$config @entry] {
 	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
 	flush stdout
+
+	if {[db do exists {
+	    SELECT id
+	    FROM   campaign_destination
+	    WHERE  campaign = :campaign
+	    AND    email    = :email
+	}]} {
+	    util user-error "Already present" \
+		CAMPAIGN EMAIL DUPLICATE
+	}
 
 	db do eval {
 	    INSERT
@@ -834,7 +867,8 @@ proc ::cm::campaign::Setup {} {
 
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    mailrun	INTEGER	NOT NULL REFERENCES campaign_mailrun,
-	    email	INTEGER	NOT NULL REFERENCES email	-- under contact
+	    email	INTEGER	NOT NULL REFERENCES email,	-- under contact
+	    UNIQUE (mailrun,email)
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {mailrun	INTEGER 1 {} 0}

@@ -1347,6 +1347,9 @@ cmdr create cm::cm [file tail $::argv0] {
 		updated in full, but no mails are actuall send out.
 		This option is only for testing.
 	    } { presence }
+	    option force {
+		Force mail run, even if the template has issues.
+	    } { presence }
 	    input template {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }
@@ -1385,7 +1388,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input entry {
 		The list of emails to remove.
-	    } { list ; optional ; interact ; validate [cm::vt email] }
+	    } { list ; optional ; interact ; validate [cm::vt email]
+		generate [stop!] }
 	} [cm::call campaign cmd_drop]
 
 	private destination {
@@ -1429,7 +1433,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input entry {
 		The list of emails to add.
 	    } { list ; validate [cm::vt email] }
-	} [cm::call campaign cmd_destination]
+	} [cm::call campaign cmd_received]
 
 	private status {
 	    section {Conference Management} {Mail Campaign}
