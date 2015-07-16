@@ -219,8 +219,10 @@ proc ::cm::campaign::cmd_status {config} {
     }
 
     set details [$config @detailed]
+    set active [expr {[isactive $campaign] ? "" : " closed,"}]
+set type [expr {$details ? " details" : " summary"}]
 
-    puts "Campaign \"[color name $clabel]\" [expr {$details ? "details" : "summary"}]"
+    puts "Campaign \"[color name $clabel]\"$active$type"
 
     if {$details} {
 	StatusDetails $campaign

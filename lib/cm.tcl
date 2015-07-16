@@ -1411,8 +1411,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Reset the campaign to empty. Use with care, this
-		looses all information about templates, run, and
-		already reached addresses.
+		causes the system to forget *all* information about
+		templates, runs, and already reached addresses.
 	    }
 	} [cm::call campaign cmd_reset]
 
