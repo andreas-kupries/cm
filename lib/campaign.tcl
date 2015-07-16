@@ -122,7 +122,7 @@ proc ::cm::campaign::cmd_setup {config} {
 		util user-error "Failed, empty" CAMPAIGN EMPTY
 	    }
 
-	    puts "[color good OK] ($new entries)"
+	    puts "[color good OK] ($new [expr {$new == 1 ? "entry" : "entries"}])"
 	} else {
 	    puts "[color good OK] (empty)"
 	}
