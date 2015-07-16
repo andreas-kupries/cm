@@ -1,0 +1,109 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, destination removal
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-drop-1.0 {campaign drop, wrong args, not enough} -body {
+    run campaign drop -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: entry"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-drop-2.0 {campaign drop, no conference} -body {
+    run campaign drop me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-drop-2.1 {campaign drop, conference, no campaign} -body {
+    run campaign drop me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+test campaign-drop-2.2 {campaign drop, conference, closed campaign} -body {
+    run campaign drop me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Campaign "C" is closed, cannot be modified}
+
+test campaign-drop-2.3 {campaign drop, conference, already dropped, ok} -body {
+    run campaign drop me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup ;# Adds 'me' automatically
+    run campaign drop me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/drop.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-drop-3.0 {campaign drop} -body {
+    run campaign drop me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/drop.txt]
+
+test campaign-drop-3.1 {campaign drop, status, summary} -body {
+    run campaign drop me
+    run campaign status
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-drop-summary.txt]
+
+test campaign-drop-3.2 {campaign drop, status, details} -body {
+    run campaign drop me
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-drop-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
