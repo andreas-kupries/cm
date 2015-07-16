@@ -30,14 +30,28 @@ test campaign-setup-2.0 {campaign setup, no conference} -body {
     stage-close
 } -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
 
-if 0 {test campaign-setup-2.1 {campaign setup, no active conference} -body {
+test campaign-setup-2.1 {campaign setup, double} -body {
     run campaign setup
 } -setup {
     stage-open
+    run contact create-person -E me@myself.org Myself me
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
 } -cleanup {
     stage-close
-} -match glob -result [viewFile support/campaign/setup.txt]}
+} -returnCodes error -match glob -result {*cm general: Conference "C" already has an active campaign}
+
+test campaign-setup-2.2 {campaign setup, closed} -body {
+    run campaign setup
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has a closed campaign}
 
 # Note: While setup checks against 'no contacts' that condition is not possible.
 #       setup needs a conference, a conference needs a contact (manager, and submission mail)
