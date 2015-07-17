@@ -1,0 +1,63 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, set biography
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-bio-1.0 {contact set-bio, wrong args, not enough} -body {
+    run contact set-bio -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test contact-set-bio-1.1 {contact set-bio, wrong args, too many} -body {
+    run contact set-bio -n NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-bio-2.0 {contact set-bio, unknown contact} -body {
+    run contact set-bio me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-set-bio-3.0 {contact set-bio} -body {
+    run contact set-bio me << BIO
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/set-bio.txt]
+
+test contact-set-bio-3.1 {contact set-bio, persist} -body {
+    run contact set-bio me << BIO
+    run contact show    me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-bio.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

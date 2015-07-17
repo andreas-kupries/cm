@@ -1,0 +1,68 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, retype
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-retype-1.0 {contact retype, wrong args, not enough} -body {
+    run contact retype -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+# TODO: Might wish/require to have at least one contact to retype.
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-retype-2.0 {contact retype, bogus type} -body {
+    run contact retype bogus me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact-type for input "type", got "bogus"}
+
+test contact-retype-2.1 {contact retype, unknown contact} -body {
+    run contact retype company me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-retype-3.0 {contact retype} -body {
+    run contact retype company me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/retype.txt]
+
+test contact-retype-3.1 {contact retype, persist} -body {
+    run contact retype company me
+    run contact show   me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-retyped.txt]
+
+## TODO: run all 6 possible retypes (3*3-3 = 6)
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

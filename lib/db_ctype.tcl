@@ -27,11 +27,15 @@ package require cm::util
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm {
-    namespace export contact
+    namespace export db
+    namespace ensemble create
+}
+namespace eval ::cm::db {
+    namespace export contact-type
     namespace ensemble create
 }
 namespace eval ::cm::db::contact-type {
-    namespace export 2name known
+    namespace export 2name known setup
     namespace ensemble create
 
     namespace import ::cm::db

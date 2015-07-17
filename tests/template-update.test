@@ -45,7 +45,7 @@ test template-update-2.1 {template update, stdin} -body {
     run template show fOO
 } -setup {
     stage-open
-    run template new Foo bar
+    run template new foo bar
 } -cleanup {
     stage-close
 } -result [viewFile support/template/fox.txt]

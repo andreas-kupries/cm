@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cm::db::tutorial
+package require cm::util
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -34,6 +35,7 @@ namespace eval ::cm::validate::tutorial {
     namespace ensemble create
 
     namespace import ::cm::db::tutorial
+    namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }

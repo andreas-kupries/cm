@@ -1,0 +1,3 @@
+~/.cm/managed
+Campaign "C" ... 
+* Adding me@myself.org ... OK

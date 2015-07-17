@@ -1,0 +1,2 @@
+~/.cm/managed
+Renaming contact "(@me) Myself" to "do" ... OK

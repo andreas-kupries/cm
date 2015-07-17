@@ -45,8 +45,12 @@ cm campaign
 cm campaign close
     Close the campaign of the current conference.
 
+cm campaign destination <entry>...
+    Add one or more mail addresses to the campaign for the current conference.
+    This is for bulk-loading from "cm save" dumps.
+
 cm campaign drop [<entry>...]
-    Remove one or more mail addresses from the campaign for the crrent
+    Remove one or more mail addresses from the campaign for the current
     conference. This does not affect future campaigns.
 
 cm campaign exit
@@ -56,17 +60,27 @@ cm campaign help [OPTIONS] [<cmdname>...]
     Retrieve help for a command or command set. Without arguments help for all
     commands is given. The default format is --full.
 
-cm campaign mail <template>
+cm campaign mail [OPTIONS] <template>
     Generate campaign mails.
 
-cm campaign reset
-    Reset the campaign to empty. Use with care, this looses all information
-    about templates, run, and already reached addresses.
+cm campaign received <epoch> <entry>...
+    Add one or more mail addresses to the campaign mail run for the current
+    conference and identified by its timestamp. This is for bulk-loading from
+    "cm save" dumps.
 
-cm campaign setup
+cm campaign reset
+    Reset the campaign to empty. Use with care, this causes the system to
+    forget *all* information about templates, runs, and already reached
+    addresses.
+
+cm campaign run <epoch> <template>
+    Create an empty campaign mail run for a specific time. To be bulk-loaded
+    with emails via "campaign received".
+
+cm campaign setup [OPTIONS]
     Initialize the campaign for the current conference.
 
-cm campaign status
+cm campaign status [OPTIONS]
     Show the status of the campaign.
 
 cm campaign test <template>
@@ -169,6 +183,15 @@ cm conference rates
 
 cm conference registration <status>
     Set the registration status of the conference.
+
+cm conference schedule [<name>]
+    Link a schedule to the conference
+
+cm conference schedule-edit <label> <type> <value>
+    Edit the logical schedule for the conference
+
+cm conference schedule-show
+    Show the current logical schedule for the conference
 
 cm conference select [<conference>]
     Select a specific conference for further operation
@@ -346,7 +369,7 @@ cm debug levels
     List all the debug levels known to the system, which we can enable to gain
     a (partial) narrative of the application-internal actions.
 
-cm debug speakers
+cm debug speakers [OPTIONS]
     Show speaker information inserted into the overview page.
 
 cm exit

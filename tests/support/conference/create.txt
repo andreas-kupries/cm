@@ -1,0 +1,21 @@
+~/.cm/managed
+Creating conference "C" ... Realigned to September 28, 2015 ...Proposed timeline ...
++-----------------------------+--------------------+
+| Item                        | Date               |
++-----------------------------+--------------------+
+| 1st Call for papers         | March 16, 2015     |
+| 2nd Call for papers         | May 11, 2015       |
+| 3rd Call for papers         | July 06, 2015      |
+| WIP & BOF Reservations open | July 06, 2015      |
+| Submissions due             | August 03, 2015    |
+| Registration opens          | August 03, 2015    |
+| Notifications to Authors    | August 10, 2015    |
+| Author Materials due        | September 07, 2015 |
+| Edit proceedings            | September 14, 2015 |
+| Ship proceedings            | September 21, 2015 |
+| Tutorial Start              | September 28, 2015 |
+| Session Start               | September 30, 2015 |
++-----------------------------+--------------------+
+OK
+Setting as current conference ... OK
+Please remember to set the location information

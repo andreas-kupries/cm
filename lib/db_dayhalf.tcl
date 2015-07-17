@@ -41,7 +41,7 @@ namespace eval ::cm::db {
     namespace ensemble create
 }
 namespace eval ::cm::db::dayhalf {
-    namespace export 2name known
+    namespace export 2name known setup
     namespace ensemble create
 
     namespace import ::cm::db

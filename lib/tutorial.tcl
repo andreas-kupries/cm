@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
+package require cmdr::table
 package require debug
 package require debug::caller
 package require dbutil
@@ -29,7 +30,6 @@ package require cm::contact
 package require cm::db
 package require cm::db::dayhalf
 package require cm::db::tutorial
-package require cm::table
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -51,8 +51,7 @@ namespace eval ::cm::tutorial {
     namespace import ::cm::contact
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################
