@@ -1,0 +1,10 @@
+~/.cm/managed
+
+Conference "C": Schedule "S": 
++-------+----------+-----------+
+| Slot  | Type     | Details   |
++-------+----------+-----------+
+| @K1   |          |           |
+| @S1   | Fixed    | Session 1 |
+| @T1m1 | Tutorial | FOO       |
++-------+----------+-----------+

@@ -16,6 +16,9 @@ Conference Management
     cm conference rate <rate> <currency> [<decimal>]                                                         Set the room rate information
     cm conference rates                                                                                      Show the conference rates
     cm conference registration <status>                                                                      Set the registration status of the conference
+    cm conference schedule [<name>]                                                                          Link a schedule to the conference
+    cm conference schedule-edit <label> <type> <value>                                                       Edit the logical schedule for the conference
+    cm conference schedule-show                                                                              Show the current logical schedule for the conference
     cm conference select [<conference>]                                                                      Select a specific conference for further operation
     cm conference show                                                                                       Show the details of the current conference
     cm conference sponsor-ping [<template>]                                                                  Send a mail to the sponsors
@@ -34,13 +37,16 @@ Conference Management
         cm conference set-end [<enddate>]    Set/fix the conference end-date
 
     Mail Campaign
-        cm campaign close                Close the campaign of the current conference
-        cm campaign drop [<entry>...]    Remove one or more mail addresses from the campaign for the crrent conference
-        cm campaign mail <template>      Generate campaign mails
-        cm campaign reset                Reset the campaign to empty
-        cm campaign setup                Initialize the campaign for the current conference
-        cm campaign status               Show the status of the campaign
-        cm campaign test <template>      Check generation of campaign mails
+        cm campaign close                          Close the campaign of the current conference
+        cm campaign destination <entry>...         Add one or more mail addresses to the campaign for the current conference
+        cm campaign drop [<entry>...]              Remove one or more mail addresses from the campaign for the current conference
+        cm campaign mail <template>                Generate campaign mails
+        cm campaign received <epoch> <entry>...    Add one or more mail addresses to the campaign mail run for the current conference and identified by its timestamp
+        cm campaign reset                          Reset the campaign to empty
+        cm campaign run <epoch> <template>         Create an empty campaign mail run for a specific time
+        cm campaign setup                          Initialize the campaign for the current conference
+        cm campaign status                         Show the status of the campaign
+        cm campaign test <template>                Check generation of campaign mails
 
         Template Management
             cm template add <name> [<text>]        Create a new template

@@ -11,13 +11,16 @@ cm [OPTIONS]
     cm bookings
     cm campaign
     cm campaign close
+    cm campaign destination <entry>...
     cm campaign drop [<entry>...]
     cm campaign exit
     cm campaign help [OPTIONS] [<cmdname>...]
-    cm campaign mail <template>
+    cm campaign mail [OPTIONS] <template>
+    cm campaign received <epoch> <entry>...
     cm campaign reset
-    cm campaign setup
-    cm campaign status
+    cm campaign run <epoch> <template>
+    cm campaign setup [OPTIONS]
+    cm campaign status [OPTIONS]
     cm campaign test <template>
     cm cities
     cm city
@@ -51,6 +54,9 @@ cm [OPTIONS]
     cm conference rate [OPTIONS] <rate> <currency> [<decimal>]
     cm conference rates
     cm conference registration <status>
+    cm conference schedule [<name>]
+    cm conference schedule-edit <label> <type> <value>
+    cm conference schedule-show
     cm conference select [<conference>]
     cm conference set-end [<enddate>]
     cm conference show
@@ -107,7 +113,7 @@ cm [OPTIONS]
     cm debug fix-mails
     cm debug help [OPTIONS] [<cmdname>...]
     cm debug levels
-    cm debug speakers
+    cm debug speakers [OPTIONS]
     cm exit
     cm facilities
     cm help [OPTIONS] [<cmdname>...]

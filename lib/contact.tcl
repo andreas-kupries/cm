@@ -17,6 +17,7 @@
 
 package require Tcl 8.5
 package require cmdr::color
+package require cmdr::table
 package require cmdr::ask
 package require debug
 package require debug::caller
@@ -26,7 +27,6 @@ package require try
 package provide cm::contact 0 ; # campaign and contact are circular
 
 package require cm::campaign
-package require cm::table
 package require cm::db
 package require cm::db::contact-type
 package require cm::util
@@ -56,8 +56,8 @@ namespace eval ::cm::contact {
     namespace import ::cm::db::contact-type
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -76,7 +76,7 @@ proc ::cm::contact::cmd_show {config} {
 
     set w [util tspace [expr {[string length {Can Receive Mail}]+7}] 60]
 
-    [table t {Property Value} {
+    [table/d t {
 	db do eval {
 	    SELECT C.id           AS id,
                    C.tag          AS tag,
@@ -89,7 +89,7 @@ proc ::cm::contact::cmd_show {config} {
 	    	   C.can_talk     AS ctalk,
 	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
-	          contact-type CT
+	          contact_type CT
 	    WHERE C.id   = :contact
 	    AND   C.type = CT.id
 	} {
@@ -117,13 +117,18 @@ proc ::cm::contact::cmd_show {config} {
 	    # Emails for the contact
 	    set first 1
 	    db do eval {
-		SELECT email
+		SELECT email, inactive
 		FROM   email
 		WHERE  contact = :id
 	    } {
 		if {$first} { $t add Emails {} }
 		set first 0
-		$t add - $email
+
+		if {$inactive} {
+		    $t add - "$email ([color bad Disabled])"
+		} else {
+		    $t add - $email
+		}
 	    }
 
 	    # Links for the contact
@@ -223,7 +228,7 @@ proc ::cm::contact::cmd_list {config} {
 	    	   C.can_talk     AS ctalk,
 	    	   C.can_submit   AS csubm
 	    FROM  contact      C,
-	          contact-type CT
+	          contact_type CT
 	    WHERE (C.name  GLOB :pattern
 	     OR    C.dname GLOB :pattern)
 	    AND   CT.id = C.type
@@ -751,7 +756,7 @@ proc ::cm::contact::cmd_add_liaison {config} {
 	puts "Extend representatives of \"[color name [get $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "+ \"[color name [get $contact]]\" ..."
+	    puts -nonewline "+ \"[color name [get $contact]]\" ... "
 	    flush stdout
 
 	    add-liaison $company $contact
@@ -773,7 +778,7 @@ proc ::cm::contact::cmd_drop_liaison {config} {
 	puts "Reduce representatives of \"[color name [get $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "- \"[color name [get $contact]]\" ..."
+	    puts -nonewline "- \"[color name [get $contact]]\" ... "
 	    flush stdout
 
 	    drop-liaison $company $contact
@@ -894,6 +899,8 @@ proc ::cm::contact::related-formatted {contact type} {
 	    }
 	}
     }
+
+    # TODO: List the inverted relations also ?
 
     return $related
 }
@@ -1439,7 +1446,7 @@ proc ::cm::contact::Setup {} {
 
 	    id		 INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    tag		 TEXT	 	  UNIQUE,	-- for html anchors, and quick identification
-	    type	 INTEGER NOT NULL REFERENCES contact-type,
+	    type	 INTEGER NOT NULL REFERENCES contact_type,
 	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	    dname	 TEXT	 NOT NULL,		-- display name
 	    biography	 TEXT,
@@ -1530,7 +1537,7 @@ proc ::cm::contact::Setup {} {
 
 	    id		INTEGER NOT NULL PRIMARY KEY,
 	    company	INTEGER NOT NULL REFERENCES contact,
-	    person	INTEGER NOT NULL REFERENCES contact,
+	    person	INTEGER NOT NULL REFERENCES contact
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {company	INTEGER 1 {} 0}

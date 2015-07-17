@@ -27,13 +27,11 @@ package require cmdr
 package require debug
 package require debug::caller
 package require lambda
-package require cm::table
+package require cmdr::table
 
 cmdr color define heading =bold ;# Table header color.
-
-cm::table::show ::cmdr pager
-
-cmdr color define heading =bold ;# Table header color.
+cmdr table show \
+    ::cmdr pager
 
 #package require cm::seen  ; # set-progress
 
@@ -740,11 +738,12 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	    input title {
 		Name of the conference
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 
 	    input year {
 		Year of the conference
-	    } { optional ; interact ; validate [cm::cvt year] }
+	    } { optional ; interact ; validate [cm::cvt year]
+		generate [stop!] }
 
 	    input alignment {
 		Alignment within the week
@@ -752,19 +751,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	    input start {
 		Start date
-	    } { optional ; interact ; validate [cm::cvt date] }
+	    } { optional ; interact ; validate [cm::cvt date]
+		generate [stop!] }
 
 	    input length {
 		Length in days
-	    } { optional ; interact ; validate [cm::cvt posint] }
+	    } { optional ; interact ; validate [cm::cvt posint]
+		generate [stop!] }
 
 	    input manager {
 		Person or organization managing the conference
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 
 	    input submission {
 		Email address for submissions to be sent to.
-	    } { optional ; interact ; validate [cm::vt email] }
+	    } { optional ; interact ; validate [cm::vt email]
+		generate [stop!] }
 
 	    # Set later: hotel, facility, city
 
@@ -934,6 +937,40 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
 
+	# - -- --- ----  -------- ------------- ----------------------
+
+	private schedule {
+	    section {Conference Management}
+	    description { Link a schedule to the conference }
+	    input name {
+		The name of the schedule to use.
+	    } {
+		optional
+		validate [cm::vt pschedule]
+		generate [cm::call schedule active-or-select]
+	    }
+	} [cm::call conference cmd_schedule_set]
+
+	private schedule-show {
+	    section {Conference Management}
+	    description { Show the current logical schedule for the conference }
+	} [cm::call conference cmd_schedule_show]
+
+	private schedule-edit {
+	    section {Conference Management}
+	    description { Edit the logical schedule for the conference }
+	    input label {
+		Name of the slot to edit.
+	    } { validate [cm::vt schedule-slot] }
+	    input type {
+		New type of the slot
+	    } { validate [cm::vt schedule-slot-type] }
+	    input value {
+		New value of the slot, type-dependent interpretation.
+	    } { validate [cm::vt schedule-slot-value] }
+	} [cm::call conference cmd_schedule_edit]
+
+	# TODO: Drop physical schedule, integrated drop of logical entries.
 	# - -- --- ----  -------- ------------- ----------------------
 
 	private rate {
@@ -1402,6 +1439,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Initialize the campaign for the current conference.
 	    }
+	    option empty {
+		Create an empty campaign. Mail addresses will be loaded
+		into it via a series of "campaign destination" commands.
+		If this option is not present the new campaign will get
+		its mail addresses automatically from the known contacts.
+	    } { presence }
 	} [cm::call campaign cmd_setup]
 
 	private mail {
@@ -1409,10 +1452,32 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Generate campaign mails.
 	    }
+	    option fake {
+		Create a fake mail run, in that the database gets
+		updated in full, but no mails are actuall send out.
+		This option is only for testing.
+	    } { presence }
+	    option force {
+		Force mail run, even if the template has issues.
+	    } { presence }
 	    input template {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }
 	} [cm::call campaign cmd_mail]
+
+	private run {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Create an empty campaign mail run for a specific time.
+		To be bulk-loaded with emails via "campaign received".
+	    }
+	    input epoch {
+		Timestamp for the new mail run.
+	    } { validate [cm::cvt time] }
+	    input template {
+		Name of the template to use for the mail.
+	    } { validate [cm::vt template] }
+	} [cm::call campaign cmd_mailrun]
 
 	private test {
 	    section {Conference Management} {Mail Campaign}
@@ -1428,12 +1493,26 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Remove one or more mail addresses from the campaign
-		for the crrent conference.
+		for the current conference.
 		This does not affect future campaigns.
 	    }
 	    input entry {
-	    } { list ; optional ; interact ; validate [cm::vt email] }
+		The list of emails to remove.
+	    } { list ; optional ; interact ; validate [cm::vt email]
+		generate [stop!] }
 	} [cm::call campaign cmd_drop]
+
+	private destination {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Add one or more mail addresses to the campaign
+		for the current conference. This is for bulk-loading
+		from "cm save" dumps.
+	    }
+	    input entry {
+		The list of emails to add.
+	    } { list ; validate [cm::vt email] }
+	} [cm::call campaign cmd_destination]
 
 	private close {
 	    section {Conference Management} {Mail Campaign}
@@ -1446,16 +1525,34 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Reset the campaign to empty. Use with care, this
-		looses all information about templates, run, and
-		already reached addresses.
+		causes the system to forget *all* information about
+		templates, runs, and already reached addresses.
 	    }
 	} [cm::call campaign cmd_reset]
+
+	private received {
+	    section {Conference Management} {Mail Campaign}
+	    description {
+		Add one or more mail addresses to the campaign mail run 
+		for the current conference and identified by its timestamp.
+		This is for bulk-loading from "cm save" dumps.
+	    }
+	    input epoch {
+		The timestamp identifying the mail run.
+	    } { validate [cm::cvt time] }
+	    input entry {
+		The list of emails to add.
+	    } { list ; validate [cm::vt email] }
+	} [cm::call campaign cmd_received]
 
 	private status {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Show the status of the campaign.
 	    }
+	    option detailed {
+		Show status in full detail, listing all mails, not just counts.
+	    } { presence }
 	} [cm::call campaign cmd_status]
 	default
     }
@@ -1518,7 +1615,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Add one or more companies as the affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
+		generate [stop!] }
 	    input company {
 		Names of the companies to add as affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
@@ -1530,7 +1628,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Remove one or more companies from the set of affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
+		generate [stop!] }
 	    input company {
 		Names of the companies to remove from the set of affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
@@ -1543,7 +1642,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Add one or more liaisons to the specified company}
 	    input company {
 		Name of the company to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only company
+		generate [stop!] }
 	    input name {
 		Name of the contacts to add as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
@@ -1556,7 +1656,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Remove one or more liaisons from the specified company}
 	    input company {
 		Name of the company to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only company
+		generate [stop!] }
 	    input name {
 		Name of the contacts to remove as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
@@ -1569,10 +1670,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Set tag of the specified contact}
 	    input name {
 		Name of the contact to tag
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding non-persons
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding non-persons
+		generate [stop!] }
 	    input tag {
 		Tag to set
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 	} [cm::call contact cmd_set_tag]
 
 	private set-bio {
@@ -1580,7 +1682,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Set biography of the specified contact. Read from stdin.}
 	    input name {
 		Name of the contact to modify
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
 	} [cm::call contact cmd_set_bio]
 
 	private add-mail {
@@ -1589,7 +1692,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .mails
 	    input name {
 		Name of the contact to extend. No mailing lists.
-	    } { optional ; interact ; validate [cm::vt contact] } ; # TODO validator excluding mlists
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
 	} [cm::call contact cmd_add_mail]
 
 	private add-link {
@@ -1598,7 +1702,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    input name {
 		Name of the contact to extend.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_add_link]
 
 	private disable-mail {
@@ -1627,7 +1732,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		List of the contact to disable
 	    } { list ; optional ; interact ; validate [cm::vt contact] }
-	} [cm::call contact cmd_disable]
+	} [cm::call contact cmd_enable]
 
 	private list {
 	    section {Contact Management}
@@ -1647,7 +1752,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Show the details of the specified contact}
 	    input name {
 		Name of the contact to show.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_show]
 
 	private retype {
@@ -1666,10 +1772,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Rename the specified contact.}
 	    input name {
 		Name of the contact to modify.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	    input newname {
-		New name of the contact
-	    } { optional ; interact }
+		New name of the contact.
+	    } { optional ; interact ; validate [cm::vt notcontact]
+		generate [stop!] }
 	} [cm::call contact cmd_rename]
 
 	private merge {
@@ -1677,10 +1785,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Merge the secondary contacts into a primary}
 	    input primary {
 		Name of the primary contact taking the merged data.
-	    } { optional ; interact ; validate [cm::vt contact] }
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	    input secondary {
 		Name of the secondary contacts to merge into the primary
-	    } { optional ; list ; interact ; validate [cm::vt contact] }
+	    } { optional ; list ; interact ; validate [cm::vt contact]
+		generate [stop!] }
 	} [cm::call contact cmd_merge]
 
 	# TODO: change flags?
@@ -2284,6 +2394,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Show speaker information inserted into the overview page.
 	    }
+	    option mail {
+		When present show speaker information inserted into a CFP.
+	    } { presence }
 	} [cm::call conference cmd_debug_speakers]
     }
 }

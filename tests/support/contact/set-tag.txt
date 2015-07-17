@@ -1,0 +1,2 @@
+~/.cm/managed
+Set tag of "(@me) Myself" to "TAG" ... OK

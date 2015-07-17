@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
+package require cmdr::table
 package require cmdr::validate::time::minute
 package require debug
 package require debug::caller
@@ -25,7 +26,6 @@ package require dbutil
 package require try
 
 package require cm::util
-package require cm::table
 package require cm::db
 package require cm::db::pschedule
 package require cm::validate::pschedule-day
@@ -62,10 +62,8 @@ namespace eval ::cm::schedule {
 
     namespace import ::cmdr::validate::time::minute
 
-    namespace import ::cm::table::do
-    namespace import ::cm::table::dict
-    rename do   table
-    rename dict table/d
+    namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -675,12 +673,13 @@ proc ::cm::schedule::TrackList {pschedule {color {}}} {
 	foreach {name icount} $trackstats {
 	    set mark [expr {$at eq $name ? "->" : ""}]
 	    if {($at eq $name) && ($color ne {})} {
-		$tx add [color $color $mark] [color $color $name] [color $color ($icount)]
-	    } else {
-		$tx add $mark $name ($icount)
+		set mark   [color $color $mark]
+		set name   [color $color $name]
+		set icount [color $color $icount]
 	    }
+	    $tx add $mark $name ($icount)
 	}
-    }] =] \n]
+    }] show return] \n]
 
     debug.cm/schedule {==> ($tracks)}
     return $tracks
@@ -750,7 +749,7 @@ proc ::cm::schedule::ItemList {pschedule {color {}}} {
 	    $tx add $mark $parent $day $start $end $length | $track | $dmajor $dminor
 	    set lastday $day
 	}
-    }] =] \n]
+    }] show return] \n]
 
     debug.cm/schedule {==> ($items)}
     return $items

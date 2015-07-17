@@ -1,0 +1,88 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, add representatives to companies
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-rep-1.0 {contact add-rep, wrong args, not enough} -body {
+    run contact add-rep -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: company"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-rep-2.0 {contact add-rep, unknown company} -body {
+    run contact add-rep com
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "company", got "com"}
+
+test contact-add-rep-2.1 {contact add-rep, unknown representative} -body {
+    run contact add-rep com me
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com Company
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-add-rep-3.0 {contact add-rep} -body {
+    run contact add-rep com me
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/add-rep.txt]
+
+test contact-add-rep-3.1 {contact add-rep, persist} -body {
+    run contact add-rep com me
+    run contact show    com
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-rep.txt]
+
+test contact-add-rep-3.2 {contact add-rep, persist, inverted} -body {
+    run contact add-rep com me
+    run contact show    me
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-irep.txt]
+
+test contact-add-rep-3.3 {contact add-rep, persist} -body {
+    run contact add-rep com me
+    run contacts
+} -setup {
+    stage-open
+    run contact create-company -E com@com.com   Company
+    run contact create-person  -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-rep.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,3 @@
+~/.cm/managed
+Reduce representatives of "Company" ...
+- "(@me) Myself" ... OK

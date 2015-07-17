@@ -1,0 +1,2 @@
+~/.cm/managed
+Disabling email "me@myself.org" ... OK
