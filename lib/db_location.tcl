@@ -40,7 +40,7 @@ namespace eval ::cm::db::location {
     namespace export \
 	all new delete update get 2name 2name* label \
 	select select-always known issues \
-	new-staff delete-staff select-staff known-staff \
+	new-staff delete-staff select-staff known-staff all-staff \
         current current* current= current-reset \
 	setup dump
     namespace ensemble create
@@ -341,6 +341,18 @@ proc ::cm::db::location::current {} {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::location::all-staff {location} {
+    debug.cm/db/location {}
+    setup
+
+    return [db do eval {
+	    SELECT position, name, phone, email
+	    FROM   location_staff
+	    WHERE  location = :location
+	    ORDER BY position, name
+    }]
+}
 
 proc ::cm::db::location::new-staff {location position name email phone} {
     debug.cm/db/location {}

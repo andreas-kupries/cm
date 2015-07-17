@@ -43,7 +43,7 @@ namespace eval ::cm::db::tutorial {
 	all new title= desc= req= tag= 2name 2name-from-schedule \
 	get update select known known-tag known-title known-scheduled \
 	dayrange trackrange cell cell-schedule speakers speakers* \
-	scheduled schedule unschedule issues setup dump
+	is-speaker scheduled schedule unschedule issues setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -381,6 +381,17 @@ proc ::cm::db::tutorial::cell-schedule {conference day half track} {
 	AND    day        = :day
 	AND    half       = :half
 	AND    track      = :track
+    }]
+}
+
+proc ::cm::db::tutorial::is-speaker {contact} {
+    debug.cm/db/tutorial {}
+    setup
+
+    return [db do exists {
+	SELECT id
+	FROM   tutorial
+	WHERE  speaker = :contact
     }]
 }
 

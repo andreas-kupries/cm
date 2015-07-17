@@ -24,12 +24,11 @@ package require debug::caller
 package require dbutil
 package require try
 
-package provide cm::tutorial 0 ;# circular through contact, campaign, conference
+#package provide cm::tutorial 0 ;# circular through contact, campaign, conference
 
-package require cm::contact
 package require cm::db
-package require cm::db::dayhalf
 package require cm::db::tutorial
+package require cm::db::contact
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -46,9 +45,8 @@ namespace eval ::cm::tutorial {
     namespace import ::cmdr::ask
     namespace import ::cmdr::color
     namespace import ::cm::db
-    namespace import ::cm::db::dayhalf
+    namespace import ::cm::db::contact
     namespace import ::cm::db::tutorial
-    namespace import ::cm::contact
     namespace import ::cm::util
 
     namespace import ::cmdr::table::general ; rename general table
@@ -95,7 +93,7 @@ proc ::cm::tutorial::create {config} {
 	set description [$config @description]
     }
 
-    puts -nonewline "Creating \"[color name [cm::contact get $speaker]]\" tutorial \"[color name $title]\" ... "
+    puts -nonewline "Creating \"[color name [contact 2name $speaker]]\" tutorial \"[color name $title]\" ... "
 
     try {
 	tutorial new $speaker $tag $title $prereq $description
@@ -121,7 +119,7 @@ proc ::cm::tutorial::show {config} {
     dict with details {}
 
     set w [util tspace [expr {[string length Description]+7}] 60]
-    set xspeaker [contact get $xspeaker]
+    set xspeaker [contact 2name $xspeaker]
 
     puts "Details of [color name $xspeaker]'s tutorial \"[color name [tutorial 2name $tutorial]]\":"
     [table t {Property Value} {
