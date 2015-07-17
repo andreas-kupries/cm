@@ -1,0 +1,2 @@
+~/.cm/managed
+Setting current location to "N (C, S, N)" ... OK

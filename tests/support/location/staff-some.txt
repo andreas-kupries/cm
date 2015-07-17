@@ -1,0 +1,9 @@
+~/.cm/managed
+Staff of "N (C, S, N)":
++------+-------+-------+--------+
+| Role | Staff | Phone | Email  |
++------+-------+-------+--------+
+| POS  | NAME  | PHONE | E@MAIL |
+|      |       |       |        |
+| POX  | FOX   | PHONY | Z@MAIL |
++------+-------+-------+--------+

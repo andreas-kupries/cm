@@ -1,0 +1,126 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - location staff management, adding staff
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-add-staff-1.0 {location add-staff, wrong args, not enough, interactive impossible} -body {
+    # We have no locations to select interactively, so that fails too!
+    run location add-staff -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-add-staff-1.1 {location add-staff, wrong args, not enough, interactive impossible} -body {
+    run location add-staff -n
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: position"
+
+test location-add-staff-1.2 {location add-staff, wrong args, not enough, interactive impossible} -body {
+    run location add-staff -n POS
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test location-add-staff-1.3 {location add-staff, wrong args, not enough, interactive impossible} -body {
+    run location add-staff -n POS NAME
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: phone"
+
+test location-add-staff-1.4 {location add-staff, wrong args, not enough, interactive impossible} -body {
+    run location add-staff -n POS NAME PHONE
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: email"
+
+test location-add-staff-1.5 {location add-staff, wrong args, too many} -body {
+    run location add-staff POS NAME PHONE MAIL X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test location-add-staff-2.0 {location add-staff} -body {
+    run location add-staff POS NAME PHONE E@MAIL
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/add-staff.txt]
+
+test location-add-staff-2.1 {location add-staff, persistent} -body {
+    run location add-staff POS NAME PHONE E@MAIL
+    run location show
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/show-add-staff.txt]
+
+test location-add-staff-2.2 {location add-staff, persistent} -body {
+    run location add-staff POS NAME PHONE E@MAIL
+    run locations
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list-add-staff.txt]
+
+test location-add-staff-2.3 {location add-staff, persistent} -body {
+    run location add-staff POS NAME PHONE E@MAIL
+    run location staff
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list2-add-staff.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

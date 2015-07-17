@@ -1,0 +1,61 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - location staff management, listing
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-staff-1.0 {location staff, wrong args, not enough, interactive impossible} -body {
+    # We have no locations to select interactively, so that fails too!
+    run location staff -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-staff-1.1 {location staff, wrong args, too many} -body {
+    run location staff LOC X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# # ## ### ##### ######## ############# #####################
+
+test location-staff-3.0 {location staff, none} -body {
+    run location staff
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/staff-none.txt]
+
+test location-staff-3.1 {location staff, some} -body {
+    run location staff
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location add-staff POS NAME PHONE E@MAIL
+    run location add-staff POX FOX  PHONY Z@MAIL
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/staff-some.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
