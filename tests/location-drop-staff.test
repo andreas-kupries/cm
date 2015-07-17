@@ -1,0 +1,113 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## location management - location staff management, removing staff
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-drop-staff-1.0 {location drop-staff, wrong args, not enough, interactive impossible} -body {
+    # We have no locations to select interactively, so that fails too!
+    run location drop-staff -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-drop-staff-1.1 {location drop-staff, wrong args, not enough, interactive impossible} -body {
+    run location drop-staff -n
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test location-drop-staff-1.2 {location drop-staff, wrong args, too many} -body {
+    run location drop-staff NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test location-drop-staff-2.0 {location drop-staff, unknown staff} -body {
+    run location drop-staff NAME
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a staff name for input \"name\", got \"NAME\""
+
+# # ## ### ##### ######## ############# #####################
+
+test location-drop-staff-3.0 {location drop-staff} -body {
+    run location drop-staff NAME
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location add-staff POS NAME PHONE E@MAIL
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/drop-staff.txt]
+
+test location-drop-staff-3.1 {location drop-staff, persistent} -body {
+    run location drop-staff FOX
+    run location show
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location add-staff POS NAME PHONE E@MAIL
+    run location add-staff POX FOX  PHONY Z@MAIL
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/show-drop-staff.txt]
+
+test location-drop-staff-3.2 {location drop-staff, persistent} -body {
+    run location drop-staff FOX
+    run locations
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location add-staff POS NAME PHONE E@MAIL
+    run location add-staff POX FOX  PHONY Z@MAIL
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list-drop-staff.txt]
+
+test location-drop-staff-3.3 {location drop-staff, persistent} -body {
+    run location drop-staff FOX
+    run location staff
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+    # auto-current
+    run location add-staff POS NAME PHONE E@MAIL
+    run location add-staff POX FOX  PHONY Z@MAIL
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list2-drop-staff.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

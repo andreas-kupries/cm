@@ -1,0 +1,68 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - selecting the active location
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test location-select-1.0 {location select, wrong args, not enough} -body {
+    run location select -n
+    # Note: name is optional.
+    #       - No locations to select either.
+    # => undefined
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test location-select-1.1 {location select, wrong args, too many} -body {
+    run location select NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test location-select-2.0 {location select, unknown location} -body {
+    run location select BOGUS
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {* cmdr: Expected a location name for input "location", got "BOGUS"}
+
+# # ## ### ##### ######## ############# #####################
+
+test location-select-3.0 {location select} -body {
+    run location select N
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/select.txt]
+
+test location-select-2.1 {location select, persistent} -body {
+    run location select N
+    run locations
+} -setup {
+    stage-open
+    run city new C S N
+    run location new N S Z {C, S, N}
+} -cleanup {
+    stage-close
+} -result [viewFile support/location/list-select.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
