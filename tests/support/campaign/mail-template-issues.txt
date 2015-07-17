@@ -1,0 +1,26 @@
+~/.cm/managed
+Campaign "C" run with template "T" ...
+Destinations: 1
+Addressing:   1
+  Suggested placeholder "mg:sender" missing
+  Suggested placeholder "mg:name" missing
+  Required  placeholder "h:hotel" missing
+  Required  placeholder "h:city" missing
+  Required  placeholder "h:street" missing
+  Required  placeholder "c:name" missing
+  Required  placeholder "c:city" missing
+  Required  placeholder "c:year" missing
+  Required  placeholder "c:start" missing
+  Required  placeholder "c:end" missing
+  Required  placeholder "c:when" missing
+  Required  placeholder "c:talklength" missing
+  Required  placeholder "c:contact" missing
+  Suggested placeholder "c:sponsors" missing
+  Suggested placeholder "c:committee" missing
+  Required  placeholder "c:t:wipopen" missing
+  Required  placeholder "c:t:submitdead" missing
+  Required  placeholder "c:t:authornote" missing
+  Required  placeholder "c:t:writedead" missing
+  Required  placeholder "c:t:begin-t" missing
+  Required  placeholder "c:t:begin-s" missing
+Aborted

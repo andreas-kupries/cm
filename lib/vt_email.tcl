@@ -48,7 +48,7 @@ proc ::cm::validate::email::validate {p x} {
 
     set n [llength $matches]
     if {!$n} {
-	fail $p EMAIL "a email identifier" $x
+	fail $p EMAIL "an email identifier" $x
     }
 
     # Multiple matches may map to the same id. Conversion required to

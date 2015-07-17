@@ -1,0 +1,86 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, merge
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-merge-1.0 {contact merge, wrong args, not enough} -body {
+    run contact merge -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: primary"
+
+test contact-merge-1.1 {contact merge, wrong args, not enough} -body {
+    run contact merge -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: secondary"
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-merge-2.0 {contact merge, unknown primary} -body {
+    run contact merge me do
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "primary", got "me"}
+
+test contact-merge-2.1 {contact merge, unknown secondary} -body {
+    run contact merge me other
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "secondary", got "other"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-merge-3.0 {contact merge} -body {
+    run contact merge me other
+} -setup {
+    stage-open
+    run contact create-person -L http://me    -E me@myself.org    Myself me
+    run contact create-person -L http://other -E other@myself.org Other  other
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/merge.txt]
+
+test contact-merge-3.1 {contact merge, persist} -body {
+    run contact merge me other
+    run contact show  me
+} -setup {
+    stage-open
+    run contact create-person -L http://me    -E me@myself.org    Myself me
+    run contact create-person -L http://other -E other@myself.org Other  other
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-merged.txt]
+
+test contact-merge-3.2 {contact merge, persist} -body {
+    run contact merge me other
+    run contacts --with-mails
+} -setup {
+    stage-open
+    run contact create-person -L http://me    -E me@myself.org    Myself me
+    run contact create-person -L http://other -E other@myself.org Other  other
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/list-merged.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

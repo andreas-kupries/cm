@@ -1,0 +1,50 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contacts, delete mail addresses
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+## wrong args checks - None
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-squash-mail-2.0 {contact squash-mail, unknown mail} -body {
+    run contact squash-mail me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm cmdr: Expected an email identifier for input "email", got "me"}
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-squash-mail-3.0 {contact squash-mail} -body {
+    run contact squash-mail me@myself.org
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/squash-mail.txt]
+
+test contact-squash-mail-3.1 {contact squash-mail, persist} -body {
+    run contact squash-mail me@myself.org
+    run contact show        me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/show-squashed-mail.txt]
+
+# TODO: check effect on campaigns
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

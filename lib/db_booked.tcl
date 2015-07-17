@@ -104,7 +104,7 @@ proc ::cm::db::booked::remove {conference contact} {
 proc ::cm::db::booked::setup {} {
     debug.cm/db/booked {}
 
-    # TODO: booked - setup conference
+    # TODO: booked - setup conference // no -- loop
     # TODO: booked - setup contact
     # TODO: booked - setup location
 
@@ -130,20 +130,41 @@ proc ::cm::db::booked::setup {} {
     return
 }
 
-proc ::cm::db::booked::dump {} {
+proc ::cm::db::booked::dump {conference} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/booked {}
+    setup
 
+    # booked
+    set first 1
     db do eval {
-	SELECT name, state, nation
-	FROM   city
-	ORDER BY nation, state, name
+	SELECT C.dname  AS contact
+	,      L.name   AS name
+	,      Y.name   AS city
+	,      Y.state  AS state
+	,      Y.nation AS nation
+	FROM   booked   B
+	,      contact  C
+	,      location L
+	,      city     Y
+	WHERE B.conference = :conference
+	AND   B.contact    = C.id
+	AND   B.hotel      = L.id
+	AND   L.city       = Y.id
+	ORDER BY contact, name, city, state, nation
     } {
-	# TODO FIX booked - dump
+	if {$first} { cm dump step ; set first 0 }
+
+	if {$state ne {}} {
+	    set hname "$name $city $state $nation"
+	} else {
+	    set hname "$name $city $nation"
+	}
 
 	cm dump save \
-	    city create $name $state $nation
+	    booking add $contact $hname
     }
+
     return
 }
 

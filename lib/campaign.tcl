@@ -19,6 +19,7 @@ package require Tcl 8.5
 package require cmdr::color
 package require cmdr::ask
 package require cmdr::validate::date
+package require cmdr::table
 package require debug
 package require debug::caller
 package require dbutil
@@ -32,7 +33,6 @@ package require cm::contact
 package require cm::db
 package require cm::mailer
 package require cm::mailgen
-package require cm::table
 package require cm::db::template
 package require cm::util
 
@@ -44,8 +44,8 @@ namespace eval ::cm {
 }
 namespace eval ::cm::campaign {
     namespace export cmd_setup cmd_close cmd_status cmd_mail \
-	cmd_test cmd_reset cmd_drop \
-	add-mail drop-mail get-for
+	cmd_test cmd_reset cmd_drop cmd_destination cmd_received \
+	cmd_mailrun add-mail drop-mail get-for
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -60,8 +60,7 @@ namespace eval ::cm::campaign {
     namespace import ::cm::db::template
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -79,9 +78,11 @@ proc ::cm::campaign::cmd_setup {config} {
     set conference [conference current]
     set clabel     [conference get $conference]
 
-    set id [get-for $conference]
-    if {$id ne {}} {
-	if {[isactive $id]} {
+    set empty [$config @empty]
+
+    set campaign [get-for $conference]
+    if {$campaign ne {}} {
+	if {[isactive $campaign]} {
 	    util user-error "Conference \"$clabel\" already has an active campaign" \
 		CAMPAIGN ALREADY ACTIVE
 	} else {
@@ -102,22 +103,29 @@ proc ::cm::campaign::cmd_setup {config} {
 	}
 	set campaign [db do last_insert_rowid]
 
-	db do eval {
-	    INSERT INTO campaign_destination
-	      SELECT NULL, :campaign, E.id
-	      FROM   email   E,
-	             contact C
-	      WHERE  E.contact = C.id	-- join
-	      AND    C.can_recvmail	-- contact must allow mails
-	      AND    NOT E.inactive	-- and mail address must be active too.
-	}	
+	if {!$empty} {
+	    db do eval {
+		INSERT
+		INTO campaign_destination
+		SELECT NULL
+		,      :campaign
+		,      E.id
+		FROM   email   E
+		,      contact C
+		WHERE  E.contact = C.id	-- join
+		AND    C.can_recvmail	-- contact must allow mails
+		AND    NOT E.inactive	-- and mail address must be active too.
+	    }
 
-	set new [db do changes]
-	if {!$new} {
-	    util user-error "Failed, empty" CAMPAIGN EMPTY
+	    set new [db do changes]
+	    if {!$new} {
+		util user-error "Failed, empty" CAMPAIGN EMPTY
+	    }
+
+	    puts "[color good OK] ($new [expr {$new == 1 ? "entry" : "entries"}])"
+	} else {
+	    puts "[color good OK] (empty)"
 	}
-
-	puts "[color good OK] ($new entries)"
     }
     return
 }
@@ -151,7 +159,6 @@ proc ::cm::campaign::cmd_close {config} {
     return
 }
 
-
 proc ::cm::campaign::cmd_reset {config} {
     debug.cm/campaign {}
     Setup
@@ -166,10 +173,14 @@ proc ::cm::campaign::cmd_reset {config} {
 	    CAMPAIGN MISSING
     }
 
-    if {![ask yn "Campaign \"[color name $clabel]\" [color bad RESET]" no]} {
+    if {[cmdr interactive?] &&
+	![ask yn "Campaign \"[color name $clabel]\" [color bad RESET]" no]} {
 	puts [color note Aborted]
 	return
     }
+
+    puts -nonewline "Clearing campaign \"[color name $clabel]\" ... "
+    flush stdout
 
     db do transaction {
 	db do eval {
@@ -211,8 +222,103 @@ proc ::cm::campaign::cmd_status {config} {
 	    CAMPAIGN MISSING
     }
 
-    puts "Campaign \"[color name $clabel]\" status"
+    set details [$config @detailed]
+    set active [expr {[isactive $campaign] ? "" : " closed,"}]
+set type [expr {$details ? " details" : " summary"}]
 
+    puts "Campaign \"[color name $clabel]\"$active$type"
+
+    if {$details} {
+	StatusDetails $campaign
+    } else {
+	StatusSummary $campaign
+    }
+
+    return
+}
+
+proc ::cm::campaign::StatusDetails {campaign} {
+    debug.cm/campaign {}
+
+    # Sideways table:
+    # - First column => destinations
+    # - Second and further columns => One per mail run.
+    # - Data in the columns is the set of mail addresses.
+    # Note that destination addresses may be missing in a run, and
+    # vice versa, a run may contain addresses not in the destinations.
+
+    # => We need a union across destination and all runs, plus checks.
+
+    # Assemble table header/titles ... Also collect the mails for each run.
+    lappend reached [set mails [db do eval {
+	SELECT email
+	FROM   campaign_destination
+	WHERE  campaign = :campaign
+    }]]
+
+    lappend titles Destinations\n\n([struct::set size $mails])
+    db do eval {
+	SELECT M.id    AS mailrun
+	,      M.date  AS date
+	,      T.dname AS name
+	FROM   campaign_mailrun M
+	,      template         T
+	WHERE  M.campaign = :campaign
+	AND    M.template = T.id
+	ORDER BY date
+    } {
+	lappend reached [set mails [db do eval {
+	    SELECT email
+	    FROM   campaign_received
+	    WHERE  mailrun = :mailrun
+	}]]
+	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
+	lappend titles $name\n$date\n([struct::set size $mails])
+    }
+
+    # Collect mail information for destinations, and union.
+
+    # TODO: Make all(mails) fully as SQL.
+    set all [struct::set union {*}$reached]
+    set allmails {}
+    db do eval [string map [list @@ [join $all ,]] {
+	SELECT id, email
+	FROM   email
+	WHERE  id IN (@@)
+	ORDER BY email
+    }] {
+	dict set map $email $id
+	lappend allmails $email
+    }
+
+    [table t $titles {
+	foreach mail $allmails {
+	    set id [dict get $map $mail]
+	    set row {}
+	    set first 1
+	    foreach reach $reached {
+		set has [struct::set contains $reach $id]
+
+		if {!$has} {
+		    set note [color bad n/a]
+		} elseif {$first} {
+		    set note $mail
+		    set first 0
+		} else {
+		    set note [color good yes]
+		}
+
+		lappend row $note
+	    }
+
+	    $t add {*}$row
+	}
+    }] show
+    return
+}
+
+proc ::cm::campaign::StatusSummary {campaign} {
+    debug.cm/campaign {}
     # 1. Mailings performed ... when, template, #destinations
     # 2. Destinations in campaign vs destinations in mailings.
 
@@ -228,9 +334,9 @@ proc ::cm::campaign::cmd_status {config} {
     puts "Runs:"
     [table t {When Template Reached Unreached} {
 	db do eval {
-	    SELECT M.id   AS mailrun,
-	           M.date AS date,
-	           T.name AS name
+	    SELECT M.id    AS mailrun,
+	           M.date  AS date,
+	           T.dname AS name
 	    FROM   campaign_mailrun M,
 	           template         T
 	    WHERE  M.campaign = :campaign
@@ -288,9 +394,9 @@ proc ::cm::campaign::cmd_mail {config} {
 	    CAMPAIGN CLOSED
     }
 
+    set fake     [$config @fake]
     set template [$config @template]
     set tname    [template 2name $template]
-
 
     puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" ..."
 
@@ -308,7 +414,7 @@ proc ::cm::campaign::cmd_mail {config} {
     db do eval {
 	SELECT date, id AS mailrun
 	FROM   campaign_mailrun
-	WHERE template = :template
+	WHERE  template = :template
 	ORDER BY date
     } {
 	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
@@ -340,14 +446,15 @@ proc ::cm::campaign::cmd_mail {config} {
     set issues [check-template $text]
     if {$issues ne {}} {
 	puts $issues
-	if {![ask yn "Continue with mail run ?" no]} {
-	    puts [color note Aborted]
+	if {[$config @force]} {
+	    puts [color warning {Forced run}]
+	} elseif {![cmdr interactive?] ||
+		  ![ask yn "Continue with mail run ?" no]} {
+	    puts [color bad Aborted]
 	    return
 	}
     }
 
-    # TODO: Check template for necessary/important placeholders.
-    # TODO: Warn about any missing.
     set text [conference insert $conference $text]
 
     db do eval {
@@ -356,14 +463,15 @@ proc ::cm::campaign::cmd_mail {config} {
     }
     set run [db do last_insert_rowid]
 
-    set mconfig [mailer get-config]
+    if {!$fake} {
+	set mconfig [mailer get-config]
+    }
+
     mailer batch receiver address name $destinations {
 	# Insert address and name into the template
-
 	puts "To: $name [color name $address]"
 
-	if 1 {
-	    #TODO: non-dry
+	if {!$fake} {
 	    mailer send $mconfig \
 		[list $address] \
 		[mailgen call $address $name $text] \
@@ -374,6 +482,41 @@ proc ::cm::campaign::cmd_mail {config} {
 	    INSERT INTO campaign_received
 	    VALUES (NULL, :run, :receiver)
 	}
+    }
+    return
+}
+
+proc ::cm::campaign::cmd_mailrun {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    set epoch    [$config @epoch]
+    set template [$config @template]
+    set tname    [template 2name $template]
+
+    puts "Campaign \"[color name $clabel]\" run with template \"[color name $tname]\" at [clock format $epoch] ..."
+
+    db do eval {
+	INSERT
+	INTO campaign_mailrun
+	VALUES  ( NULL
+		, :campaign
+		, :template
+		, :epoch)
     }
     return
 }
@@ -417,6 +560,106 @@ proc ::cm::campaign::cmd_test {config} {
     return
 }
 
+proc ::cm::campaign::cmd_received {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    puts "Campaign \"[color name $clabel]\" ... "
+
+    # Retrieve mail run for epoch -- TODO: Put this into a validation type.
+    set epoch [$config @epoch]
+    set run   [db do onecolumn {
+	SELECT id
+	FROM   campaign_mailrun
+	WHERE  campaign = :campaign
+	AND    date = :epoch
+    }]
+    if {$run eq {}} {
+	util user-error "No mail run for $epoch" \
+	    CAMPAIGN MAIL-RUN MISSING
+    }
+
+    foreach email [$config @entry] {
+	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
+	flush stdout
+
+	if {[db do exists {
+	    SELECT id
+	    FROM   campaign_received
+	    WHERE  mailrun = :run
+	    AND    email   = :email
+	}]} {
+	    util user-error "Already present" \
+		CAMPAIGN RUN EMAIL DUPLICATE
+	}
+
+	db do eval {
+	    INSERT INTO campaign_received
+	    VALUES (NULL, :run, :email)
+	}
+	puts "[color good OK]"
+    }
+    return
+}
+
+proc ::cm::campaign::cmd_destination {config} {
+    debug.cm/campaign {}
+    Setup
+    db show-location
+
+    set conference [conference current]
+    set clabel     [conference get $conference]
+
+    set campaign [get-for $conference]
+    if {$campaign eq {}} {
+	util user-error "Conference \"$clabel\" has no campaign" \
+	    CAMPAIGN MISSING
+    }
+    if {![isactive $campaign]} {
+	util user-error "Campaign \"$clabel\" is closed, cannot be modified" \
+	    CAMPAIGN CLOSED
+    }
+
+    puts "Campaign \"[color name $clabel]\" ... "
+
+    foreach email [$config @entry] {
+	puts -nonewline "* Adding [color name [cm::contact get-email $email]] ... "
+	flush stdout
+
+	if {[db do exists {
+	    SELECT id
+	    FROM   campaign_destination
+	    WHERE  campaign = :campaign
+	    AND    email    = :email
+	}]} {
+	    util user-error "Already present" \
+		CAMPAIGN EMAIL DUPLICATE
+	}
+
+	db do eval {
+	    INSERT
+	    INTO campaign_destination
+	    VALUES (NULL, :campaign, :email)
+	}
+	puts "[color good OK]"
+    }
+    return
+}
+
 proc ::cm::campaign::cmd_drop {config} {
     debug.cm/campaign {}
     Setup
@@ -435,10 +678,10 @@ proc ::cm::campaign::cmd_drop {config} {
 	    CAMPAIGN CLOSED
     }
 
-    puts "Campaign \"[color name $clabel]\" dropping ..."
+    puts "Campaign \"[color name $clabel]\" ..."
 
     foreach email [$config @entry] {
-	puts -nonewline "* [color name [contact get-email $email]] ... "
+	puts -nonewline "* Dropping [color name [cm::contact get-email $email]] ... "
 	flush stdout
 
 	db do eval {
@@ -624,7 +867,8 @@ proc ::cm::campaign::Setup {} {
 
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    mailrun	INTEGER	NOT NULL REFERENCES campaign_mailrun,
-	    email	INTEGER	NOT NULL REFERENCES email	-- under contact
+	    email	INTEGER	NOT NULL REFERENCES email,	-- under contact
+	    UNIQUE (mailrun,email)
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {mailrun	INTEGER 1 {} 0}
@@ -636,6 +880,82 @@ proc ::cm::campaign::Setup {} {
 
     # Shortcircuit further calls
     proc ::cm::campaign::Setup {args} {}
+    return
+}
+
+
+proc ::cm::campaign::Dump {conference} {
+    debug.cm/campaign {}
+    ::cm::conference::Setup
+    ::cm::contact::Setup
+    template setup
+
+    # campaign             (id, ^con,      active)
+    # campaign_destination (id, ^campaign, ^email) -- contact.email
+    # campaign_mailrun     (id, ^campaign, ^template, date)
+    # campaign_received    (id, ^mailrun,  ^email) -- contact.email
+
+    # -- cm has no bulk load commands. Only commands performing the
+    #    campaign and auto-loading the tables.
+    #
+    # campaign setup -> (campaign + destination)
+    #      ... mail  -> (mailrun + received)
+
+    db do eval {
+	SELECT id, active
+	FROM   campaign
+	WHERE  con = :conference
+    } {
+	cm dump step
+	cm dump save campaign setup --empty
+
+	# Destinations for the campaign. Explicitly loaded.
+	db do eval {
+	    SELECT E.email AS email
+	    FROM   campaign_destination D
+	    ,      email                E
+	    WHERE  D.campaign = :id
+	    AND    D.email    = E.id
+	    ORDER BY E.email
+	} {
+	    cm dump save \
+		campaign destination $email
+	}
+
+	# Mail runs. Explicitly loaded.
+	db do eval {
+	    SELECT M.id    AS rid
+	    ,      M.date  AS date
+	    ,      T.dname AS tname
+	    FROM   campaign_mailrun M
+	    ,      template         T
+	    WHERE  M.campaign = :id
+	    AND    M.template = T.id
+	    ORDER BY date
+	} {
+	    cm dump step
+	    cm dump save \
+		campaign run $date $tname
+
+	    # Mail run receivers
+	    db do eval {
+		SELECT E.email AS email
+		FROM   campaign_received R
+		,      email             E
+		WHERE R.mailrun = :rid
+		AND   R.email   = E.id
+		ORDER BY E.email
+	    } {
+		cm dump save \
+		    campaign received $date $email
+	    }
+	}
+
+	if {!$active} {
+	    cm dump step
+	    cm dump save campaign close
+	}
+    }
     return
 }
 

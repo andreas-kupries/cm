@@ -40,10 +40,10 @@ namespace eval ::cm::db {
 }
 namespace eval ::cm::db::tutorial {
     namespace export \
-	all new title= desc= req= tag= 2name get update select \
-	known known-tag known-title dayrange trackrange cell \
-	speakers speakers* scheduled schedule unschedule \
-	issues setup dump
+	all new title= desc= req= tag= 2name 2name-from-schedule \
+	get update select known known-tag known-title known-scheduled \
+	dayrange trackrange cell cell-schedule speakers speakers* \
+	scheduled schedule unschedule issues setup dump
     namespace ensemble create
 
     namespace import ::cm::db
@@ -270,6 +270,19 @@ proc ::cm::db::tutorial::2name {tutorial} {
     }]
 }
 
+proc ::cm::db::tutorial::2name-from-schedule {id} {
+    debug.cm/db/tutorial {}
+    setup
+
+    return [db do onecolumn {
+	SELECT title
+	FROM   tutorial
+	WHERE  id IN (SELECT tutorial
+		      FROM   tutorial_schedule
+		      WHERE  id = :id)
+    }]
+}
+
 proc ::cm::db::tutorial::get {tutorial} {
     debug.cm/db/tutorial {}
     setup
@@ -346,8 +359,23 @@ proc ::cm::db::tutorial::cell {conference day half track} {
     setup
 
     # Get data from the exactly addressed cell in the schedule.
-    return [db do eval {
+    return [db do onecolumn {
 	SELECT tutorial
+	FROM   tutorial_schedule
+	WHERE  conference = :conference
+	AND    day        = :day
+	AND    half       = :half
+	AND    track      = :track
+    }]
+}
+
+proc ::cm::db::tutorial::cell-schedule {conference day half track} {
+    debug.cm/db/tutorial {}
+    setup
+
+    # Get data from the exactly addressed cell in the schedule.
+    return [db do onecolumn {
+	SELECT id
 	FROM   tutorial_schedule
 	WHERE  conference = :conference
 	AND    day        = :day
@@ -397,6 +425,47 @@ proc ::cm::db::tutorial::scheduled {conference} {
     }]
 }
 
+proc ::cm::db::tutorial::known-scheduled {conference} {
+    debug.cm/db/tutorial {}
+    setup
+
+    # For validation - Tutorials assigned to a specific conference
+    # See also contact.tcl for similar (helper) code.
+
+    set map {}
+    # dict: (id,day,half,tutorial) -> labels. Will be inverted later.
+
+    db do eval {
+        SELECT S.id    AS id
+        ,      T.id    AS tutorial
+        ,      C.dname AS speaker
+        ,      C.tag   AS stag
+        ,      T.tag   AS tag
+        ,      T.title AS title
+        ,      S.day   AS day
+        ,      S.half  AS half
+        FROM  tutorial          T
+        ,     contact           C
+        ,     tutorial_schedule S
+        WHERE C.id         = T.speaker
+        AND   S.tutorial   = T.id
+        AND   S.conference = :conference
+    } {
+        lappend id $day $half $tutorial
+
+        dict lappend map $id @${stag}:$tag
+        dict lappend map $id "${speaker}/$title"
+    }
+
+    # Rekey by names
+    set map [util dict-invert       $map]
+    #set map [util dict-fill-permute $map] - Not good for the speaker/title cominbation
+    set known [util dict-drop-ambiguous $map]
+
+    debug.cm/db/tutorial {==> ($known)}
+    return $known
+}
+
 proc ::cm::db::tutorial::schedule {conference tutorial day half track} {
     debug.cm/db/tutorial {}
     setup
@@ -435,7 +504,7 @@ proc ::cm::db::tutorial::unschedule {conference tutorial} {
 proc ::cm::db::tutorial::setup {} {
     debug.cm/db/tutorial {}
 
-    dayhalf setup
+    ::cm::db::dayhalf setup ;# circle through contact, campaign, conference
     ::cm::contact::Setup
 
     if {![dbutil initialize-schema ::cm::db::do error tutorial {

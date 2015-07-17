@@ -1,0 +1,2 @@
+~/.cm/managed
+Merging contact "(@me) Myself" with "(@other) Other" ... OK

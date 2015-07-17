@@ -1,0 +1,55 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - tutorial creation
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-create-1.0 {tutorial create, wrong args, not enough} -body {
+    run tutorial create 
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test tutorial-create-1.1 {tutorial create, wrong args, not enough} -body {
+    run tutorial create SPEAKER
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test tutorial-create-1.2 {tutorial create, wrong args, too many} -body {
+    run tutorial create SPEAKER TAG TITLE DESC X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# TODO: duplicates
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-create-3.0 {tutorial create} -body {
+    run tutorial create me foo FOO FUBAR
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/create.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
