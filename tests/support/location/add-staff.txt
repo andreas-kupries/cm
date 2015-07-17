@@ -1,0 +1,3 @@
+~/.cm/managed
+Adding "POS" to location "N (C, S, N)" ... 
+  "NAME" (P: PHONE) (E: E@MAIL) ... OK

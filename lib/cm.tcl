@@ -577,16 +577,17 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .justcurrent
 	    input position {
 		The role/position to staff
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 	    input name {
 		Staff name
-	    } { optional ; interact }
+	    } { optional ; interact ; generate [stop!] }
 	    input phone {
 		Staff phone
-	    } { optional ; interact } ;# can we validate a phone number ?
+	    } { optional ; interact ; generate [stop!] } ;# can we validate a phone number ?
 	    input email {
 		Staff email
-	    } { optional ; interact ; validate [cm::vt mail-address] }
+	    } { optional ; interact ; validate [cm::vt mail-address]
+		generate [stop!] }
 	} [cm::call location staff_create]
 
 	private drop-staff {
