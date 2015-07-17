@@ -1,0 +1,126 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, interaction with contacts.
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+##
+##       contact create-* auto-adds to campaign
+## ditto contact add-mail
+##       contact disable-mail removes from campaign
+## ditto contact squash-mail
+## ditto contact disable
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-contact-1.0 {campaign create-*} -body {
+    run contact create-person -E other@other.org Other other
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-create.txt]
+
+test campaign-contact-1.1 {campaign create-*} -body {
+    run contact create-company -E other@other.org Other
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-create.txt]
+
+test campaign-contact-1.2 {campaign create-*} -body {
+    run contact create-list Other other@other.org
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-create.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-contact-2.0 {campaign add-mail} -body {
+    run contact add-mail -E myself@myself.org me
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-addmail.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-contact-3.0 {campaign disable-mail} -body {
+    run contact disable-mail me@myself.org
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-disable.txt]
+
+test campaign-contact-3.1 {campaign disable} -body {
+    run contact disable me
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-disable.txt]
+
+test campaign-contact-3.2 {campaign squash-mail} -body {
+    run contact squash-mail me@myself.org
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign mail -n --force --fake T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-contact-squash.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

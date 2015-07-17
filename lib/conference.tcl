@@ -18,6 +18,7 @@
 package require Tcl 8.5
 package require cmdr::ask
 package require cmdr::color
+package require cmdr::table
 package require cmdr::validate::date
 package require cmdr::validate::weekday
 package require dbutil
@@ -37,8 +38,10 @@ package require cm::db::city
 package require cm::db::config
 package require cm::db::dayhalf
 package require cm::db::location
+package require cm::db::pschedule
 package require cm::db::registered
 package require cm::db::rstatus
+package require cm::db::schedule
 package require cm::db::staffrole
 package require cm::db::talk-state
 package require cm::db::talk-type
@@ -47,7 +50,6 @@ package require cm::db::timeline
 package require cm::db::tutorial
 package require cm::mailer
 package require cm::mailgen
-package require cm::table
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -70,14 +72,18 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_tutorial_show cmd_tutorial_link \
 	cmd_tutorial_unlink cmd_debug_speakers \
+	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove \
 	cmd_registration_list cmd_registration_add cmd_registration_remove \
+	\
+	cmd_schedule_set cmd_schedule_show cmd_schedule_edit \
+	\
 	select label current get insert known-sponsor \
 	select-sponsor select-staff known-staff \
 	select-submission get-submission \
 	get-submission-handle known-submissions-vt \
 	known-speaker known-attachment get-attachment known-submitter \
-	its-hotel
+	its-hotel known-talks-vt
 
     namespace ensemble create
 
@@ -92,8 +98,10 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::config
     namespace import ::cm::db::dayhalf
     namespace import ::cm::db::location
+    namespace import ::cm::db::pschedule
     namespace import ::cm::db::registered
     namespace import ::cm::db::rstatus
+    namespace import ::cm::db::schedule
     namespace import ::cm::db::staffrole
     namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
@@ -104,8 +112,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::mailgen
     namespace import ::cm::util
 
-    namespace import ::cm::table::do
-    rename do table
+    namespace import ::cmdr::table::general ; rename general table
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -213,7 +220,8 @@ proc ::cm::conference::cmd_create {config} {
 			:length,
 			30,       -- minutes per talk
 			3,        -- talks per session
-			1         -- registration pending
+			1,        -- registration pending
+			NULL      -- No linked schedule.
 	        )
 	    }
 	}
@@ -303,6 +311,12 @@ proc ::cm::conference::cmd_show {config} {
 	$t add {} {}
 	$t add Minutes/Talk     $xtalklen
 	$t add Talks/Session    $xsesslen
+
+	if {$xpschedule eq {}} {
+	    $t add Schedule "[color bad Undefined]\n(=> conference schedule)"
+	} else {
+	    $t add Schedule [pschedule piece $xpschedule dname]
+	}
 
 	$t add {} {}
 
@@ -563,20 +577,12 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     set conference [current]
 
+    set sql [TimelineSQL $conference]
+
     puts "Timeline of \"[color name [get $conference]]\":"
     [table t {Done Event When} {
-	#$t style table/html ;# quick testing
-	db do eval {
-	    SELECT T.date     AS date,
-	           E.text     AS text,
-	           E.ispublic AS ispublic,
-	           T.done     AS done
-	    FROM   timeline      T,
-	           timeline_type E
-	    WHERE T.con  = :conference
-	    AND   T.type = E.id
-	    ORDER BY T.date
-	} {
+	#$t style cmdr/table/html ;# quick testing
+	db do eval $sql {
 	    set date [hdate $date]
 	    set done [expr {$done
 			    ? "[color good Yes]"
@@ -1689,6 +1695,8 @@ proc ::cm::conference::cmd_tutorial_show {config} {
 		} {
 		    set tutorial [tutorial cell $conference $day $half $track]
 
+		    debug.cm/conference {con $conference day $day track $track half $half == $tutorial}
+
 		    if {$tutorial ne {}} {
 			set    tdetails [tutorial get $tutorial]
 			set    title    [dict get $tdetails xtitle]
@@ -1734,7 +1742,7 @@ proc ::cm::conference::cmd_tutorial_link {config} {
 
     # TODO: day (=offset) => date from start, weekday
 
-    puts "@ day $day [dayhalf 2name $half], track $track"
+    puts "@ day $day [cm::db::dayhalf 2name $half], track $track"
     flush stdout
 
     tutorial schedule $conference $tutorial $day $half $track
@@ -1896,6 +1904,189 @@ proc ::cm::conference::cmd_end_set {config} {
     write $conference $details
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::cmd_schedule_set {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    # Link named physical schedule to the conference.
+    # Locate all placeholder items, their labels and use
+    # them to generate the logical schedule to fill out.
+
+    # TODO: Handle a previous physical schedule. Handle carry over of
+    # TODO: user-customized logical entries.
+
+    set conference [current]
+    set pschedule  [$config @name]
+    set pslabel    [pschedule piece $pschedule dname]
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": Linking to schedule \"[color name $pslabel]\" ... "
+    flush stdout
+
+    db do transaction {
+	schedule drop    $conference
+	DB-pschedule-set $conference $pschedule
+	foreach label [pschedule item-placeholders $pschedule] {
+	    switch -glob -- $label {
+		@S* {
+		    # Sessions, Fixed lines. Create a basic default.
+		    regexp {@S(.*)$} $label -> sno
+		    schedule add_fixed $conference $label "Session $sno"
+		}
+		@T* {
+		    # Tutorial placeholder, encoded slot.
+		    regexp {@T(\d+)([ame])(\d+)$} $label -> day half track
+		    # half = m morning   1
+		    #      = a afternoon 2
+		    #      = e evening   3
+		    set half [string map {m 1 a 2 e 3} $half]
+		    incr day   -1
+
+		    # Find the tutorial in that slot.
+		    set t [tutorial cell-schedule $conference $day $half $track]
+
+		    debug.cm/conference {con $conference day $day track $track half $half == $t}
+
+		    if {$t eq {}} {
+			# Nothing. Make it fixed, a warning.
+			schedule add_fixed $conference $label "!Missing"
+		    } else {
+			# Link tutorial into the slot.
+			schedule add_tutorial $conference $label $t
+		    }
+		}
+		default {
+		    # General entry, all undefined.
+		    schedule add_empty $conference $label
+		}
+	    }
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_schedule_show {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    dict with details {}
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": "
+    flush stdout
+
+    if {$xpschedule eq {}} {
+	util user-error {No schedule defined}
+    }
+
+    set pslabel [pschedule piece $xpschedule dname]
+    puts "Schedule \"[color name $pslabel]\": " 
+
+    [table t {Slot Type Details} {
+	foreach {label talk tutorial session} [schedule of $conference] {
+	    if {$talk ne {}} {
+		set type Talk
+		set note $talk
+	    } elseif {$tutorial ne {}} {
+		set type Tutorial
+		set note $tutorial
+	    } elseif {$session ne {}} {
+		set type Fixed
+		set note $session
+	    } else {
+		set type {}
+		set note {}
+	    }
+	    $t add $label $type $note
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_schedule_edit {config} {
+    debug.cm/conference {}
+    Setup
+    schedule setup
+
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    dict with details {}
+
+    puts -nonewline "\nConference \"[color name [get $conference]]\": "
+    flush stdout
+
+    if {$xpschedule eq {}} {
+	util user-error {No schedule defined}
+    }
+
+    set pslabel [pschedule piece $xpschedule dname]
+    puts -nonewline "Schedule \"[color name $pslabel]\": " 
+    flush stdout
+
+    set slot  [$config @label]
+    set sname [$config @label string]
+    set type  [$config @type]
+    set value [$config @value]
+
+    puts -nonewline "Slot \"[color name $sname]\" := " 
+    flush stdout
+
+    # TODO: Ensure uniqueness of talk/tutorial assignments.
+
+    switch -exact $type {
+	talk {
+	    # value = talk-id
+	    set title [get-talk-title $value]
+	    puts -nonewline "Talk \"[color name $title]\" ... " 
+	    flush stdout
+
+	    schedule set_talk $slot $value
+	}
+	tutorial {
+	    # value = (scheduled-id day half tutorial)
+	    lassign $value value _ _ _
+	    set title [tutorial 2name-from-schedule $value]
+	    puts -nonewline "Tutorial \"[color name $title]\" ... " 
+	    flush stdout
+
+	    schedule set_tutorial $slot $value
+	}
+	fixed {
+	    # value = string
+	    puts -nonewline "\"$value\" ... " 
+	    flush stdout
+
+	    schedule set_fixed $slot $value
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::DB-pschedule-set {conference pschedule} {
+    debug.cm/conference {}
+    Setup
+    db do eval {
+	UPDATE conference
+	SET    pschedule = :pschedule
+	WHERE  id = :conference
+    }
     return
 }
 
@@ -2152,7 +2343,7 @@ proc ::cm::conference::cmd_website_make {config} {
 	puts "Speakers:  [color bad None]"
     }
 
-    if {[cm::tutorial have-some $conference]} {
+    if {[tutorial scheduled $conference]} {
 	puts "Tutorials: [color good Yes]"
     } else {
 	puts "Tutorials: [color bad None]"
@@ -2576,7 +2767,11 @@ proc ::cm::conference::cmd_debug_speakers {config} {
     Setup
     db show-location
 
-    puts [speaker-listing [current]]
+    if {[$config @mail]} {
+	puts [mail-speaker-listing [current]]
+    } else {
+	puts [speaker-listing [current]]
+    }
     return
 }
 
@@ -2738,7 +2933,7 @@ proc ::cm::conference::the-speakers {conference} {
     foreach {dname tag bio} [keynotes $conference] {
 	dict set map $dname $tag
     }
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+    foreach {dname tag bio} [tutorial speakers* $conference] {
 	dict set map $dname $tag
     }
     foreach {dname tag bio} [general-talks $conference] {
@@ -2786,7 +2981,7 @@ proc ::cm::conference::speaker-listing {conference} {
 
     # Tutorials...
     set first 1
-    foreach {dname tag bio} [cm::tutorial speakers $conference] {
+    foreach {dname tag bio} [tutorial speakers* $conference] {
 	if {$dname eq $mgmt} continue
 	if {$first} {
 	    append text "## Tutorials\n\n"
@@ -2803,7 +2998,7 @@ proc ::cm::conference::speaker-listing {conference} {
     foreach {dname tag bio} [general-talks $conference] {
 	if {$dname eq $mgmt} continue
 	if {$first} {
-	    append text "## Keynotes\n\n"
+	    append text "## Presentations\n\n"
 	    set first 0
 	}
 
@@ -2813,6 +3008,62 @@ proc ::cm::conference::speaker-listing {conference} {
     }
     if {!$first} { append text \n }
 
+    return $text
+}
+
+proc ::cm::conference::mail-speaker-listing {conference} {
+    debug.cm/conference {}
+    # speaker-listing - TODO - general presenters
+
+    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+
+    append text "\[\[ Known Speakers\n"
+
+    # Keynotes...
+    set first 1
+    foreach {dname tag bio} [keynotes $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Keynotes\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for keynote speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [keynotes-of $conference $tag] T abstracts.html]
+    }
+    #if {!$first} { append text \n }
+
+    # Tutorials...
+    set first 1
+    foreach {dname tag bio} [tutorial speakers* $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Tutorials\n\n"
+	    set first 0
+	}
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for tutorial speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [tutorials-of $conference $tag] ${tag}: tutorials.html]
+    }
+    #if {!$first} { append text \n }
+
+    # Presenters...
+    set first 1
+    foreach {dname tag bio} [general-talks $conference] {
+	if {$dname eq $mgmt} continue
+	if {$first} {
+	    append text "-- Presentations\n\n"
+	    set first 0
+	}
+
+	# Data is ordered by dname
+	if {$tag eq {}} { puts \t\t[color bad "Tag missing for general speaker '$dname'"] }
+	append text [fmt-mail-speakers $dname $tag [talks-of $conference $tag] T abstracts.html]
+    }
+    #if {!$first} { append text \n }
+
+    append text \]\]\n
     return $text
 }
 
@@ -2832,6 +3083,27 @@ proc ::cm::conference::fmt-speakers {dname tag talks tpfx tlink} {
 	append text ")"
     }
     append text \n
+    return $text
+}
+
+proc ::cm::conference::fmt-mail-speakers {dname tag talks tpfx tlink} {
+    # talks = (tag title...)
+
+    append text "  * "
+
+    set blank [string repeat { } [string length $dname]]
+
+    if {[llength $talks]} {
+	set pre "$dname - "
+	foreach {ttag title} $talks {
+	    set title [string map {&mdash; ---} $title]
+	    append text $pre $title \n
+	    set pre "    $blank   "
+	}
+	append text \n
+    } else {
+	append text $dname \n
+    }
     return $text
 }
 
@@ -2961,6 +3233,8 @@ proc ::cm::conference::make_admin {conference} {
     make_admin_timeline    $conference text events
 
     # What else ...
+
+    debug.cm/conference {/done}
     return $text
 }
 
@@ -3018,36 +3292,28 @@ proc ::cm::conference::make_admin_booked {conference textvar tag} {
 
 proc ::cm::conference::make_admin_timeline {conference textvar tag} {
     debug.cm/conference {}
-    upvar 1 $textvar text
+    upvar 1 $textvar textresult
     # Full timeline, including the non-public events.
 
     set now [clock seconds]
     set pastnow 0
 
-    append text \n
-    append text [anchor $tag] \n
-    append text "# Events\n\n"
+    append textresult \n
+    append textresult [anchor $tag] \n
+    append textresult "# Events\n\n"
+
+    set sql [TimelineSQL $conference]
 
     set first 1
-    db do eval {
-	SELECT T.date     AS date,
-               E.ispublic AS ispublic,
-	       E.text     AS what,
-	       T.done     AS done
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	ORDER BY T.date
-    } {
+    db do eval $sql {
 	if {$first} {
-	    append text |Done|What|When|\n|-|-|-|\n
+	    append textresult |Done|What|When|\n|-|-|-|\n
 	    set first 0
 	}
 
 	if {!$pastnow && ($date > $now)} {
 	    set pastnow yes
-	    append text ||||\n||__Today__| [hdate $now] |\n||||\n
+	    append textresult ||||\n||__Today__| [hdate $now] |\n||||\n
 	}
 
 	set date [hdate $date]
@@ -3057,17 +3323,19 @@ proc ::cm::conference::make_admin_timeline {conference textvar tag} {
 
 	if {$ispublic} {
 	    set date __${date}__
-	    set what __${what}__
+	    set text __${text}__
 	}
 
-	append text | $done | $date | $what |\n
+	append textresult | $done | $date | $text |\n
     }
 
     if {$first} {
-	append text "__No events defined__"
+	append textresult "__No events defined__"
     }
 
-    append text \n
+    append textresult \n
+
+    debug.cm/conference {/done}
     return
 }
 
@@ -3357,22 +3625,24 @@ proc ::cm::conference::make_sidebar {conference} {
     #append sidebar <tr><td> "Email contact" </td><td> "<a href='mailto:@c:contact@'>" @c:contact@</a></td></tr>
 
     append sidebar [[table t {Event When} {
-	$t style table/html
+	$t style cmdr/table/html
 	$t noheader
 
 	switch -exact -- [set m [registration-mode $conference]] {
 	    pending {
-		set sql [sidebar_reg_show]
+		set sql [sidebar_reg_show $conference]
 	    }
 	    open - closed {
 		set r Registration
 		if {$m eq "open"} { set r "<a href='register.html'>$r</a>" }
 		append sidebar "\n<tr><th colspan=2>" "Registration is $m" </th></tr>
-		set sql [sidebar_reg_excluded]
+		set sql [sidebar_reg_excluded $conference]
 	    }
 	}
 	#append sidebar "\n<tr><td colspan=2><hr/></strong></td></tr>"
 	db do eval $sql {
+	    set text [string map {{Public Room} {Hotel Room}} $text]
+
 	    $t add "$text" [hdate $date]
 	}
     }] show return]
@@ -3393,33 +3663,30 @@ proc ::cm::conference::anchor {key} {
     return "<a name='$key'></a>"
 }
 
-proc ::cm::conference::sidebar_reg_excluded {} {
+proc ::cm::conference::sidebar_reg_excluded {conference} {
     debug.cm/conference {}
-    return {
-	SELECT T.date AS date,
-	       E.text AS text
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	AND   E.ispublic
-	AND   E.key != 'regopen'
-	ORDER BY T.date
-    }
+
+    lappend mapa \
+	{AND   T.type = E.id} \
+	{AND   T.type = E.id AND E.key != 'regopen'}
+    lappend mapb @@@ [string map $mapa [TimelineSQL $conference]]
+
+    return [string map $mapb {
+	SELECT date, text
+	FROM (@@@)
+	WHERE ispublic
+    }]
 }
 
-proc ::cm::conference::sidebar_reg_show {} {
+proc ::cm::conference::sidebar_reg_show {conference} {
     debug.cm/conference {}
-    return {
-	SELECT T.date AS date,
-	       E.text AS text
-	FROM   timeline      T,
-	       timeline_type E
-	WHERE T.con  = :conference
-	AND   T.type = E.id
-	AND   E.ispublic
-	ORDER BY T.date
-    }
+
+    lappend map @@@ [TimelineSQL $conference]
+    return [string map $map {
+	SELECT date, text
+	FROM (@@@)
+	WHERE ispublic
+    }]
 }
 
 proc ::cm::conference::have-talks {conference} {
@@ -3617,6 +3884,12 @@ proc ::cm::conference::insert {id text} {
     +map @c:sponsors@          [mail-sponsors $id]
     +map @c:sponsors:md@       [web-sponsors-bullet $id $xmgmt]
     +map @c:sponsors:md:short@ [web-sponsors-inline $id $xmgmt]
+
+    if {[have-speakers $id]} {
+	+map @c:speakers@ [mail-speaker-listing $id]
+    } else {
+	+map @c:speakers@ {}
+    }
 
     # Execute the accumulated substitutions
 
@@ -4020,11 +4293,12 @@ proc ::cm::conference::issues {details} {
     set issues {}
 
     foreach {var message} {
-	xcity     "Location is not known"
-	xhotel    "Hotel is not known"
-	xfacility "Facility is not known"
-	xstart    "Start date is not known"
-	xend      "End date is not known"
+	xcity      "Location is not known"
+	xhotel     "Hotel is not known"
+	xfacility  "Facility is not known"
+	xstart     "Start date is not known"
+	xend       "End date is not known"
+	xpschedule "No schedule defined"
     } {
 	if {[set $var] ne {}} continue
 	+issue $message
@@ -4164,7 +4438,8 @@ proc ::cm::conference::details {id} {
 	       'xlength',     length,
 	       'xtalklen',    talklength,
 	       'xsesslen',    sessionlen,
-	       'xrstatus',    rstatus
+	       'xrstatus',    rstatus,
+	       'xpschedule',  pschedule
 	FROM  conference
 	WHERE id = :id
     }]
@@ -4212,13 +4487,11 @@ proc ::cm::conference::current {} {
     try {
 	set id [config get @current-conference]
     } trap {CM CONFIG GET UNKNOWN} {e o} {
-	puts [color bad "No conference chosen, please \"select\" a conference"]
-	::exit 0
+	util user-error "No conference chosen, please \"select\" a conference"
     }
     if {[has $id]} { return $id }
 
-    puts [color bad "Bad conference index, please \"select\" a conference"]
-    ::exit 0
+    util user-error "Bad conference index, please \"select\" a conference"
 }
 
 proc ::cm::conference::has {id} {
@@ -4428,6 +4701,104 @@ proc ::cm::conference::select-submission {p} {
     return [dict get $submissions $choice]
 }
 
+proc ::cm::conference::known-talks-vt {} {
+    debug.cm/conference {}
+    Setup
+
+    set conference [the-current]
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT T.id    AS id
+	,      S.id    AS sid
+	,      S.title AS title
+	FROM   submission S
+	,      talk       T
+	WHERE  S.conference = :conference
+	AND    S.id         = T.submission
+    } {
+	dict set known $title                         $id
+	dict set known "[get-submission-handle $sid]" $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
+proc ::cm::conference::get-talk-title {talk} {
+    debug.cm/conference {}
+    Setup
+    return [db do onecolumn {
+	SELECT title
+	FROM   submission
+	WHERE  id IN (SELECT submission
+		      FROM   talk
+		      WHERE  id = :talk)
+    }]
+}
+
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::TimelineSQL {conference} {
+    set details [details $conference]
+    dict with details {}
+
+    if {$xhotel eq {}} {
+	# No rate information available. Generate only the basic core
+	# timeline.
+
+	set sql {
+	    SELECT T.date     AS date,
+	           E.text     AS text,
+	           E.ispublic AS ispublic,
+	           T.done     AS done
+	    FROM   timeline      T,
+	           timeline_type E
+	    WHERE T.con  = :conference
+	    AND   T.type = E.id
+	    ORDER BY T.date
+	}
+    } else {
+	# Rate information is present, this includes the room
+	# deadlines.  Generate fake timeline entries for these and
+	# merge with the core timeline.
+
+	set sql [string map [list :xhotel $xhotel] {
+	    SELECT date, text, ispublic, done
+	    FROM (SELECT T.date     AS date
+		  ,      E.text     AS text
+		  ,      E.ispublic AS ispublic
+		  ,      T.done     AS done
+		  FROM   timeline      T,
+		  timeline_type E
+		  WHERE T.con  = :conference
+		  AND   T.type = E.id
+		UNION
+		  SELECT deadline       AS date
+		  ,      'Room Release' AS text
+		  ,      0              AS ispublic
+		  ,      0              AS done
+		  FROM   rate R
+		  WHERE  R.conference = :conference
+		  AND    R.location   = :xhotel
+		UNION
+		  SELECT pdeadline             AS date
+		  ,      'Public Room Release' AS text
+		  ,      1                     AS ispublic
+		  ,      0                     AS done
+		  FROM   rate R
+		  WHERE  R.conference = :conference
+		  AND    R.location   = :xhotel)
+	    ORDER BY date
+	}]
+    }
+
+    return $sql
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::conference::Setup {} {
@@ -4443,7 +4814,7 @@ proc ::cm::conference::Setup {} {
     talk-type  setup
     template   setup
     timeline   setup
-
+    tutorial   setup
     booked     setup ;# TODO possible loop, these two refer back to
     registered setup ;# TODO conference. maybe move things.
 
@@ -4469,7 +4840,9 @@ proc ::cm::conference::Setup {} {
 	    sessionlen	INTEGER NOT NULL,	-- in #talks max  basic scheduling parameters.
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
-	    rstatus	INTEGER NOT NULL REFERENCES rstatus
+	    rstatus	INTEGER NOT NULL REFERENCES rstatus,
+
+	    pschedule   INTEGER REFERENCES pschedule
 
 	    -- future expansion columns:
 	    -- -- max day|range for tutorials
@@ -4509,6 +4882,7 @@ proc ::cm::conference::Setup {} {
 	    {talklength		INTEGER	1 {} 0}
 	    {sessionlen		INTEGER	1 {} 0}
 	    {rstatus		INTEGER	1 {} 0}
+	    {pschedule		INTEGER	0 {} 0}
 	} {}
     }]} {
 	db setup-error conference $error
@@ -4714,7 +5088,6 @@ proc ::cm::conference::Setup {} {
     return
 }
 
-
 proc ::cm::conference::Dump {} {
     debug.cm/conference {}
 
@@ -4722,7 +5095,7 @@ proc ::cm::conference::Dump {} {
 	SELECT id, title, year, management, submission,
 	       city, hotel, facility,
 	       startdate, enddate, alignment, length,
-	       talklength, sessionlen, rstatus
+	       talklength, sessionlen, rstatus, pschedule
 	FROM   conference
 	ORDER BY title
     } {
@@ -4945,9 +5318,53 @@ proc ::cm::conference::Dump {} {
 			   -encoding binary \
 			   -translation binary]
 	    }
-
-
 	}
+
+	booked     dump $id
+	registered dump $id
+
+	# logical schedule
+	# A - linked physical schedule
+
+	if {$pschedule ne {}} {
+	    cm dump step
+	    cm dump save \
+		configure schedule [pschedule piece $pschedule dname]
+
+	    # logical schedule B - schedule entries
+	    set first 1
+	    db do eval {
+		SELECT label
+		,      talk
+		,      tutorial
+		,      session
+		FROM   schedule
+		WHERE  conference = :id
+		ORDER BY label
+	    } {
+		if {$first} { cm dump step  ; set first 0 }
+
+		if {$talk ne {}} {
+		    set type  talk
+		    set value [get-talk-title $talk]
+		} elseif {$tutorial ne {}} {
+		    set type  tutorial
+		    set value [tutorial 2name-from-schedule $tutorial]
+		} elseif {$session ne {}} {
+		    set type  fixed
+		    set value $session
+		} else {
+		    set type  fixed
+		    set value {}
+		}
+
+		cm dump save \
+		    conference schedule-edit $label $type $value
+	    }
+	}
+
+	# Campaign for the conference.
+	cm::campaign::Dump $id
 
 	cm dump step 
     }

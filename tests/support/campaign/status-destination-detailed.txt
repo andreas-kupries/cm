@@ -1,0 +1,9 @@
+~/.cm/managed
+Campaign "C" details
++---------------+
+| Destinations  |
+|               |
+| (1)           |
++---------------+
+| me@myself.org |
++---------------+

@@ -1,0 +1,46 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - contact, create-company
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-create-company-1.0 {contact create-company, wrong args, not enough} -body {
+    run contact create-company
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test contact-create-company-1.1 {contact create-company, wrong args, too many} -body {
+    run contact create-company NAME X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# TODO: duplicate company
+
+# # ## ### ##### ######## ############# #####################
+
+test contact-create-company-3.0 {contact create-company} -body {
+    run contact create-company -E me@myself.org Myself
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -result [viewFile support/contact/create-company.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

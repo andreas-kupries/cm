@@ -1,0 +1,93 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, close
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-close-1.0 {campaign close, wrong args, too many} -body {
+    run campaign close X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-close-2.0 {campaign close, no conference} -body {
+    run campaign close
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-close-2.1 {campaign close, conference, no campaign} -body {
+    run campaign close
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+test campaign-close-2.2 {campaign close, conference, closed twice, ok} -body {
+    run campaign close
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/close.txt]
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-close-3.0 {campaign close} -body {
+    run campaign close
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/close.txt]
+
+test campaign-close-3.1 {campaign close, status, summary} -body {
+    run campaign close
+    run campaign status
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-close-summary.txt]
+
+test campaign-close-3.2 {campaign close, status, details} -body {
+    run campaign close
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-close-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

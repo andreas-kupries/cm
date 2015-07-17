@@ -19,6 +19,7 @@ package require Tcl 8.5
 package require dbutil
 package require try
 package require cm::db
+package require cm::db::tutorial
 
 # # ## ### ##### ######## ############# ######################
 
@@ -35,6 +36,7 @@ namespace eval ::cm::db::registered {
     namespace ensemble create
 
     namespace import ::cm::db
+    namespace import ::cm::db::tutorial
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -87,18 +89,13 @@ proc ::cm::db::registered::pupil-of {registration slot tutorial} {
     return
 }
 
-# MOVE this to the tutorial db layer FUTURE TODO
-proc ::cm::db::registered::get-t-title {id} {
+proc ::cm::db::registered::tutorial-title {id} {
+    debug.cm/db/registered {}
+
     if {$id eq {}} { return {} }
-    if {$id < 0} { return {} }
-    setup
-    return [db do onecolumn {
-	SELECT T.title AS title
-	FROM tutorial_schedule TS
-	,    tutorial          T
-	WHERE TS.id       = :id
-	AND   TS.tutorial = T.id
-    }]
+    if {$id < 0}   { return {} }
+
+    return [tutorial 2name-from-schedule $id]
 }
 
 proc ::cm::db::registered::listing {conference} {
@@ -120,10 +117,10 @@ proc ::cm::db::registered::listing {conference} {
 	ORDER BY dname
     } {
 	# Explicit left outer join... __HACK__
-	set ta [get-t-title $ta_id]
-	set tb [get-t-title $tb_id]
-	set tc [get-t-title $tc_id]
-	set td [get-t-title $td_id]
+	set ta [tutorial-title $ta_id]
+	set tb [tutorial-title $tb_id]
+	set tc [tutorial-title $tc_id]
+	set td [tutorial-title $td_id]
 	lappend r $dname $walkin $ta $tb $tc $td
     }
     return $r
@@ -196,7 +193,7 @@ proc ::cm::db::registered::remove {conference contact} {
 proc ::cm::db::registered::setup {} {
     debug.cm/db/registered {}
 
-    # TODO: registered - setup conference
+    # TODO: registered - setup conference // no -- loop
     # TODO: registered - setup contact
     # TODO: registered - setup tutorial_schedule
 
@@ -231,20 +228,39 @@ proc ::cm::db::registered::setup {} {
     return
 }
 
-proc ::cm::db::registered::dump {} {
+proc ::cm::db::registered::dump {conference} {
     # We can assume existence of the 'cm dump' ensemble.
     debug.cm/db/registered {}
+    setup
 
+    set first 1
     db do eval {
-	SELECT name, state, nation
-	FROM   city
-	ORDER BY nation, state, name
+	SELECT C.dname  AS contact
+	,      R.walkin AS walkin
+	,      R.tut1   AS t1
+	,      R.tut2   AS t2
+	,      R.tut3   AS t3
+	,      R.tut4   AS t4
+	FROM   registered R
+	,      contact    C
+	WHERE R.conference = :id
+	AND   R.contact    = C.id
+	ORDER BY contact
     } {
-	# TODO FIX registered - dump
+	if {$first} { cm dump step  ; set first 0 }
+
+	set taken {}
+	if {$t1 ne {}} { lappend taken --taking [tutorial 2name-from-schedule $t1] }
+	if {$t2 ne {}} { lappend taken --taking [tutorial 2name-from-schedule $t2] }
+	if {$t3 ne {}} { lappend taken --taking [tutorial 2name-from-schedule $t3] }
+	if {$t4 ne {}} { lappend taken --taking [tutorial 2name-from-schedule $t4] }
+
+	set walkin [expr {$walkin ? "--walkin" : ""}]
 
 	cm dump save \
-	    city create $name $state $nation
+	    registration add $contact {*}$walkin {*}$taken
     }
+
     return
 }
 

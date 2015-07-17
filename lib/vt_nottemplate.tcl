@@ -46,7 +46,7 @@ proc ::cm::validate::nottemplate::validate {p x} {
     set known [template known]
     set xnorm [string tolower $x]
     if {![dict exists $known $xnorm]} {
-	return $xnorm
+	return $x
     }
     fail-known-thing $p NOT-TEMPLATE "template name" $x
 }

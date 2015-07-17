@@ -1,0 +1,2 @@
+~/.cm/managed
+Changing contact "(@me) Myself" to "Company" ... OK

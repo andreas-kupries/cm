@@ -1,0 +1,8 @@
+~/.cm/managed
+Campaign "C" summary
+Destinations: 0
+Runs:
++------+----------+---------+-----------+
+| When | Template | Reached | Unreached |
++------+----------+---------+-----------+
++------+----------+---------+-----------+

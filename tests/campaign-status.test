@@ -1,0 +1,68 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, status display
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-status-1.0 {campaign status, wrong args, too many} -body {
+    run campaign status X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-status-2.0 {campaign status, no conference} -body {
+    run campaign status
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-status-2.1 {campaign status, conference, no campaign} -body {
+    run campaign status
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-setup-3.0 {campaign status, summary} -body {
+    run campaign status
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-setup-summary.txt]
+
+test campaign-setup-3.1 {campaign status, details} -body {
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-setup-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

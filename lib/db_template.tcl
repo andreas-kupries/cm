@@ -52,14 +52,16 @@ debug prefix cm/db/template {[debug caller] | }
 # # ## ### ##### ######## ############# ######################
 ##
 
-proc ::cm::db::template::new {name value} {
+proc ::cm::db::template::new {dname value} {
     debug.cm/db/template {}
     setup
+
+    set name [string tolower $dname]
 
     db do transaction {
 	db do eval {
 	    INSERT INTO template
-	    VALUES (NULL, :name, :value)
+	    VALUES (NULL, :name, :dname, :value)
 	}
     }
     return [db do last_insert_rowid]
@@ -94,9 +96,9 @@ proc ::cm::db::template::all {} {
     setup
 
     return [db do eval {
-	SELECT id, name
+	SELECT id, dname
 	FROM   template
-	ORDER BY name
+	ORDER BY dname
     }]
 }
 
@@ -111,7 +113,7 @@ proc ::cm::db::template::2name {template} {
     setup
 
     return [db do onecolumn {
-	SELECT name
+	SELECT dname
 	FROM   template
 	WHERE  id = :template
     }]
@@ -175,14 +177,16 @@ proc ::cm::db::template::setup {} {
 
     if {![dbutil initialize-schema ::cm::db::do error template {
 	{
-	    -- Text templates for mail campaigns
+	    -- Text templates for mail campaigns, the web site, etc
 
 	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	    name	TEXT    NOT NULL UNIQUE,
+	    name	TEXT    NOT NULL UNIQUE,	-- normalized lowercase
+	    dname	TEXT    NOT NULL,
 	    value	TEXT	NOT NULL
 	} {
 	    {id     INTEGER 1 {} 1}
 	    {name   TEXT    1 {} 0}
+	    {dname  TEXT    1 {} 0}
 	    {value  TEXT    1 {} 0}
 	} {}
     }]} {
@@ -199,12 +203,12 @@ proc ::cm::db::template::dump {} {
     debug.cm/db/template {}
 
     db do eval {
-	SELECT id, name, value
+	SELECT id, dname, value
 	FROM   template
-	ORDER BY name
+	ORDER BY dname
     } {
 	cm dump save \
-	    template create $name \
+	    template create $dname \
 	    < [cm dump write template$id $value]
     }
     return

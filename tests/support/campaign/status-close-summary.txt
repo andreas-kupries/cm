@@ -1,0 +1,8 @@
+~/.cm/managed
+Campaign "C" closed, summary
+Destinations: 1
+Runs:
++------+----------+---------+-----------+
+| When | Template | Reached | Unreached |
++------+----------+---------+-----------+
++------+----------+---------+-----------+

@@ -1,0 +1,122 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, mail run receiver bulk loading
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-received-1.0 {campaign received, wrong args, not enough} -body {
+    run campaign received
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test campaign-received-1.1 {campaign received, wrong args, not enough} -body {
+    run campaign received 0
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-received-2.0 {campaign received, no conference} -body {
+    run campaign received 0 me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-received-2.1 {campaign received, conference, no campaign} -body {
+    run campaign received 0 me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+test campaign-received-2.2 {campaign received, conference, closed campaign} -body {
+    run campaign received 0 me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Campaign "C" is closed, cannot be modified}
+
+test campaign-received-2.3 {campaign received, conference, already added} -body {
+    run campaign received 0 me
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign run 0 T
+    run campaign received 0 me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Already present}
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-received-3.0 {campaign received} -body {
+    run campaign received 0 me
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign run 0 T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/received.txt]
+
+test campaign-received-3.1 {campaign received, status, summary} -body {
+    run campaign received 0 me
+    run campaign status
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign run 0 T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-received-summary.txt]
+
+test campaign-received-3.2 {campaign received, status, details} -body {
+    run campaign received 0 me
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run template add T << TEMPLATE
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign run 0 T
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-received-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

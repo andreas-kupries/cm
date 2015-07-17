@@ -1,0 +1,105 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - campaign management, destination loading
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-destination-1.0 {campaign destination, wrong args, not enough} -body {
+    run campaign destination
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-destination-2.0 {campaign destination, no conference} -body {
+    run campaign destination me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: No conference chosen, please "select" a conference}
+
+test campaign-destination-2.1 {campaign destination, conference, no campaign} -body {
+    run campaign destination me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Conference "C" has no campaign}
+
+test campaign-destination-2.2 {campaign destination, conference, closed campaign} -body {
+    run campaign destination me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup
+    run campaign close
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Campaign "C" is closed, cannot be modified}
+
+test campaign-destination-2.3 {campaign destination, conference, already added} -body {
+    run campaign destination me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup ;# Adds 'me' automatically
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result {*cm general: Already present}
+
+# # ## ### ##### ######## ############# #####################
+
+test campaign-destination-3.0 {campaign destination} -body {
+    run campaign destination me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup --empty ;# prevent automatic addition of 'me'
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/destination.txt]
+
+test campaign-destination-3.1 {campaign destination, status, summary} -body {
+    run campaign destination me
+    run campaign status
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup --empty
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-destination-summary.txt]
+
+test campaign-destination-3.2 {campaign destination, status, details} -body {
+    run campaign destination me
+    run campaign status --detailed
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run campaign setup --empty
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/campaign/status-destination-detailed.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

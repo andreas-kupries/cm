@@ -59,9 +59,19 @@ proc ::cm::dump::cmd {config} {
     DumpDB    location
     Dump    contact
     DumpDB    tutorial
+    DumpX   pschedule ;# -- physical schedule
     Dump    conference
-    #       - talks, schedule
-    # TODO dump campaign
+    #       - timeline
+    #       - rate
+    #       - staff
+    #       - sponsors
+    #       - tutorial_schedule
+    #       - submissions
+    #       - talks (accepted submissions + speakers)
+    #       - booked
+    #       - registered
+    #       - linked physical & logical schedule.
+    #       - campaign
     Trailer
 
     close $chan
@@ -124,7 +134,21 @@ proc ::cm::dump::Dump {area} {
     package require cm::${area}
     cm::${area}::Setup
     cm::${area}::Dump
+    return
+}
 
+proc ::cm::dump::DumpX {area} {
+    debug.cm/dump {}
+    variable chan
+
+    puts ...$area
+
+    puts $chan \n[Separator]
+    puts $chan "## -- $area --\n"
+
+    package require cm::db::${area}
+    cm::db::${area} setup
+    cm::db::${area} dump
     return
 }
 

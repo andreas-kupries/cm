@@ -1,0 +1,2 @@
+~/.cm/managed
+Closing campaign "C" ... OK
