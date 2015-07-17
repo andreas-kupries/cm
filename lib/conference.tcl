@@ -27,15 +27,13 @@ package require debug::caller
 package require struct::set
 package require try
 
-package provide cm::conference 0 ;# circular via contact, campaign
+#package provide cm::conference 0 ;# circular via contact, campaign
 
-package require cm::city
-package require cm::config::core
-package require cm::contact
 package require cm::db
 package require cm::db::booked
 package require cm::db::city
 package require cm::db::config
+package require cm::db::contact
 package require cm::db::dayhalf
 package require cm::db::location
 package require cm::db::pschedule
@@ -91,11 +89,11 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::date
     namespace import ::cmdr::validate::weekday
-    namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::db::booked
     namespace import ::cm::db::city
     namespace import ::cm::db::config
+    namespace import ::cm::db::contact
     namespace import ::cm::db::dayhalf
     namespace import ::cm::db::location
     namespace import ::cm::db::pschedule
@@ -293,8 +291,8 @@ proc ::cm::conference::cmd_show {config} {
 	if {$xhotel    ne {}} { set xhotel    [location 2name $xhotel] }
 	if {$xfacility ne {}} { set xfacility [location 2name $xfacility] }
 
-	set xmanagement [contact get       $xmanagement]
-	set xsubmission [contact get-email $xsubmission]
+	set xmanagement [contact 2name       $xmanagement]
+	set xsubmission [contact 2name-email $xsubmission]
 
 	$t add Year             $xyear
 	$t add Management       $xmanagement
@@ -886,7 +884,7 @@ proc ::cm::conference::cmd_submission_addsubmitter {config} {
     puts "Adding submitters to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach submitter [$config @submitter] {
-	puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $submitter]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -910,7 +908,7 @@ proc ::cm::conference::cmd_submission_dropsubmitter {config} {
     puts "Removing submitters from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach submitter [$config @submitter] {
-	puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $submitter]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1279,7 +1277,7 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
     puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
-	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $speaker]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1314,7 +1312,7 @@ proc ::cm::conference::cmd_submission_dropspeaker {config} {
     puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
-	puts -nonewline "  \"[color name [cm contact get $speaker]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $speaker]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1509,7 +1507,7 @@ proc ::cm::conference::cmd_sponsor_show {config} {
 	    # get liaisons of the sponsor companies.
 	    # get affiliations of sponsoring persons.
 
-	    set related [contact related-formatted $contact $type]
+	    set related [contact relations-formatted $contact $type]
 
 	    $t add $name $related
 	}
@@ -1527,7 +1525,7 @@ proc ::cm::conference::cmd_sponsor_link {config} {
     puts "Adding sponsors to conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1550,7 +1548,7 @@ proc ::cm::conference::cmd_sponsor_unlink {config} {
     puts "Removing sponsors from conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1614,7 +1612,7 @@ proc ::cm::conference::cmd_staff_link {config} {
     puts "Adding [staffrole 2name $role] to conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact get $contact]]\" ... "
+	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1638,7 +1636,7 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 
     lassign [$config @name] role contact
 
-    puts -nonewline "  [staffrole 2name $role] \"[color name [cm contact get $contact]]\" ... "
+    puts -nonewline "  [staffrole 2name $role] \"[color name [cm contact 2name $contact]]\" ... "
     flush stdout
 
     db do eval {
@@ -1701,7 +1699,7 @@ proc ::cm::conference::cmd_tutorial_show {config} {
 			set    tdetails [tutorial get $tutorial]
 			set    title    [dict get $tdetails xtitle]
 			set    tag      @
-			append tag      [dict get [contact details [dict get $tdetails xspeaker]] xtag] :
+			append tag      [dict get [contact get [dict get $tdetails xspeaker]] xtag] :
 			append tag      [dict get $tdetails xtag]
 		    } else {
 			set tag   [color bad None]
@@ -1742,7 +1740,7 @@ proc ::cm::conference::cmd_tutorial_link {config} {
 
     # TODO: day (=offset) => date from start, weekday
 
-    puts "@ day $day [cm::db::dayhalf 2name $half], track $track"
+    puts "@ day $day [dayhalf 2name $half], track $track"
     flush stdout
 
     tutorial schedule $conference $tutorial $day $half $track
@@ -2658,7 +2656,7 @@ proc ::cm::conference::make_tutorials {conference} {
 		set req      [dict get $tdetails xprereq]
 
 		set speaker  [dict get $tdetails xspeaker]
-		set sdetails [contact details $speaker]
+		set sdetails [contact get $speaker]
 		set speaker  [dict get $sdetails xdname]
 		set stag     [dict get $sdetails xtag]
 		set tag      ${stag}:[dict get $tdetails xtag]
@@ -3350,40 +3348,23 @@ proc ::cm::conference::make_admin_campaign {conference textvar tag} {
     append text [anchor $tag] \n
     append text "# Campaign Status\n\n"
 
-    set campaign [cm campaign get-for $conference]
+    set campaign [cm campaign for-conference $conference]
     if {$campaign eq {}} {
 	append text "__Conference \"$clabel\" has no campaign__"
 	return
     }
 
-    set destinations [db do eval {
-	SELECT email
-	FROM   campaign_destination
-	WHERE  campaign = :campaign
-    }]
+    set destinations [cm campaign destinations $campaign]
 
     set first 1
-    db do eval {
-	SELECT M.id   AS mailrun,
-	       M.date AS date,
-	       T.name AS name
-	FROM   campaign_mailrun M,
-	       template         T
-	WHERE  M.campaign = :campaign
-	AND    M.template = T.id
-	ORDER BY date
-    } {
+    foreach {mailrun date name} [cm campaign runs $campaign] {
 	if {$first} {
 	    append text |When|Template|Reached|Unreached|\n|-|-|-|-|\n
 	    set first 0
 	}
 	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
 
-	set reached [db do eval {
-	    SELECT email
-	    FROM   campaign_received
-	    WHERE  mailrun = :mailrun
-	}]
+	set reached [cm campaign run-reach $mailrun]
 	set unreached [struct::set difference $destinations $reached]
 	set unreached [llength $unreached]
 	set reached   [llength $reached]
@@ -3766,9 +3747,9 @@ proc ::cm::conference::insert {id text} {
 
     +map @c:name@            [get $id]
     +map @c:year@            [dict get $details xyear]
-    +map @c:contact@         [contact get-email [dict get $details xsubmission]]
-    +map @c:management@      [contact get-name $xmgmt]
-    +map @c:management:link@ [contact get-the-link $xmgmt]
+    +map @c:contact@         [contact 2name-email [dict get $details xsubmission]]
+    +map @c:management@      [contact 2name-plain $xmgmt]
+    +map @c:management:link@ [contact the-link $xmgmt]
     +map @c:start@           [hdate $xstart]
     +map @c:end@             [hdate $xend]
     +map @c:when@            [when $xstart $xend]
@@ -3906,7 +3887,7 @@ proc ::cm::conference::web-sponsors-inline {id mgmt} {
 	# Exclude managing org from the enumeration
 	if {$sponsor == $mgmt} continue
 
-	set link [contact get-the-link $sponsor]
+	set link [contact the-link $sponsor]
 	if {$link ne {}} {
 	    set label [link $label $link]
 	}
@@ -3931,7 +3912,7 @@ proc ::cm::conference::web-sponsors-bullet {id mgmt} {
 	# Exclude managing org from the enumeration
 	if {$sponsor == $mgmt} continue
 
-	set link [contact get-the-link $sponsor]
+	set link [contact the-link $sponsor]
 	if {$link ne {}} {
 	    set label [link $label $link]
 	}
@@ -3966,8 +3947,8 @@ proc ::cm::conference::web-committee {id} {
 	# Get link for affiliation, if any.
 	set contact     [dict get $cdata $cname]
 	set affiliation {}
-	foreach {aid aname} [contact affiliated $contact] {
-	    set alink [contact get-the-link $aid]
+	foreach {aid aname} [contact affiliations $contact] {
+	    set alink [contact the-link $aid]
 	    if {$alink ne {}} {
 		set aname [link $aname $alink]
 	    }
@@ -4002,7 +3983,7 @@ proc ::cm::conference::mail-committee {id} {
 	set affiliation {}
 	set prefix      "   * "
 
-	foreach {aid aname} [contact affiliated $contact] {
+	foreach {aid aname} [contact affiliations $contact] {
 	    lappend affiliation $aname
 	}
 
@@ -4807,6 +4788,7 @@ proc ::cm::conference::Setup {} {
     ::cm::contact::Setup
     city       setup
     config     setup
+    dayhalf    setup
     location   setup
     rstatus    setup
     staffrole  setup
@@ -5099,8 +5081,8 @@ proc ::cm::conference::Dump {} {
 	FROM   conference
 	ORDER BY title
     } {
-	set management [cm contact get-name  $management]
-	set submission [cm contact get-email $submission]
+	set management [cm contact 2name-plain $management]
+	set submission [cm contact 2name-email $submission]
 	set startdate  [isodate $startdate]
 	if {$alignment > 0} {
 	    set alignment  [weekday 2external $alignment]

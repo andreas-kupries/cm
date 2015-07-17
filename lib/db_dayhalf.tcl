@@ -23,9 +23,6 @@ package require debug::caller
 package require dbutil
 package require try
 
-package provide cm::db::dayhalf 0 ;# circular through contact, campaign, conference
-
-package require cm::contact
 package require cm::db
 package require cm::table
 package require cm::util

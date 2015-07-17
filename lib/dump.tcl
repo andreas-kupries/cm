@@ -57,7 +57,7 @@ proc ::cm::dump::cmd {config} {
     DumpDB    template
     DumpDB    city
     DumpDB    location
-    Dump    contact
+    DumpDB    contact
     DumpDB    tutorial
     DumpX   pschedule ;# -- physical schedule
     Dump    conference
