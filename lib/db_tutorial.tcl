@@ -21,11 +21,7 @@ package require debug::caller
 package require dbutil
 package require try
 
-package provide cm::db::tutorial 0 ;# break circle
-
 package require cm::db
-package require cm::db::dayhalf
-package require cm::contact
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -43,12 +39,10 @@ namespace eval ::cm::db::tutorial {
 	all new title= desc= req= tag= 2name 2name-from-schedule \
 	get update select known known-tag known-title known-scheduled \
 	dayrange trackrange cell cell-schedule speakers speakers* \
-	scheduled schedule unschedule issues setup dump
+	is-speaker scheduled schedule unschedule issues setup dump
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::db::dayhalf
-    namespace import ::cm::contact
     namespace import ::cm::util
 }
 
@@ -139,6 +133,7 @@ proc ::cm::db::tutorial::tag= {tutorial text} {
 
 proc ::cm::db::tutorial::issues {details} {
     debug.cm/db/tutorial {}
+    setup
 
     dict with details {}
     set sdetails [contact details $xspeaker]
@@ -384,6 +379,17 @@ proc ::cm::db::tutorial::cell-schedule {conference day half track} {
     }]
 }
 
+proc ::cm::db::tutorial::is-speaker {contact} {
+    debug.cm/db/tutorial {}
+    setup
+
+    return [db do exists {
+	SELECT id
+	FROM   tutorial
+	WHERE  speaker = :contact
+    }]
+}
+
 proc ::cm::db::tutorial::speakers* {conference} {
     debug.cm/db/tutorial {}
     setup
@@ -501,11 +507,11 @@ proc ::cm::db::tutorial::unschedule {conference tutorial} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::tutorial::setup {} {
+cm db setup cm::db::tutorial {
     debug.cm/db/tutorial {}
 
-    ::cm::db::dayhalf setup ;# circle through contact, campaign, conference
-    ::cm::contact::Setup
+    db use contact
+    db use dayhalf
 
     if {![dbutil initialize-schema ::cm::db::do error tutorial {
 	{
@@ -550,9 +556,6 @@ proc ::cm::db::tutorial::setup {} {
     }]} {
 	db setup-error tutorial_schedule $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::tutorial::setup {args} {}
     return
 }
 

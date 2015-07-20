@@ -16,19 +16,12 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cmdr::color
-package require cmdr::ask
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
-package provide cm::db::dayhalf 0 ;# circular through contact, campaign, conference
-
-package require cm::contact
 package require cm::db
-package require cm::table
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -45,7 +38,6 @@ namespace eval ::cm::db::dayhalf {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -86,7 +78,7 @@ proc ::cm::db::dayhalf::2name {dayhalf} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::dayhalf::setup {} {
+cm db setup cm::db::dayhalf {
     debug.cm/db/dayhalf {}
 
     if {![dbutil initialize-schema ::cm::db::do error dayhalf {
@@ -106,9 +98,6 @@ proc ::cm::db::dayhalf::setup {} {
 	    INSERT OR IGNORE INTO dayhalf VALUES (3,'evening');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::dayhalf::setup {args} {}
     return
 }
 

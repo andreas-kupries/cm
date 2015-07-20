@@ -12,8 +12,8 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-add-affiliate-1.0 {contact add-affiliate, wrong args, not enough} -body {
-    run contact add-affiliate -n
+test contact-add-affiliation-1.0 {contact add-affiliation, wrong args, not enough} -body {
+    run contact add-affiliation -n
 } -setup {
     stage-open
 } -cleanup {
@@ -22,16 +22,16 @@ test contact-add-affiliate-1.0 {contact add-affiliate, wrong args, not enough} -
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-add-affiliate-2.0 {contact add-affiliate, unknown person} -body {
-    run contact add-affiliate me
+test contact-add-affiliation-2.0 {contact add-affiliation, unknown person} -body {
+    run contact add-affiliation me
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
 
-test contact-add-affiliate-2.1 {contact add-affiliate, unknown affiliation} -body {
-    run contact add-affiliate me com
+test contact-add-affiliation-2.1 {contact add-affiliation, unknown affiliation} -body {
+    run contact add-affiliation me com
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
@@ -41,8 +41,8 @@ test contact-add-affiliate-2.1 {contact add-affiliate, unknown affiliation} -bod
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-add-affiliate-3.0 {contact add-affiliate} -body {
-    run contact add-affiliate me com
+test contact-add-affiliation-3.0 {contact add-affiliation} -body {
+    run contact add-affiliation me com
 } -setup {
     stage-open
     run contact create-company -E com@com.com   Company
@@ -51,8 +51,8 @@ test contact-add-affiliate-3.0 {contact add-affiliate} -body {
     stage-close
 } -result [viewFile support/contact/add-affiliate.txt]
 
-test contact-add-affiliate-3.1 {contact add-affiliate, persist} -body {
-    run contact add-affiliate me com
+test contact-add-affiliation-3.1 {contact add-affiliation, persist} -body {
+    run contact add-affiliation me com
     run contact show me
 } -setup {
     stage-open
@@ -62,8 +62,8 @@ test contact-add-affiliate-3.1 {contact add-affiliate, persist} -body {
     stage-close
 } -result [viewFile support/contact/show-affiliate.txt]
 
-test contact-add-affiliate-3.2 {contact add-affiliate, persist, inverted} -body {
-    run contact add-affiliate me com
+test contact-add-affiliation-3.2 {contact add-affiliation, persist, inverted} -body {
+    run contact add-affiliation me com
     run contact show com
 } -setup {
     stage-open
@@ -73,8 +73,8 @@ test contact-add-affiliate-3.2 {contact add-affiliate, persist, inverted} -body 
     stage-close
 } -result [viewFile support/contact/show-iaffiliate.txt]
 
-test contact-add-affiliate-3.3 {contact add-affiliate, persist} -body {
-    run contact add-affiliate me com
+test contact-add-affiliation-3.3 {contact add-affiliation, persist} -body {
+    run contact add-affiliation me com
     run contacts
 } -setup {
     stage-open

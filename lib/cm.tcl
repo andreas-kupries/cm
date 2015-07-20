@@ -1446,7 +1446,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		If this option is not present the new campaign will get
 		its mail addresses automatically from the known contacts.
 	    } { presence }
-	} [cm::call campaign cmd_setup]
+	} [cm::call campaign setup]
 
 	private mail {
 	    section {Conference Management} {Mail Campaign}
@@ -1464,7 +1464,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input template {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }
-	} [cm::call campaign cmd_mail]
+	} [cm::call campaign mail]
 
 	private run {
 	    section {Conference Management} {Mail Campaign}
@@ -1478,7 +1478,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input template {
 		Name of the template to use for the mail.
 	    } { validate [cm::vt template] }
-	} [cm::call campaign cmd_mailrun]
+	} [cm::call campaign mailrun]
 
 	private test {
 	    section {Conference Management} {Mail Campaign}
@@ -1488,7 +1488,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input template {
 		Name of the template to check.
 	    } { validate [cm::vt template] }
-	} [cm::call campaign cmd_test]
+	} [cm::call campaign test]
 
 	private drop {
 	    section {Conference Management} {Mail Campaign}
@@ -1501,7 +1501,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		The list of emails to remove.
 	    } { list ; optional ; interact ; validate [cm::vt email]
 		generate [stop!] }
-	} [cm::call campaign cmd_drop]
+	} [cm::call campaign drop]
 
 	private destination {
 	    section {Conference Management} {Mail Campaign}
@@ -1513,14 +1513,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input entry {
 		The list of emails to add.
 	    } { list ; validate [cm::vt email] }
-	} [cm::call campaign cmd_destination]
+	} [cm::call campaign destination]
 
 	private close {
 	    section {Conference Management} {Mail Campaign}
 	    description {
 		Close the campaign of the current conference.
 	    }
-	} [cm::call campaign cmd_close]
+	} [cm::call campaign close]
 
 	private reset {
 	    section {Conference Management} {Mail Campaign}
@@ -1529,7 +1529,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		causes the system to forget *all* information about
 		templates, runs, and already reached addresses.
 	    }
-	} [cm::call campaign cmd_reset]
+	} [cm::call campaign reset]
 
 	private received {
 	    section {Conference Management} {Mail Campaign}
@@ -1544,7 +1544,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input entry {
 		The list of emails to add.
 	    } { list ; validate [cm::vt email] }
-	} [cm::call campaign cmd_received]
+	} [cm::call campaign received]
 
 	private status {
 	    section {Conference Management} {Mail Campaign}
@@ -1554,7 +1554,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option detailed {
 		Show status in full detail, listing all mails, not just counts.
 	    } { presence }
-	} [cm::call campaign cmd_status]
+	} [cm::call campaign status]
 	default
     }
 
@@ -1591,7 +1591,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .mails
 	    input name   {First name of the person} {}
 	    input tag    {Short tag suitable as html anchor} { optional }
-	} [cm::call contact cmd_create_person]
+	} [cm::call contact create-person]
 
 	private create-list {
 	    section {Contact Management}
@@ -1599,7 +1599,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    input name {List name} {}
 	    input mail {List address} { validate [cm::vt mail-address] }
-	} [cm::call contact cmd_create_mlist]
+	} [cm::call contact create-mlist]
 
 	private create-company {
 	    section {Contact Management}
@@ -1607,11 +1607,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    use .mails
 	    input name {Company name} {}
-	} [cm::call contact cmd_create_company]
+	} [cm::call contact create-company]
 
 	# TODO: contact delete -- delete a superfluous contact - not referenced...
 
-	private add-company {
+	private add-affiliation {
 	    section {Contact Management}
 	    description {Add one or more companies as the affiliations of the specified person}
 	    input name {
@@ -1621,10 +1621,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input company {
 		Names of the companies to add as affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
-	} [cm::call contact cmd_add_company]
-	alias add-affiliate
+	} [cm::call contact add-affiliation]
 
-	private remove-company {
+	private remove-affiliation {
 	    section {Contact Management}
 	    description {Remove one or more companies from the set of affiliations of the specified person}
 	    input name {
@@ -1634,11 +1633,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input company {
 		Names of the companies to remove from the set of affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
-	} [cm::call contact cmd_drop_company]
-	alias remove-affiliate
+	} [cm::call contact remove-affiliation]
 
 	# Reverse affiliation. A personal contact into the company ... A liaison, point of contact, representative
-	private add-liaison {
+	private add-representative {
 	    section {Contact Management}
 	    description {Add one or more liaisons to the specified company}
 	    input company {
@@ -1648,11 +1646,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the contacts to add as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
-	} [cm::call contact cmd_add_liaison]
+	} [cm::call contact add-representative]
 	alias add-rep
 	alias add-poc
 
-	private remove-liaison {
+	private remove-representative {
 	    section {Contact Management}
 	    description {Remove one or more liaisons from the specified company}
 	    input company {
@@ -1662,7 +1660,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the contacts to remove as liaisons
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only persons
-	} [cm::call contact cmd_drop_liaison]
+	} [cm::call contact remove-representative]
 	alias remove-rep
 	alias remove-poc
 
@@ -1676,7 +1674,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input tag {
 		Tag to set
 	    } { optional ; interact ; generate [stop!] }
-	} [cm::call contact cmd_set_tag]
+	} [cm::call contact tag=]
+	alias retag
+	alias tag=
 
 	private set-bio {
 	    section {Contact Management}
@@ -1685,77 +1685,8 @@ cmdr create cm::cm [file tail $::argv0] {
 		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
 		generate [stop!] }
-	} [cm::call contact cmd_set_bio]
-
-	private add-mail {
-	    section {Contact Management}
-	    description {Add more email address to a contact}
-	    use .mails
-	    input name {
-		Name of the contact to extend. No mailing lists.
-	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
-		generate [stop!] }
-	} [cm::call contact cmd_add_mail]
-
-	private add-link {
-	    section {Contact Management}
-	    description {Add more links to a contact}
-	    use .links
-	    input name {
-		Name of the contact to extend.
-	    } { optional ; interact ; validate [cm::vt contact]
-		generate [stop!] }
-	} [cm::call contact cmd_add_link]
-
-	private disable-mail {
-	    section {Contact Management}
-	    description {Disable one or more email addresses}
-	    use .imails
-	} [cm::call contact cmd_disable_mail]
-
-	private squash-mail {
-	    section {Contact Management}
-	    description {Fully remove one or more email addresses}
-	    use .imails
-	} [cm::call contact cmd_squash_mail]
-
-	private disable {
-	    section {Contact Management}
-	    description {Disable the specified contacts}
-	    input name {
-		List of the contact to disable
-	    } { list ; optional ; interact ; validate [cm::vt contact] }
-	} [cm::call contact cmd_disable]
-
-	private enable {
-	    section {Contact Management}
-	    description {Enable the specified contacts}
-	    input name {
-		List of the contact to disable
-	    } { list ; optional ; interact ; validate [cm::vt contact] }
-	} [cm::call contact cmd_enable]
-
-	private list {
-	    section {Contact Management}
-	    description {Show all known contacts, possibly filtered}
-	    input pattern {
-		Filter list by the glob pattern
-	    } { optional ; default * }
-	    option with-mails {Show mail addresses} { presence }
-	    option only {
-		Show only entries of the requested type(s).
-		If not specified show all.
-	    } { list ; validate [cm::vt contact-type] }
-	} [cm::call contact cmd_list]
-
-	private show {
-	    section {Contact Management}
-	    description {Show the details of the specified contact}
-	    input name {
-		Name of the contact to show.
-	    } { optional ; interact ; validate [cm::vt contact]
-		generate [stop!] }
-	} [cm::call contact cmd_show]
+	} [cm::call contact bio=]
+	alias bio=
 
 	private retype {
 	    section {Contact Management}
@@ -1766,7 +1697,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input name {
 		Name of the contacts to modify.
 	    } { list ; optional ; interact ; validate [cm::vt contact] }
-	} [cm::call contact cmd_retype]
+	} [cm::call contact type=]
+	alias type=
 
 	private rename {
 	    section {Contact Management}
@@ -1779,7 +1711,78 @@ cmdr create cm::cm [file tail $::argv0] {
 		New name of the contact.
 	    } { optional ; interact ; validate [cm::vt notcontact]
 		generate [stop!] }
-	} [cm::call contact cmd_rename]
+	} [cm::call contact name=]
+	alias name=
+
+	private add-mail {
+	    section {Contact Management}
+	    description {Add more email address to a contact}
+	    use .mails
+	    input name {
+		Name of the contact to extend. No mailing lists.
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
+	} [cm::call contact add-mail]
+
+	private add-link {
+	    section {Contact Management}
+	    description {Add more links to a contact}
+	    use .links
+	    input name {
+		Name of the contact to extend.
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
+	} [cm::call contact add-link]
+
+	private disable-mail {
+	    section {Contact Management}
+	    description {Disable one or more email addresses}
+	    use .imails
+	} [cm::call contact disable-mail]
+
+	private squash-mail {
+	    section {Contact Management}
+	    description {Fully remove one or more email addresses}
+	    use .imails
+	} [cm::call contact squash-mail]
+
+	private disable {
+	    section {Contact Management}
+	    description {Disable the specified contacts}
+	    input name {
+		List of the contact to disable
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact disable]
+
+	private enable {
+	    section {Contact Management}
+	    description {Enable the specified contacts}
+	    input name {
+		List of the contact to disable
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact enable]
+
+	private list {
+	    section {Contact Management}
+	    description {Show all known contacts, possibly filtered}
+	    input pattern {
+		Filter list by the glob pattern
+	    } { optional ; default * }
+	    option with-mails {Show mail addresses} { presence }
+	    option only {
+		Show only entries of the requested type(s).
+		If not specified show all.
+	    } { list ; validate [cm::vt contact-type] }
+	} [cm::call contact list-all]
+
+	private show {
+	    section {Contact Management}
+	    description {Show the details of the specified contact}
+	    input name {
+		Name of the contact to show.
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
+	} [cm::call contact show]
 
 	private merge {
 	    section {Contact Management}
@@ -1792,7 +1795,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Name of the secondary contacts to merge into the primary
 	    } { optional ; list ; interact ; validate [cm::vt contact]
 		generate [stop!] }
-	} [cm::call contact cmd_merge]
+	} [cm::call contact merge]
 
 	# TODO: change flags?
 	# TODO: set link title
@@ -2330,6 +2333,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	private location-staff-select {
 	    description {Print selection dict, staff of current location}
 	} [cm::call location test-staff-select]
+
+	# - -- --- ----- -------- -------------
+
+	private contact-known {
+	    description {Print validation dict}
+	} [cm::call contact test-known]
+
+	private contact-select {
+	    description {Print selection dict}
+	} [cm::call contact test-select]
 
 	# - -- --- ----- -------- -------------
 

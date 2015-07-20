@@ -17,7 +17,10 @@
 
 package require Tcl 8.5
 package require dbutil
+package require debug
+package require debug::caller
 package require try
+
 package require cm::db
 
 # # ## ### ##### ######## ############# ######################
@@ -101,12 +104,12 @@ proc ::cm::db::booked::remove {conference contact} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::booked::setup {} {
+cm db setup cm::db::booked {
     debug.cm/db/booked {}
 
-    # TODO: booked - setup conference // no -- loop
-    # TODO: booked - setup contact
-    # TODO: booked - setup location
+    # TODO: booked - setup conference
+    db use contact
+    db use location
 
     if {![dbutil initialize-schema ::cm::db::do error booked {
 	{
@@ -124,9 +127,6 @@ proc ::cm::db::booked::setup {} {
     }]} {
 	db setup-error booked $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::booked::setup {args} {}
     return
 }
 

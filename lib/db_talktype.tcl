@@ -22,7 +22,6 @@ package require debug::caller
 package require try
 
 package require cm::db
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -39,7 +38,6 @@ namespace eval ::cm::db::talk-type {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -81,7 +79,7 @@ proc ::cm::db::talk-type::known {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::talk-type::setup {} {
+cm db setup cm::db::talk-type {
     debug.cm/db/talk-type {}
 
     if {![dbutil initialize-schema ::cm::db::do error talk_type {
@@ -102,9 +100,6 @@ proc ::cm::db::talk-type::setup {} {
 	    INSERT OR IGNORE INTO talk_type VALUES (4,'panel');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::talk-type::setup {args} {}
     return
 }
 

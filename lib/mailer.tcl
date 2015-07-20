@@ -241,6 +241,9 @@ proc ::cm::mailer::has {setting} {
 proc ::cm::mailer::batch {r a n destinations script} {
     upvar 1 $r receiver $a address $n name
 
+    package require cm::db::contact
+    cm db contact setup
+
     db do eval [string map [list @@@ [join $destinations ,]] {
 	SELECT E.id    AS receiver,
                E.email AS address,
