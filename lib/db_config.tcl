@@ -16,9 +16,9 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
@@ -36,7 +36,7 @@ namespace eval ::cm::db {
 namespace eval ::cm::db::config {
     namespace export \
 	assign drop drop-glob get-list get get* \
-	has has-glob names setup dump
+	has has-glob names setup dump all-internal
     namespace ensemble create
 
     namespace import ::cm::db
@@ -48,6 +48,18 @@ debug level  cm/db/config
 debug prefix cm/db/config {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::db::config::all-internal {} {
+    debug.cm/db/config {}
+    setup
+
+    return [db do eval {
+	SELECT key, value
+	FROM   config
+	WHERE  key GLOB '@*'
+	ORDER BY key
+    }]
+}
 
 proc ::cm::db::config::assign {key value} {
     debug.cm/db/config {}
@@ -186,7 +198,7 @@ proc ::cm::db::config::names {pattern} {
     }]
 }
 
-proc ::cm::db::config::setup {} {
+cm db setup ::cm::db::config {
     debug.cm/db/config {}
 
     if {![dbutil initialize-schema ::cm::db::do error config {
@@ -203,9 +215,6 @@ proc ::cm::db::config::setup {} {
     }]} {
 	db setup-error config $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::config::setup {args} {}
     return
 }
 

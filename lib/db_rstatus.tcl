@@ -22,7 +22,6 @@ package require debug::caller
 package require try
 
 package require cm::db
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -39,7 +38,6 @@ namespace eval ::cm::db::rstatus {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -81,7 +79,7 @@ proc ::cm::db::rstatus::known {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::rstatus::setup {} {
+cm db setup cm::db::rstatus {
     debug.cm/db/rstatus {}
 
     if {![dbutil initialize-schema ::cm::db::do error rstatus {
@@ -101,9 +99,6 @@ proc ::cm::db::rstatus::setup {} {
 	    INSERT OR IGNORE INTO rstatus VALUES (3,'closed');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::rstatus::setup {args} {}
     return
 }
 

@@ -35,6 +35,7 @@ test campaign-close-2.1 {campaign close, conference, no campaign} -body {
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
+    #run contacts
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
 } -cleanup {
     stage-close

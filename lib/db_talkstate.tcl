@@ -22,7 +22,6 @@ package require debug::caller
 package require try
 
 package require cm::db
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -39,7 +38,6 @@ namespace eval ::cm::db::talk-state {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -81,7 +79,7 @@ proc ::cm::db::talk-state::known {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::talk-state::setup {} {
+cm db setup cm::db::talk-state {
     debug.cm/db/talk-state {}
 
     if {![dbutil initialize-schema ::cm::db::do error talk_state {
@@ -100,9 +98,6 @@ proc ::cm::db::talk-state::setup {} {
 	    INSERT OR IGNORE INTO talk_state VALUES (2,'received');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::talk-state::setup {args} {}
     return
 }
 

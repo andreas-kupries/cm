@@ -17,9 +17,11 @@
 
 package require Tcl 8.5
 package require dbutil
+package require debug
+package require debug::caller
 package require try
+
 package require cm::db
-package require cm::db::tutorial
 
 # # ## ### ##### ######## ############# ######################
 
@@ -36,7 +38,6 @@ namespace eval ::cm::db::registered {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::db::tutorial
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -190,12 +191,12 @@ proc ::cm::db::registered::remove {conference contact} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::registered::setup {} {
+cm db setup cm::db::registered {
     debug.cm/db/registered {}
 
-    # TODO: registered - setup conference // no -- loop
-    # TODO: registered - setup contact
-    # TODO: registered - setup tutorial_schedule
+    db use contact
+    db use tutorial
+    # TODO: registered - setup conference
 
     if {![dbutil initialize-schema ::cm::db::do error registered {
 	{
@@ -222,9 +223,6 @@ proc ::cm::db::registered::setup {} {
     }]} {
 	db setup-error registered $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::registered::setup {args} {}
     return
 }
 

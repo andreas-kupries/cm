@@ -16,14 +16,13 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
-package require cm::util
-package require cm::table
 package require cm::db
+package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -172,7 +171,23 @@ proc ::cm::db::template::select {p} {
     return [util select $p template known]
 }
 
-proc ::cm::db::template::setup {} {
+proc ::cm::db::template::dump {} {
+    # We can assume existence of the 'cm dump' ensemble.
+    debug.cm/db/template {}
+
+    db do eval {
+	SELECT id, dname, value
+	FROM   template
+	ORDER BY dname
+    } {
+	cm dump save \
+	    template create $dname \
+	    < [cm dump write template$id $value]
+    }
+    return
+}
+
+cm db setup cm::db::template {
     debug.cm/db/template {}
 
     if {![dbutil initialize-schema ::cm::db::do error template {
@@ -191,25 +206,6 @@ proc ::cm::db::template::setup {} {
 	} {}
     }]} {
 	db setup-error template $error
-    }
-
-    # Shortcircuit further calls
-    proc ::cm::db::template::setup {args} {}
-    return
-}
-
-proc ::cm::db::template::dump {} {
-    # We can assume existence of the 'cm dump' ensemble.
-    debug.cm/db/template {}
-
-    db do eval {
-	SELECT id, dname, value
-	FROM   template
-	ORDER BY dname
-    } {
-	cm dump save \
-	    template create $dname \
-	    < [cm dump write template$id $value]
     }
     return
 }
