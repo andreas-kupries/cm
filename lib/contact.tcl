@@ -104,7 +104,7 @@ proc ::cm::contact::show {config} {
 
 	$t add Tag                $tag
 	$t add Name               [color name $name]
-	$t add Type               $type
+	$t add Type               [contact-type 2name $type]
 	$t add Flags              [join $flags {, }]
 	$t add Biography          [util adjust $w $bio]
 
@@ -112,10 +112,14 @@ proc ::cm::contact::show {config} {
 
 	# Emails for the contact
 	set first 1
-	foreach emailaddr [contact email-addrs $contact] {
+	foreach {emailaddr inactive} [contact email-addrs+state $contact] {
 	    if {$first} { $t add Emails {} }
 	    set first 0
-	    $t add - $emailaddr
+	    if {$inactive} {
+		$t add - "$emailaddr ([color bad Disabled])"
+	    } else {
+		$t add - $emailaddr
+	    }
 	}
 
 	# Links for the contact
@@ -317,7 +321,7 @@ proc ::cm::contact::add-mail {config} {
 
     set contact [$config @name]
 
-    puts -nonewline "Add mails to \"[color name [contact 2label $contact]]\" ... "
+    puts -nonewline "Add mails to \"[color name [contact 2name $contact]]\" ... "
     flush stdout
 
     contact add-mails $contact [$config @email]
@@ -333,7 +337,7 @@ proc ::cm::contact::add-link {config} {
 
     set contact [$config @name]
 
-    puts -nonewline "Add links to \"[color name [contact 2label $contact]]\" ... "
+    puts -nonewline "Add links to \"[color name [contact 2name $contact]]\" ... "
     flush stdout
 
     contact add-links $contact [$config @link]
@@ -348,7 +352,7 @@ proc ::cm::contact::disable {config} {
     db show-location
 
     foreach contact [$config @name] {
-	puts -nonewline "Disabling contact \"[color name [contact 2label $contact]]\" ... "
+	puts -nonewline "Disabling contact \"[color name [contact 2name $contact]]\" ... "
 	flush stdout
 
 	contact recv= $contact 0
@@ -364,7 +368,7 @@ proc ::cm::contact::enable {config} {
     db show-location
 
     foreach contact [$config @name] {
-	puts -nonewline "Enabling contact \"[color name [contact 2label $contact]]\" ... "
+	puts -nonewline "Enabling contact \"[color name [contact 2name $contact]]\" ... "
 	flush stdout
 
 	contact recv= $contact 1
@@ -415,7 +419,7 @@ proc ::cm::contact::type= {config} {
     set tlabel [contact-type 2name $type]
 
     foreach contact [$config @name] {
-	puts -nonewline "Changing contact \"[color name [contact 2label $contact]]\" to \"$tlabel\" ... "
+	puts -nonewline "Changing contact \"[color name [contact 2name $contact]]\" to \"$tlabel\" ... "
 	flush stdout
 
 	contact type= $contact $type
@@ -434,7 +438,7 @@ proc ::cm::contact::name= {config} {
     set dnew    [$config @newname]
     set new     [string tolower $dnew]
 
-    puts -nonewline "Renaming contact \"[color name [contact 2label $contact]]\" to \"[color name $new]\" ... "
+    puts -nonewline "Renaming contact \"[color name [contact 2name $contact]]\" to \"[color name $new]\" ... "
     flush stdout
 
     contact name= $contact $dnew
@@ -451,7 +455,7 @@ proc ::cm::contact::tag= {config} {
     set contact [$config @name]
     set tag     [$config @tag]
 
-    puts -nonewline "Set tag of \"[color name [contact 2label $contact]]\" to \"$tag\" ... "
+    puts -nonewline "Set tag of \"[color name [contact 2name $contact]]\" to \"$tag\" ... "
     flush stdout
 
     contact tag= $contact $tag
@@ -468,7 +472,7 @@ proc ::cm::contact::bio= {config} {
     set contact [$config @name]
     set bio     [read stdin]
 
-    puts -nonewline "Set biography of \"[color name [contact 2label $contact]]\" ... "
+    puts -nonewline "Set biography of \"[color name [contact 2name $contact]]\" ... "
     flush stdout
 
     contact bio= $contact $bio
@@ -485,7 +489,7 @@ proc ::cm::contact::merge {config} {
     set primary [$config @primary]
 
     foreach secondary [$config @secondary] {
-	puts -nonewline "Merging contact \"[color name [contact 2label $primary]]\" with \"[color name [contact 2label $secondary]]\" ... "
+	puts -nonewline "Merging contact \"[color name [contact 2name $primary]]\" with \"[color name [contact 2name $secondary]]\" ... "
 	flush stdout
 
 	contact merge $primary $secondary
@@ -504,10 +508,10 @@ proc ::cm::contact::add-affiliation {config} {
     set contact [$config @name]
 
     db do transaction {
-	puts "Extend affiliations of \"[color name [contact 2label $contact]]\" ... "
+	puts "Extend affiliations of \"[color name [contact 2name $contact]]\" ... "
 
 	foreach company [$config @company] {
-	    puts -nonewline "+ \"[color name [contact 2label $company]]\" ... "
+	    puts -nonewline "+ \"[color name [contact 2name $company]]\" ... "
 	    flush stdout
 
 	    contact add-affiliation $contact $company
@@ -518,7 +522,7 @@ proc ::cm::contact::add-affiliation {config} {
     return
 }
 
-proc ::cm::contact:remove-affiliation {config} {
+proc ::cm::contact::remove-affiliation {config} {
     debug.cm/contact {}
     contact setup
     db show-location
@@ -526,10 +530,10 @@ proc ::cm::contact:remove-affiliation {config} {
     set contact [$config @name]
 
     db do transaction {
-	puts "Reduce affiliations of \"[color name [contact 2label $contact]]\" ... "
+	puts "Reduce affiliations of \"[color name [contact 2name $contact]]\" ... "
 
 	foreach company [$config @company] {
-	    puts -nonewline "- \"[color name [contact 2label $company]]\" ... "
+	    puts -nonewline "- \"[color name [contact 2name $company]]\" ... "
 	    flush stdout
 
 	    contact drop-affiliation $contact $company
@@ -548,10 +552,10 @@ proc ::cm::contact::add-representative {config} {
     set company [$config @company]
 
     db do transaction {
-	puts "Extend representatives of \"[color name [contact 2label $company]]\" ..."
+	puts "Extend representatives of \"[color name [contact 2name $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "+ \"[color name [contact 2label $contact]]\" ... "
+	    puts -nonewline "+ \"[color name [contact 2name $contact]]\" ... "
 	    flush stdout
 
 	    contact add-representative $company $contact
@@ -570,10 +574,10 @@ proc ::cm::contact::remove-representative {config} {
     set company [$config @company]
 
     db do transaction {
-	puts "Reduce representatives of \"[color name [contact 2label $company]]\" ..."
+	puts "Reduce representatives of \"[color name [contact 2name $company]]\" ..."
 
 	foreach contact [$config @name] {
-	    puts -nonewline "- \"[color name [contact 2label $contact]]\" ... "
+	    puts -nonewline "- \"[color name [contact 2name $contact]]\" ... "
 	    flush stdout
 
 	    contact drop-representative $company $contact

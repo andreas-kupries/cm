@@ -79,13 +79,13 @@ cm [OPTIONS]
     cm config set <key> <value>
     cm config unset <key>
     cm contact
-    cm contact add-affiliate [<name>] [<company>...]
-    cm contact add-company [<name>] [<company>...]
-    cm contact add-liaison [<company>] [<name>...]
+    cm contact add-affiliation [<name>] [<company>...]
     cm contact add-link [OPTIONS] [<name>]
     cm contact add-mail [OPTIONS] [<name>]
     cm contact add-poc [<company>] [<name>...]
     cm contact add-rep [<company>] [<name>...]
+    cm contact add-representative [<company>] [<name>...]
+    cm contact bio= [<name>]
     cm contact create-company [OPTIONS] <name>
     cm contact create-list [OPTIONS] <name> <mail>
     cm contact create-person [OPTIONS] <name> [<tag>]
@@ -96,17 +96,20 @@ cm [OPTIONS]
     cm contact help [OPTIONS] [<cmdname>...]
     cm contact list [OPTIONS] [<pattern>]
     cm contact merge [<primary>] [<secondary>...]
-    cm contact remove-affiliate [<name>] [<company>...]
-    cm contact remove-company [<name>] [<company>...]
-    cm contact remove-liaison [<company>] [<name>...]
+    cm contact name= [<name>] [<newname>]
+    cm contact remove-affiliation [<name>] [<company>...]
     cm contact remove-poc [<company>] [<name>...]
     cm contact remove-rep [<company>] [<name>...]
+    cm contact remove-representative [<company>] [<name>...]
     cm contact rename [<name>] [<newname>]
+    cm contact retag [<name>] [<tag>]
     cm contact retype <type> [<name>...]
     cm contact set-bio [<name>]
     cm contact set-tag [<name>] [<tag>]
     cm contact show [<name>]
     cm contact squash-mail [<email>...]
+    cm contact tag= [<name>] [<tag>]
+    cm contact type= <type> [<name>...]
     cm contacts [OPTIONS] [<pattern>]
     cm debug
     cm debug exit
@@ -274,6 +277,8 @@ cm [OPTIONS]
     cm test
     cm test city-known
     cm test city-select
+    cm test contact-known
+    cm test contact-select
     cm test exit
     cm test help [OPTIONS] [<cmdname>...]
     cm test location-known

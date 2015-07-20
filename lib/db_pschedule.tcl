@@ -16,10 +16,13 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require dbutil
-package require try
-package require cm::db
 package require cmdr::validate::time::minute
+package require dbutil
+package require debug
+package require debug::caller
+package require try
+
+package require cm::db
 
 # # ## ### ##### ######## ############# ######################
 
@@ -1039,7 +1042,7 @@ proc ::cm::db::pschedule::active-get {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::pschedule::setup {} {
+cm db setup cm::db::pschedule {
     debug.cm/db/pschedule {}
 
     # pschedule_global
@@ -1281,9 +1284,6 @@ proc ::cm::db::pschedule::setup {} {
 	    INSERT OR IGNORE INTO pschedule_global VALUES (NULL, 'start',           540);
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::pschedule::setup {args} {}
     return
 }
 

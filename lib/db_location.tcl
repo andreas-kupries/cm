@@ -16,14 +16,12 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
-package require cm::db::city
-package require cm::db::config
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -46,8 +44,6 @@ namespace eval ::cm::db::location {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::db::city
-    namespace import ::cm::db::config
     namespace import ::cm::util
 }
 
@@ -435,6 +431,7 @@ proc ::cm::db::location::SelectionStaff {location} {
 
 proc ::cm::db::location::Current {} {
     debug.cm/db/location {}
+    setup
 
     try {
 	set location [config get @current-location]
@@ -487,11 +484,11 @@ proc ::cm::db::location::+issue {text} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::location::setup {} {
+cm db setup cm::db::location {
     debug.cm/db/location {}
 
-    city   setup
-    config setup
+    db use city
+    db use config
 
     if {![dbutil initialize-schema ::cm::db::do error location {
 	{
@@ -558,9 +555,6 @@ proc ::cm::db::location::setup {} {
     }]} {
 	db setup-error location_staff $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::location::setup {args} {}
     return
 }
 

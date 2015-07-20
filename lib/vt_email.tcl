@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::contact
+package require cm::db::contact
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -33,7 +33,7 @@ namespace eval ::cm::validate::email {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::contact
+    namespace import ::cm::db::contact
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }

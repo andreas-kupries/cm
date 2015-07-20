@@ -24,8 +24,6 @@ package require debug::caller
 package require dbutil
 package require try
 
-#package provide cm::tutorial 0 ;# circular through contact, campaign, conference
-
 package require cm::db
 package require cm::db::tutorial
 package require cm::db::contact

@@ -12,8 +12,8 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-remove-affiliate-1.0 {contact remove-affiliate, wrong args, not enough} -body {
-    run contact remove-affiliate -n
+test contact-remove-affiliation-1.0 {contact remove-affiliation, wrong args, not enough} -body {
+    run contact remove-affiliation -n
 } -setup {
     stage-open
 } -cleanup {
@@ -22,16 +22,16 @@ test contact-remove-affiliate-1.0 {contact remove-affiliate, wrong args, not eno
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-remove-affiliate-2.0 {contact remove-affiliate, unknown person} -body {
-    run contact remove-affiliate me
+test contact-remove-affiliation-2.0 {contact remove-affiliation, unknown person} -body {
+    run contact remove-affiliation me
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result {*cm cmdr: Expected a contact identifier for input "name", got "me"}
 
-test contact-remove-affiliate-2.1 {contact remove-affiliate, unknown affiliation} -body {
-    run contact remove-affiliate me com
+test contact-remove-affiliation-2.1 {contact remove-affiliation, unknown affiliation} -body {
+    run contact remove-affiliation me com
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
@@ -43,49 +43,49 @@ test contact-remove-affiliate-2.1 {contact remove-affiliate, unknown affiliation
 
 # # ## ### ##### ######## ############# #####################
 
-test contact-remove-affiliate-3.0 {contact remove-affiliate} -body {
-    run contact remove-affiliate me com
+test contact-remove-affiliation-3.0 {contact remove-affiliation} -body {
+    run contact remove-affiliation me com
 } -setup {
     stage-open
     run contact create-company -E com@com.com   Company
     run contact create-person  -E me@myself.org Myself me
-    run contact add-affiliate me com
+    run contact add-affiliation me com
 } -cleanup {
     stage-close
 } -result [viewFile support/contact/remove-affiliate.txt]
 
-test contact-remove-affiliate-3.1 {contact remove-affiliate, persist} -body {
-    run contact remove-affiliate me com
+test contact-remove-affiliation-3.1 {contact remove-affiliation, persist} -body {
+    run contact remove-affiliation me com
     run contact show me
 } -setup {
     stage-open
     run contact create-company -E com@com.com   Company
     run contact create-person  -E me@myself.org Myself me
-    run contact add-affiliate me com
+    run contact add-affiliation me com
 } -cleanup {
     stage-close
 } -result [viewFile support/contact/show-unaffiliated.txt]
 
-test contact-remove-affiliate-3.2 {contact remove-affiliate, persist, inverted} -body {
-    run contact remove-affiliate me com
+test contact-remove-affiliation-3.2 {contact remove-affiliation, persist, inverted} -body {
+    run contact remove-affiliation me com
     run contact show com
 } -setup {
     stage-open
     run contact create-company -E com@com.com   Company
     run contact create-person  -E me@myself.org Myself me
-    run contact add-affiliate me com
+    run contact add-affiliation me com
 } -cleanup {
     stage-close
 } -result [viewFile support/contact/show-iunaffiliated.txt]
 
-test contact-remove-affiliate-3.3 {contact remove-affiliate, persist} -body {
-    run contact remove-affiliate me com
+test contact-remove-affiliation-3.3 {contact remove-affiliation, persist} -body {
+    run contact remove-affiliation me com
     run contacts
 } -setup {
     stage-open
     run contact create-company -E com@com.com   Company
     run contact create-person  -E me@myself.org Myself me
-    run contact add-affiliate me com
+    run contact add-affiliation me com
 } -cleanup {
     stage-close
 } -result [viewFile support/contact/list-unaffiliated.txt]

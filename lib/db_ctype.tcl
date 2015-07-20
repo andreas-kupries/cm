@@ -16,13 +16,12 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -39,7 +38,6 @@ namespace eval ::cm::db::contact-type {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::util
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -81,7 +79,7 @@ proc ::cm::db::contact-type::known {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::contact-type::setup {} {
+cm db setup cm::db::contact-type {
     debug.cm/db/contact-type {}
 
     if {![dbutil initialize-schema ::cm::db::do error contact_type {
@@ -101,9 +99,6 @@ proc ::cm::db::contact-type::setup {} {
 	    INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::contact-type::setup {args} {}
     return
 }
 

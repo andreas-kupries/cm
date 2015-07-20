@@ -261,14 +261,8 @@ cm contact
     Manage the contacts used in campaigns and other contexts. I.e. conference
     staff, presenters, attendees, etc.
 
-cm contact add-affiliate [<name>] [<company>...]
+cm contact add-affiliation [<name>] [<company>...]
     Add one or more companies as the affiliations of the specified person
-
-cm contact add-company [<name>] [<company>...]
-    Add one or more companies as the affiliations of the specified person
-
-cm contact add-liaison [<company>] [<name>...]
-    Add one or more liaisons to the specified company
 
 cm contact add-link [OPTIONS] [<name>]
     Add more links to a contact
@@ -281,6 +275,12 @@ cm contact add-poc [<company>] [<name>...]
 
 cm contact add-rep [<company>] [<name>...]
     Add one or more liaisons to the specified company
+
+cm contact add-representative [<company>] [<name>...]
+    Add one or more liaisons to the specified company
+
+cm contact bio= [<name>]
+    Set biography of the specified contact. Read from stdin.
 
 cm contact create-company [OPTIONS] <name>
     Create a new contact for a company
@@ -313,16 +313,12 @@ cm contact list [OPTIONS] [<pattern>]
 cm contact merge [<primary>] [<secondary>...]
     Merge the secondary contacts into a primary
 
-cm contact remove-affiliate [<name>] [<company>...]
+cm contact name= [<name>] [<newname>]
+    Rename the specified contact.
+
+cm contact remove-affiliation [<name>] [<company>...]
     Remove one or more companies from the set of affiliations of the specified
     person
-
-cm contact remove-company [<name>] [<company>...]
-    Remove one or more companies from the set of affiliations of the specified
-    person
-
-cm contact remove-liaison [<company>] [<name>...]
-    Remove one or more liaisons from the specified company
 
 cm contact remove-poc [<company>] [<name>...]
     Remove one or more liaisons from the specified company
@@ -330,8 +326,14 @@ cm contact remove-poc [<company>] [<name>...]
 cm contact remove-rep [<company>] [<name>...]
     Remove one or more liaisons from the specified company
 
+cm contact remove-representative [<company>] [<name>...]
+    Remove one or more liaisons from the specified company
+
 cm contact rename [<name>] [<newname>]
     Rename the specified contact.
+
+cm contact retag [<name>] [<tag>]
+    Set tag of the specified contact
 
 cm contact retype <type> [<name>...]
     Fix the type of the specified contacts. Resets flags to defaults.
@@ -347,6 +349,12 @@ cm contact show [<name>]
 
 cm contact squash-mail [<email>...]
     Fully remove one or more email addresses
+
+cm contact tag= [<name>] [<tag>]
+    Set tag of the specified contact
+
+cm contact type= <type> [<name>...]
+    Fix the type of the specified contacts. Resets flags to defaults.
 
 cm contacts [OPTIONS] [<pattern>]
     Show all known contacts, possibly filtered
@@ -863,6 +871,12 @@ cm test city-known
     Print validation dict
 
 cm test city-select
+    Print selection dict
+
+cm test contact-known
+    Print validation dict
+
+cm test contact-select
     Print selection dict
 
 cm test exit

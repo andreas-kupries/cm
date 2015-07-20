@@ -16,14 +16,12 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
-package require cm::db::template
-package require cm::util
 
 # # ## ### ##### ######## ############# ######################
 
@@ -44,10 +42,9 @@ namespace eval ::cm::db::campaign {
 	exists for-conference setup dump
     namespace ensemble create
 
-
-    namespace import ::cm::db
-    namespace import ::cm::db::template
     namespace import ::cm::util
+    namespace import ::cm::db
+    # See 'setup' for import of dependencies.
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -60,7 +57,6 @@ debug prefix cm/db/campaign {[debug caller] | }
 proc ::cm::db::campaign::new {conference empty} {
     debug.cm/db/campaign {}
     setup
-    package require cm::db::contact ; cm::db::contact setup ; # defered load, break cycle
 
     db do transaction {
 	db do eval {
@@ -147,9 +143,9 @@ proc ::cm::db::campaign::runs {campaign} {
     setup
 
     return [db do eval {
-	SELECT M.id   AS mailrun,
-	       M.date AS date,
-	       T.name AS name
+	SELECT M.id    AS mailrun,
+	       M.date  AS date,
+	       T.dname AS name
 	FROM   campaign_mailrun M,
 	       template         T
 	WHERE  M.campaign = :campaign
@@ -235,7 +231,7 @@ proc ::cm::db::campaign::has-mail-receiver {mailrun email} {
     return [db do exists {
 	SELECT id
 	FROM   campaign_received
-	WHERE  mailrun = :run
+	WHERE  mailrun = :mailrun
 	AND    email   = :email
     }]
 }
@@ -298,13 +294,11 @@ proc ::cm::db::campaign::isactive {campaign} {
     }]
 }
 
-proc ::cm::db::campaign::setup {} {
+cm db setup cm::db::campaign {
     debug.cm/db/campaign {}
 
-    # contact setup
-    # - cycle: contact calls on campaign calls on contact
-    # - killed through defered require (see 'new')
-    template setup
+    db use contact
+    db use template
 
     if {![dbutil initialize-schema ::cm::db::do error campaign {
 	{
@@ -375,17 +369,14 @@ proc ::cm::db::campaign::setup {} {
     }]} {
 	db setup-error campaign_received $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::campaign::setup {args} {}
     return
 }
 
 proc ::cm::db::campaign::dump {conference} {
     debug.cm/db/campaign {}
 
-    package require cm::conference  ; cm::conference::Setup ; # defered load, break cycle
-    package require cm::db::contact ; cm::db::contact setup ; # defered load, break cycle
+    package require cm::conference  ; cm::conference::Setup ; # TODO - split, defered load, break cycle
+    contact setup
     template setup
 
     # campaign             (id, ^con,      active)

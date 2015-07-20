@@ -16,9 +16,9 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
@@ -105,7 +105,7 @@ proc ::cm::db::staffrole::Selection {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::staffrole::setup {} {
+cm db setup cm::db::staffrole {
     debug.cm/db/staffrole {}
 
     if {![dbutil initialize-schema ::cm::db::do error staff_role {
@@ -130,9 +130,6 @@ proc ::cm::db::staffrole::setup {} {
 	    INSERT OR IGNORE INTO staff_role VALUES (7,'Proceedings editor');
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::staffrole::setup {args} {}
     return
 }
 

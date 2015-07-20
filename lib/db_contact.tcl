@@ -16,15 +16,12 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
-package require cm::db::campaign
-package require cm::db::contact-type
-package require cm::db::tutorial
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -41,7 +38,7 @@ namespace eval ::cm::db::contact {
     namespace export \
 	relations-formatted \
 	email= emails email-count email-addrs email-addrs+state links \
-	emails-limited affiliation representatives affiliated represents merge \
+	emails-limited affiliations representatives affiliated represents merge \
 	all disable-email squash-email type= name= recv= tag= bio= \
         add-mails add-links new-mail new-link \
 	new-mlist new-company new-person \
@@ -56,9 +53,6 @@ namespace eval ::cm::db::contact {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::db::campaign
-    namespace import ::cm::db::contact-type
-    namespace import ::cm::db::tutorial
     namespace import ::cm::util
 }
 
@@ -152,7 +146,7 @@ proc ::cm::db::contact::email-addrs+state {contact} {
 	SELECT email, inactive
 	FROM   email
 	WHERE  contact = :contact
-	ODER BY email
+	ORDER BY email
     }]
 }
 
@@ -913,8 +907,6 @@ proc ::cm::db::contact::KnownLimited {limit} {
     db do eval $sql {
 	if {$tag ne {}} {
 	    dict lappend map $id $tag @$tag
-puts E|$tag
-puts F|@$tag
 	}
 	set in [util initials $name]
 	set il [string tolower $in]
@@ -922,13 +914,9 @@ puts F|@$tag
 	#puts "|$id -- $tag|$name|$dname|$in|"
 
 	dict lappend map $id $name
-puts A|$name
 	dict lappend map $id $dname
-puts B|$dname
 	dict lappend map $id "$il $name"
-puts C|\"$il\ $name\"
 	dict lappend map $id "$in $dname"
-puts D|\"$in\ $dname\"
     }
 
     # Identification by email
@@ -936,12 +924,10 @@ puts D|\"$in\ $dname\"
     if {[llength $limit]} {
 	append sql " WHERE contact IN ($slimit)"
     }
-puts m=($sql)
+
     db do eval $sql {
 	dict lappend map $contact $email
 	dict lappend map $contact [string tolower $email]
-puts G|$email
-puts H|[string tolower $email]
     }
 
     # Identification by link (TODO: title?)
@@ -952,12 +938,9 @@ puts H|[string tolower $email]
     db do eval $sql {
 	dict lappend map $contact $link
 	dict lappend map $contact [string tolower $link]
-puts I|$link
-puts J|[string tolower $link]
     }
 
-puts M
-    array set _ $map ; parray _ ; unset _
+    #array set _ $map ; parray _ ; unset _
 
     # Rekey by names
     set map [util dict-invert $map]
@@ -965,8 +948,7 @@ puts M
 
     set known [util dict-drop-ambiguous $map]
 
-puts K
-    array set _ $known ; parray _ ; unset _
+    #array set _ $known ; parray _ ; unset _
     return $known
 }
 
@@ -1032,11 +1014,12 @@ proc ::cm::db::contact::select {p} {
     return [dict get $contacts $choice]
 }
 
-proc ::cm::db::contact::setup {} {
+cm db setup cm::db::contact {
     debug.cm/db/contact {}
 
-    campaign     setup ; # See: disable-email, squash-email, new-mail, recv=
-    contact-type setup ; # See: all
+    db use campaign     ; # See: disable-email, squash-email, new-mail, recv=
+    db use contact-type ; # See: all
+    db use tutorial
 
     if {![dbutil initialize-schema ::cm::db::do error contact {
 	{
@@ -1146,9 +1129,6 @@ proc ::cm::db::contact::setup {} {
     }]} {
 	db setup-error liaison $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::contact::setup {args} {}
     return
 }
 
