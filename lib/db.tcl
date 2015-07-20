@@ -20,11 +20,13 @@
 ## Requisites
 
 package require Tcl 8.5
+package require cmdr::color
 package require debug
 package require debug::caller
-package require cm::atexit
-package require cmdr::color
 package require sqlite3
+
+package require cm::atexit
+package require cm::util
 
 # # ## ### ##### ######## ############# #####################
 ## Definition
@@ -37,11 +39,11 @@ namespace eval ::cm {
 namespace eval ::cm::db {
     namespace export \
 	do err setup-error \
-	default-location show-location location
+	default-location show-location location setup use
     namespace ensemble create
 
-    namespace import ::cm::atexit
     namespace import ::cmdr::color
+    namespace import ::cm::atexit
 }
 
 # # ## ### ##### ######## ############# #####################
@@ -49,6 +51,26 @@ namespace eval ::cm::db {
 debug define cm/db
 debug level  cm/db
 debug prefix cm/db {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::db::setup {name script} {
+    debug.cm/db {}
+    # Define the setup code for the module, to be run once fully.
+    uplevel 1 [list ::cm::util::once ::${name}::setup {} $script]
+    return
+}
+
+proc ::cm::db::use {name} {
+    debug.cm/db {}
+    # Activate the requested database layer.
+    package require cm::db::${name}
+    # Import its ensemble into the calling module
+    uplevel 1 [list namespace import ::cm::db::${name}]
+    # And run the setup
+    uplevel 1 [list $name setup]
+    return
+}
 
 # # ## ### ##### ######## ############# #####################
 

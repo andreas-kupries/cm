@@ -27,8 +27,6 @@ package require debug::caller
 package require struct::set
 package require try
 
-#package provide cm::conference 0 ;# circular via contact, campaign
-
 package require cm::db
 package require cm::db::booked
 package require cm::db::city
@@ -4785,20 +4783,20 @@ proc ::cm::conference::TimelineSQL {conference} {
 proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
-    ::cm::contact::Setup
-    city       setup
-    config     setup
-    dayhalf    setup
-    location   setup
-    rstatus    setup
-    staffrole  setup
-    talk-state setup
-    talk-type  setup
-    template   setup
-    timeline   setup
-    tutorial   setup
-    booked     setup ;# TODO possible loop, these two refer back to
-    registered setup ;# TODO conference. maybe move things.
+    db use contact
+    db use city
+    db use config
+    db use dayhalf
+    db use location
+    db use rstatus
+    db use staffrole
+    db use talk-state
+    db use talk-type
+    db use template
+    db use timeline
+    db use tutorial
+    db use booked
+    db use registered
 
     if {![dbutil initialize-schema ::cm::db::do error conference {
 	{

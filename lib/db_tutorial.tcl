@@ -21,11 +21,7 @@ package require debug::caller
 package require dbutil
 package require try
 
-package provide cm::db::tutorial 0 ;# break circle
-
 package require cm::db
-package require cm::db::dayhalf
-package require cm::contact
 package require cm::util
 
 # # ## ### ##### ######## ############# ######################
@@ -47,8 +43,6 @@ namespace eval ::cm::db::tutorial {
     namespace ensemble create
 
     namespace import ::cm::db
-    namespace import ::cm::db::dayhalf
-    namespace import ::cm::contact
     namespace import ::cm::util
 }
 
@@ -139,6 +133,7 @@ proc ::cm::db::tutorial::tag= {tutorial text} {
 
 proc ::cm::db::tutorial::issues {details} {
     debug.cm/db/tutorial {}
+    setup
 
     dict with details {}
     set sdetails [contact details $xspeaker]
@@ -512,11 +507,11 @@ proc ::cm::db::tutorial::unschedule {conference tutorial} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::tutorial::setup {} {
+cm db setup cm::db::tutorial {
     debug.cm/db/tutorial {}
 
-    ::cm::db::dayhalf setup ;# circle through contact, campaign, conference
-    ::cm::contact::Setup
+    db use contact
+    db use dayhalf
 
     if {![dbutil initialize-schema ::cm::db::do error tutorial {
 	{
@@ -561,9 +556,6 @@ proc ::cm::db::tutorial::setup {} {
     }]} {
 	db setup-error tutorial_schedule $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::tutorial::setup {args} {}
     return
 }
 

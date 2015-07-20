@@ -17,7 +17,10 @@
 
 package require Tcl 8.5
 package require dbutil
+package require debug
+package require debug::caller
 package require try
+
 package require cm::db
 
 # # ## ### ##### ######## ############# ######################
@@ -227,10 +230,10 @@ proc ::cm::db::schedule::known {conference} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::schedule::setup {} {
+cm db setup cm::db::schedule {
     debug.cm/db/schedule {}
 
-    # schedule - Linkage conference </> pschedule
+    # TODO schedule - Linkage conference </> pschedule
 
     # TODO !! Change label into a 'pschedule_item' reference, placeholder, same phys schedule as the conference.
 
@@ -267,9 +270,6 @@ proc ::cm::db::schedule::setup {} {
     }]} {
 	db setup-error schedule $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::schedule::setup {args} {}
     return
 }
 

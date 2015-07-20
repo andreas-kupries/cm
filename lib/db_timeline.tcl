@@ -116,7 +116,7 @@ proc ::cm::db::timeline::Selection {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::timeline::setup {} {
+cm db setup ::cm::db::timeline {
     debug.cm/db/timeline {}
 
     if {![dbutil initialize-schema ::cm::db::do error timeline_type {
@@ -158,9 +158,6 @@ proc ::cm::db::timeline::setup {} {
 	    INSERT OR IGNORE INTO timeline_type VALUES (12,1,   2,'begin-s',   'Session Start');               --  +2d
 	}
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::timeline::setup {args} {}
     return
 }
 

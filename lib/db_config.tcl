@@ -16,9 +16,9 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
@@ -198,7 +198,7 @@ proc ::cm::db::config::names {pattern} {
     }]
 }
 
-proc ::cm::db::config::setup {} {
+cm db setup ::cm::db::config {
     debug.cm/db/config {}
 
     if {![dbutil initialize-schema ::cm::db::do error config {
@@ -215,9 +215,6 @@ proc ::cm::db::config::setup {} {
     }]} {
 	db setup-error config $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::config::setup {args} {}
     return
 }
 

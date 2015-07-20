@@ -45,7 +45,8 @@ namespace eval ::cm::util {
 	max-length strip-prefix open user-error highlight-current \
 	tspace adjust dict-invert dict-drop-ambiguous dict-fill-permute \
 	dict-fill-permute* dict-join-keys initials select text-stdin \
-	match-substr match-enum fmt-issues-cli fmt-issues-web pdict
+	match-substr match-enum fmt-issues-cli fmt-issues-web pdict \
+	once
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -61,6 +62,20 @@ namespace eval ::cm::util {
 debug define cm/util
 debug level  cm/util
 debug prefix cm/util {[debug caller] | }
+
+# # ## ### ##### ######## ############# #####################
+
+proc ::cm::util::once {name arguments body} {
+    debug.cm/util {}
+    # Put a rewrite of the proc into a no-op in front of its actual operation.
+    # This order (rewrite before opt) is important. It means that an
+    # indirect call into the new procedure through its operation will
+    # _not_ cause an infinite recursion, as such a call gets already
+    # shunted to the new definition of nothing.
+    set body [list proc $name args {}]\n$body
+    # Now create the proc. On first use it will rewrite itself to nothing.
+    uplevel 1 [list proc $name $arguments $body]
+}
 
 # # ## ### ##### ######## ############# #####################
 

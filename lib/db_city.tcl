@@ -16,9 +16,9 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require dbutil
 package require debug
 package require debug::caller
-package require dbutil
 package require try
 
 package require cm::db
@@ -189,7 +189,7 @@ proc ::cm::db::city::Selection {} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::city::setup {} {
+cm db setup cm::db::city {
     debug.cm/db/city {}
 
     if {![dbutil initialize-schema ::cm::db::do error city {
@@ -214,9 +214,6 @@ proc ::cm::db::city::setup {} {
     }]} {
 	db setup-error city $error
     }
-
-    # Shortcircuit further calls
-    proc ::cm::db::city::setup {args} {}
     return
 }
 
