@@ -773,12 +773,13 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Add one or more sponsoring contacts }
 	    input name {
 		Names of the contacts to add
-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator not m-lists
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator not m-lists
+		generate [stop!] }
 	} [cm::call conference cmd_sponsor_link]
 
 	private drop-sponsor {
 	    section {Conference Management}
-	    description { Remove one or more sponsoring contacts }
+	    description { Remove a sponsoring contact }
 	    input name {
 		Name of the contact to remove
 	    } { 
@@ -792,6 +793,20 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the sponsors of the conference }
 	} [cm::call conference cmd_sponsor_show]
+
+	private sponsor-ping {
+	    section {Conference Management}
+	    description { Send a mail to the sponsors }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find mail-sponsors]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_sponsor_ping]
 
 	# - -- --- ----  -------- ------------- ----------------------
 
@@ -826,6 +841,22 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
+
+	private committee-ping {
+	    section {Conference Management}
+	    description { Send a mail to the program committee }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find mail-committee]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_committee_ping]
+
+	# TODO: Full staff ping.
 
 	# - -- --- ----  -------- ------------- ----------------------
 
@@ -911,26 +942,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	# - -- --- ----  -------- ------------- ----------------------
 	# TODO: conference remove - if not used
 	# TODO: conference modify - change title, start, length, alignment
-
-	private sponsor-ping {
-	    section {Conference Management}
-	    description { Send a mail to the sponsors }
-	    input template {
-		Name of the template holding mail subject and body.
-	    } { optional ; 
-		generate [cm::call template find mail-sponsors]
-		validate [cm::vt template] }
-	} [cm::call conference cmd_sponsor_ping]
-
-	private committee-ping {
-	    section {Conference Management}
-	    description { Send a mail to the program committee }
-	    input template {
-		Name of the template holding mail subject and body.
-	    } { optional ; 
-		generate [cm::call template find mail-committee]
-		validate [cm::vt template] }
-	} [cm::call conference cmd_committee_ping]
 
 	# - -- --- ----  -------- ------------- ----------------------
 
