@@ -681,8 +681,8 @@ proc ::cm::conference::cmd_committee_ping {config} {
 
     if {![llength $origins]} {
 	util user-error \
-	    "No origins." \
-	    COMMITEE PING NO_SENDER
+	    "No chairs." \
+	    COMMITEE PING NO-CHAIRS
     }
 
     puts "From: $origins"
@@ -1674,6 +1674,9 @@ proc ::cm::conference::cmd_staff_unlink {config} {
     puts "Removing staff from conference \"[color name [get $conference]]\" ... "
 
     lassign [$config @name] role contact
+
+    debug.cm/conference {role    = ($role)}
+    debug.cm/conference {contact = ($contact)}
 
     puts -nonewline "  [get-role $role] \"[color name [cm contact get $contact]]\" ... "
     flush stdout
@@ -4255,7 +4258,32 @@ proc ::cm::conference::known-staff {} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $staff]
+    # Find the contact information for the staff
+    set known [cm::contact::KnownLimited $staff]
+
+    # Compute map for staff from contact to complete role+contact.
+    db do eval {
+	SELECT R.text  AS role,
+	       C.dname AS name,
+	       R.id    AS rid,
+	       C.id    AS cid
+	FROM   conference_staff S,
+	       staff_role       R,
+	       contact          C
+	WHERE  S.conference = :conference
+	AND    S.role       = R.id
+	AND    S.contact    = C.id
+	ORDER BY role, name
+    } {
+	dict set map $cid [list $rid $cid]
+    }
+
+    # Remap the contact information in known to role+contact
+    dict for {key id} $known {
+	dict set known $key [dict get $map $id]
+    }
+
+    return $known
 }
 
 proc ::cm::conference::known-staff-select {conference} {

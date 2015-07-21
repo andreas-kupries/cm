@@ -1,0 +1,10 @@
+~/.cm/managed
+Mailing the committee of "C":
+Using template: T
+Dry run
+From: Myself
+To: me@myself.org
++---+
+| T |
++---+
+Skipped mailing

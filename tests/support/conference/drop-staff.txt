@@ -1,0 +1,3 @@
+~/.cm/managed
+Removing staff from conference "C" ... 
+  Chair "(@me) Myself" ... OK
