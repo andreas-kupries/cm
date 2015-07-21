@@ -631,11 +631,13 @@ proc ::cm::conference::cmd_committee_ping {config} {
 
     set conference [current]
     set details    [details $conference]
+    set dry        [$config @dry]
     set template   [$config @template]
     set tlabel     [template get $template]
 
     puts "Mailing the committee of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
 
     set template     [template details $template]
     set destinations [db do eval {
@@ -655,6 +657,12 @@ proc ::cm::conference::cmd_committee_ping {config} {
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
 
+    if {![llength $addresses]} {
+	util user-error \
+	    "No destinations." \
+	    COMMITEE PING EMPTY
+    }
+
     set origins [db do eval {
 	SELECT dname
 	FROM   contact
@@ -669,6 +677,12 @@ proc ::cm::conference::cmd_committee_ping {config} {
 	set origins [string map {and, and} [join [linsert end-1 and] {, }]]
     } else {
 	set origins [join $origins {, }]
+    }
+
+    if {![llength $origins]} {
+	util user-error \
+	    "No origins." \
+	    COMMITEE PING NO_SENDER
     }
 
     puts "From: $origins"
@@ -687,8 +701,14 @@ proc ::cm::conference::cmd_committee_ping {config} {
 		    [string map $map $template]]
     }] show
 
-    if {![ask yn "Send mail ? " no]} {
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
 	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
 	return
     }
 
@@ -1424,21 +1444,34 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
     db show-location
 
     set conference [current]
+    set dry        [$config @dry]
     set template   [$config @template]
     set tlabel     [template get $template]
 
     puts "Mailing the sponsors of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
 
     set template     [template details $template]
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
-	WHERE  contact IN (SELECT person
+	WHERE  contact IN (-- branch a: sponsors which are companies, mail their represenatives
+			   SELECT person
 			   FROM   liaison
 			   WHERE  company IN (SELECT contact
 					      FROM   sponsors
-					      WHERE  conference = :conference))
+					      WHERE  conference = :conference)
+			   UNION
+			   -- branch b: sponsors which are people, mail them directly
+			   SELECT id
+			   FROM contact
+			   WHERE id IN (SELECT contact
+					FROM   sponsors
+					WHERE  conference = :conference)
+			   AND   type = 1 -- sponsor is person
+			   -- TODO: in-memory cache of type/name mapping. or put into join ?
+			   )
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -1448,6 +1481,12 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
+
+    if {![llength $addresses]} {
+	util user-error \
+	    "No destinations." \
+	    SPONSOR PING EMPTY
+    }
 
     puts [util indent [join $addresses \n] "To: "]
 
@@ -1462,8 +1501,14 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 		    [string map $map $template]]
     }] show
 
-    if {![ask yn "Send mail ? " no]} {
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
 	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
 	return
     }
 

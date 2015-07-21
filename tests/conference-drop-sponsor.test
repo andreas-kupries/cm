@@ -1,0 +1,92 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, sponsors, removal
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-sponsor-1.0 {conference drop-sponsor, wrong args, not enough} -body {
+    run conference drop-sponsor -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test conference-drop-sponsor-1.1 {conference drop-sponsor, wrong args, too many} -body {
+    run conference drop-sponsor -n me X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-sponsor-2.0 {conference drop-sponsor, no conference} -body {
+    run conference drop-sponsor -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a sponsor identifier for input \"name\", got \"me\""
+# no conference => no sponsors possible => validation fails for the contact, before testing conference
+
+test conference-drop-sponsor-2.1 {conference drop-sponsor, unknown contact} -body {
+    run conference drop-sponsor -n me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a sponsor identifier for input \"name\", got \"me\""
+
+test conference-drop-sponsor-2.2 {conference drop-sponsor, not a sponsor} -body {
+    run conference drop-sponsor -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    # Note how 'me' is _not_ made a sponsor.
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a sponsor identifier for input \"name\", got \"me\""
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-sponsor-3.0 {conference drop-sponsor} -body {
+    run conference drop-sponsor -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-sponsor -n me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/drop-sponsor.txt]
+
+test conference-drop-sponsor-3.1 {conference drop-sponsor, persist} -body {
+    run conference drop-sponsor -n me
+    run conference sponsors
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-sponsor -n me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/sponsors-drop.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
