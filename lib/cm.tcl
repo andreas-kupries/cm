@@ -822,7 +822,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input name {
 		Names of the contacts which are staff
-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator people only
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator people only
+		generate [stop!] }
 	} [cm::call conference cmd_staff_link]
 
 	private drop-staff {
