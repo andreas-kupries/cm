@@ -1,7 +1,7 @@
 # -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
 ## (c) 2015 Andreas Kupries
 # # ## ### ##### ######## ############# #####################
-## schedule management - tutorial creation
+## schedule management - tutorial, change title
 
 kt check Tcl     8.5
 kt check tcltest 2
@@ -12,24 +12,24 @@ kt source support/common.tcl
 
 # # ## ### ##### ######## ############# #####################
 
-test tutorial-create-1.0 {tutorial create, wrong args, not enough} -body {
-    run tutorial create 
+test tutorial-change-title-1.0 {tutorial change-title, wrong args, not enough} -body {
+    run tutorial change-title
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
 
-test tutorial-create-1.1 {tutorial create, wrong args, not enough} -body {
-    run tutorial create SPEAKER
+test tutorial-change-title-1.1 {tutorial change-title, wrong args, not enough} -body {
+    run tutorial change-title ID
 } -setup {
     stage-open
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
 
-test tutorial-create-1.2 {tutorial create, wrong args, too many} -body {
-    run tutorial create SPEAKER TAG TITLE DESC X
+test tutorial-change-title-1.2 {tutorial change-title, wrong args, too many} -body {
+    run tutorial change-title ID TITLE X
 } -setup {
     stage-open
 } -cleanup {
@@ -38,46 +38,47 @@ test tutorial-create-1.2 {tutorial create, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-test tutorial-create-2.0 {tutorial create, duplicate} -body {
-    run tutorial create me foo FOO FUBAR
+test tutorial-change-title-2.0 {tutorial change-title, unknown} -body {
+    run tutorial change-title @me:foo TITLE
 } -setup {
     stage-open
-    run contact create-person -E me@myself.org Myself me
-    run tutorial create me foo FOO FUBAR
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: Found a problem with input \"tag\": A tutorial name named \"foo\" already exists. Please use a different name."
+} -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"tutorial\", got \"@me:foo\""
 
 # # ## ### ##### ######## ############# #####################
 
-test tutorial-create-3.0 {tutorial create} -body {
-    run tutorial create me foo FOO FUBAR
+test tutorial-change-title-3.0 {tutorial change-title} -body {
+    run tutorial change-title @me:foo SNAFU
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
 } -cleanup {
     stage-close
-} -result [viewFile support/tutorial/create.txt]
+} -result [viewFile support/tutorial/change-title.txt]
 
-test tutorial-create-3.1 {tutorial create, persists} -body {
-    run tutorial create me foo FOO FUBAR
-    run tutorials
-} -setup {
-    stage-open
-    run contact create-person -E me@myself.org Myself me
-} -cleanup {
-    stage-close
-} -result [viewFile support/tutorial/list-create.txt]
-
-test tutorial-create-3.2 {tutorial create, persists} -body {
-    run tutorial create me foo FOO FUBAR
+test tutorial-change-title-3.1 {tutorial change-title, persists} -body {
+    run tutorial change-title @me:foo SNAFU
     run tutorial show @me:foo
 } -setup {
     stage-open
     run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
 } -cleanup {
     stage-close
-} -result [viewFile support/tutorial/show-create.txt]
+} -result [viewFile support/tutorial/show-change-title.txt]
+
+test tutorial-change-title-3.2 {tutorial change-title, persists} -body {
+    run tutorial change-title @me:foo SNAFU
+    run tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/list-change-title.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

@@ -1,0 +1,13 @@
+~/.cm/managed
+Details of (@me) Myself's tutorial "SNAFU":
++-------------+-----------------------------+
+| Property    | Value                       |
++-------------+-----------------------------+
+| Issues      | - Speaker biography missing |
+| --------    | -----                       |
+| Speaker     | (@me) Myself                |
+| Tag         | foo                         |
+| Title       | SNAFU                       |
+| Requisites  |                             |
+| Description | FUBAR                       |
++-------------+-----------------------------+
