@@ -1,0 +1,2 @@
+~/.cm/managed
+Set title of "FOO" ... OK

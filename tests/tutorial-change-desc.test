@@ -1,0 +1,76 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - tutorial, change description
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-description-1.0 {tutorial change-description, wrong args, not enough} -body {
+    run tutorial change-description
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test tutorial-change-description-1.1 {tutorial change-description, wrong args, too many} -body {
+    run tutorial change-description ID DESC X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-description-2.0 {tutorial change-description, unknown} -body {
+    run tutorial change-description @me:foo DESC
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"tutorial\", got \"@me:foo\""
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-description-3.0 {tutorial change-description} -body {
+    run tutorial change-description @me:foo SNAFU
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/change-description.txt]
+
+test tutorial-change-description-3.1 {tutorial change-description, persists} -body {
+    run tutorial change-description @me:foo SNAFU
+    run tutorial show @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/show-change-description.txt]
+
+test tutorial-change-description-3.2 {tutorial change-description, persists} -body {
+    run tutorial change-description @me:foo SNAFU
+    run tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/list-change-description.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

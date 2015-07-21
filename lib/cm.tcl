@@ -2204,6 +2204,12 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# - -- --- ----- -------- -------------
 
+	private tutorial-known {
+	    description {Print validation dictionary}
+	} [cm::call tutorial test-known]
+
+	# - -- --- ----- -------- -------------
+
 	private schedule-known {
 	    description {Print validation dictionary}
 	} [cm::call schedule test-known]

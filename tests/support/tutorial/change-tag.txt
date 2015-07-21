@@ -1,0 +1,2 @@
+~/.cm/managed
+Set tag of "FOO" ... OK

@@ -39,7 +39,7 @@ namespace eval ::cm {
 namespace eval ::cm::tutorial {
     namespace export \
 	cmd_create cmd_list cmd_show cmd_settitle cmd_setdesc cmd_setreq \
-	cmd_settag known known-tag known-title get details select \
+	cmd_settag test-known known known-tag known-title get details select \
 	known-half get-half have-some dayrange trackrange get-scheduled \
 	cell speakers scheduled
     namespace ensemble create
@@ -239,6 +239,15 @@ proc ::cm::tutorial::cmd_settag {config} {
     }
 
     puts [color good OK]
+    return
+}
+
+
+proc ::cm::tutorial::test-known {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+    util pdict [known]
     return
 }
 
