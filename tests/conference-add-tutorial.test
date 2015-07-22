@@ -1,0 +1,142 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, tutorial, adding
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-add-tutorial-1.0 {conference add-tutorial, wrong args, not enough} -body {
+    run conference add-tutorial -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-add-tutorial-1.1 {conference add-tutorial, wrong args, not enough} -body {
+    run conference add-tutorial -n 1
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-add-tutorial-1.2 {conference add-tutorial, wrong args, not enough} -body {
+    run conference add-tutorial -n 1 morning
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-add-tutorial-1.3 {conference add-tutorial, wrong args, not enough} -body {
+    run conference add-tutorial -n 1 morning 2
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: tutorial"
+
+test conference-add-tutorial-1.4 {conference add-tutorial, wrong args, too many} -body {
+    run conference add-tutorial -n 1 morning 2 @me:foo X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-add-tutorial-2.0 {conference add-tutorial, no conference} -body {
+    run conference add-tutorial -n 1 morning 2 @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-add-tutorial-2.1 {conference add-tutorial, unknown} -body {
+    run conference add-tutorial -n 1 morning 2 @me:foo
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"tutorial\", got \"@me:foo\""
+
+test conference-add-tutorial-2.2 {conference add-tutorial, bad day} -body {
+    run conference add-tutorial -n 0 morning 2 @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a positive integer for input \"day\", got \"0\""
+
+test conference-add-tutorial-2.3 {conference add-tutorial, bad track} -body {
+    run conference add-tutorial -n 1 morning 0 @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a positive integer for input \"track\", got \"0\""
+
+test conference-add-tutorial-2.4 {conference add-tutorial, bad halfday} -body {
+    run conference add-tutorial -n 1 noon 2 @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a dayhalf identifier for input \"half\", got \"noon\""
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-add-tutorial-3.0 {conference add-tutorial} -body {
+    run conference add-tutorial -n 1 morning 2 @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/add-tutorial.txt]
+
+test conference-add-tutorial-3.1 {conference add-tutorial, persist} -body {
+    run conference add-tutorial -n 1 morning 2 @me:foo
+    run conference tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/tutorials-add.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
