@@ -1,0 +1,86 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, tutorials, removal
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-tutorial-1.0 {conference drop-tutorial, wrong args, not enough} -body {
+    run conference drop-tutorial -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: tutorial"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-tutorial-2.0 {conference drop-tutorial, no conference} -body {
+    run conference drop-tutorial -n @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-drop-tutorial-2.1 {conference drop-tutorial, unknown tutorial} -body {
+    run conference drop-tutorial -n @me:foo
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"tutorial\", got \"@me:foo\""
+
+test conference-drop-tutorial-2.2 {conference drop-tutorial, not a linked tutorial -- ok} -body {
+    run conference drop-tutorial -n @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    # Note how 'me' is _not_ made a tutorial.
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/drop-tutorial.txt]
+# -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"name\", got \"me\""
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-tutorial-3.0 {conference drop-tutorial} -body {
+    run conference drop-tutorial -n @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+    run conference add-tutorial -n 1 morning 2 @me:foo
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/drop-tutorial.txt]
+
+test conference-drop-tutorial-3.1 {conference drop-tutorial, persist} -body {
+    run conference drop-tutorial -n @me:foo
+    run conference tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+    run conference add-tutorial -n 1 morning 2 @me:foo
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/tutorials-drop.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
