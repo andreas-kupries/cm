@@ -1,0 +1,13 @@
+~/.cm/managed
+Details of (@me) Myself's tutorial "FOO":
++-------------+-----------------------------+
+| Property    | Value                       |
++-------------+-----------------------------+
+| Issues      | - Speaker biography missing |
+| --------    | -----                       |
+| Speaker     | (@me) Myself                |
+| Tag         | foo                         |
+| Title       | FOO                         |
+| Requisites  |                             |
+| Description | SNAFU                       |
++-------------+-----------------------------+

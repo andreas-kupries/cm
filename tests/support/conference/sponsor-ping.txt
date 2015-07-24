@@ -1,0 +1,9 @@
+~/.cm/managed
+Mailing the sponsors of "C":
+Using template: T
+Dry run
+To: me@myself.org
++---+
+| T |
++---+
+Skipped mailing

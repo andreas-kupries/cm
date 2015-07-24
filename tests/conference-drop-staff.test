@@ -1,0 +1,92 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, staff, removal
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-staff-1.0 {conference drop-staff, wrong args, not enough} -body {
+    run conference drop-staff -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: name"
+
+test conference-drop-staff-1.1 {conference drop-staff, wrong args, too many} -body {
+    run conference drop-staff -n me X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-staff-2.0 {conference drop-staff, no conference} -body {
+    run conference drop-staff -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a staff name for input \"name\", got \"me\""
+# no conference => no staff possible => validation fails for the contact, before testing conference
+
+test conference-drop-staff-2.1 {conference drop-staff, unknown contact} -body {
+    run conference drop-staff -n me
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a staff name for input \"name\", got \"me\""
+
+test conference-drop-staff-2.2 {conference drop-staff, not staff} -body {
+    run conference drop-staff -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    # Note how 'me' is _not_ made staff.
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a staff name for input \"name\", got \"me\""
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-drop-staff-3.0 {conference drop-staff} -body {
+    run conference drop-staff -n me
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-staff -n Chair me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/drop-staff.txt]
+
+test conference-drop-staff-3.1 {conference drop-staff, persist} -body {
+    run conference drop-staff -n me
+    run conference staff
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-staff -n Chair me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/staff-drop.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

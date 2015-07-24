@@ -1,0 +1,93 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, staff (committee only), mail ping
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-committee-ping-1.0 {conference committee-ping, wrong args, not enough} -body {
+    run conference committee-ping -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: Template \"mail-committee\" not found"
+
+test conference-committee-ping-1.1 {conference committee-ping, wrong args, too many} -body {
+    run conference committee-ping -n T X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-committee-ping-2.0 {conference committee-ping, no conference} -body {
+    run conference committee-ping T
+} -setup {
+    stage-open
+    run template create T << T
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-committee-ping-2.1 {conference committee-ping, unknown template} -body {
+    run conference committee-ping T
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a template name for input \"template\", got \"T\""
+
+test conference-committee-ping-2.2 {conference committee-ping, no committee} -body {
+    run conference committee-ping -n T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No destinations."
+
+test conference-committee-ping-2.3 {conference committee-ping, no chair(s)} -body {
+    run conference committee-ping -n T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-staff {Program committee} me
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No chairs."
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-committee-ping-3.0 {conference committee-ping} -body {
+    run conference committee-ping --dry T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-staff {Program chair} me
+    run conference add-staff {Program committee} me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/committee-ping.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

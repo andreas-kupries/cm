@@ -1,0 +1,4 @@
+~/.cm/managed
+Adding "FOO" to conference "C" ... 
+@ day 1 morning, track 2
+OK

@@ -1,0 +1,49 @@
+~/.cm/managed
+Details of "C":
++----------------+-------------------------------------------------+
+| Property       | Value                                           |
++----------------+-------------------------------------------------+
+| Issues         | - No schedule defined                           |
+|                | - No rate information                           |
+|                | - No sponsors                                   |
+|                | - Staff trouble: No one is "Chair"              |
+|                | - Staff trouble: No one is "Facilities chair"   |
+|                | - Staff trouble: No one is "Program chair"      |
+|                | - Staff trouble: No one is "Program committee"  |
+|                | - Staff trouble: No one is "Hotel liaison"      |
+|                | - Staff trouble: No one is "Web admin"          |
+|                | - Staff trouble: No one is "Proceedings editor" |
+|                | - No tutorials lined up                         |
+|                | - No submissions                                |
+|                |                                                 |
+| Year           | 2015                                            |
+| Management     | (@me) Myself                                    |
+| Submissions To | me@myself.org                                   |
+| Registrations  | pending                                         |
+| Start          | September 28, 2015                              |
+| End            | October 02, 2015                                |
+| Aligned        | Monday                                          |
+| Days           | 4                                               |
+|                |                                                 |
+| In             | CITY, S, N                                      |
+| @Hotel         | HOTEL (CITY, S, N)                              |
+| @Facility      | HOTEL (CITY, S, N)                              |
+|                |                                                 |
+| Minutes/Talk   | 30                                              |
+| Talks/Session  | 3                                               |
+| Schedule       | Undefined                                       |
+|                | (=> conference schedule)                        |
+|                |                                                 |
+| Rate           | Undefined                                       |
+|                | (=> conference rate)                            |
+| Timeline       | 12                                              |
+|                | (=> conference timeline)                        |
+| Sponsors       | None                                            |
+|                | (=> conference add-sponsor)                     |
+| Staff          | None                                            |
+|                | (=> conference add-staff)                       |
+| Tutorials      | None                                            |
+|                | (=> conference add-tutorial)                    |
+| Submissions    | None                                            |
+|                | (=> submit)                                     |
++----------------+-------------------------------------------------+

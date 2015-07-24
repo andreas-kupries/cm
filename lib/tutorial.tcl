@@ -37,7 +37,8 @@ namespace eval ::cm {
 }
 namespace eval ::cm::tutorial {
     namespace export \
-	create list-all show set-title set-desc set-req set-tag
+	create list-all show set-title set-desc set-req set-tag \
+	test-known
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -206,6 +207,15 @@ proc ::cm::tutorial::set-tag {config} {
     tutorial tag= $tutorial $text
 
     puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::tutorial::test-known {config} {
+    debug.cm/tutorial {}
+    tutorial setup
+    util pdict [tutorial known]
     return
 }
 

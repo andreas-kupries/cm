@@ -1,0 +1,49 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, show details
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-show-1.0 {conference show, no conference} -body {
+    run conference show -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-show-1.1 {conference show, wrong args, too many} -body {
+    run conference show X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-show-3.0 {conference show} -body {
+    run conference show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show.txt]
+
+# TODO: Show with all the various pieces filled in.
+# ====> Less issues, and changed command references.
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,37 @@
+~/.cm/managed
++----+-------------------------------------------------+-------------------+-------------------+------+
+|    | Name                                            | Start             | End               | City |
++----+-------------------------------------------------+-------------------+-------------------+------+
+| -> | C14                                             | 2014-09-29 Monday | 2014-10-03 Friday | ,    |
+|    | - Location is not known                         |                   |                   |      |
+|    | - Hotel is not known                            |                   |                   |      |
+|    | - Facility is not known                         |                   |                   |      |
+|    | - No schedule defined                           |                   |                   |      |
+|    | - No rate information                           |                   |                   |      |
+|    | - No sponsors                                   |                   |                   |      |
+|    | - Staff trouble: No one is "Chair"              |                   |                   |      |
+|    | - Staff trouble: No one is "Facilities chair"   |                   |                   |      |
+|    | - Staff trouble: No one is "Program chair"      |                   |                   |      |
+|    | - Staff trouble: No one is "Program committee"  |                   |                   |      |
+|    | - Staff trouble: No one is "Hotel liaison"      |                   |                   |      |
+|    | - Staff trouble: No one is "Web admin"          |                   |                   |      |
+|    | - Staff trouble: No one is "Proceedings editor" |                   |                   |      |
+|    | - No tutorials lined up                         |                   |                   |      |
+|    | - No submissions                                |                   |                   |      |
+|    | C15                                             | 2015-09-28 Monday | 2015-10-02 Friday | ,    |
+|    | - Location is not known                         |                   |                   |      |
+|    | - Hotel is not known                            |                   |                   |      |
+|    | - Facility is not known                         |                   |                   |      |
+|    | - No schedule defined                           |                   |                   |      |
+|    | - No rate information                           |                   |                   |      |
+|    | - No sponsors                                   |                   |                   |      |
+|    | - Staff trouble: No one is "Chair"              |                   |                   |      |
+|    | - Staff trouble: No one is "Facilities chair"   |                   |                   |      |
+|    | - Staff trouble: No one is "Program chair"      |                   |                   |      |
+|    | - Staff trouble: No one is "Program committee"  |                   |                   |      |
+|    | - Staff trouble: No one is "Hotel liaison"      |                   |                   |      |
+|    | - Staff trouble: No one is "Web admin"          |                   |                   |      |
+|    | - Staff trouble: No one is "Proceedings editor" |                   |                   |      |
+|    | - No tutorials lined up                         |                   |                   |      |
+|    | - No submissions                                |                   |                   |      |
++----+-------------------------------------------------+-------------------+-------------------+------+

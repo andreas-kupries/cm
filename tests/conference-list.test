@@ -1,0 +1,60 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, listing
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-show-1.0 {conference show, wrong args, too many} -body {
+    run conference list X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-show-3.0 {conference list, no conferences} -body {
+    run conferences
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/list-nothing.txt]
+
+test conference-show-3.1 {conference list, one} -body {
+    run conferences
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/list-one.txt]
+
+test conference-show-3.2 {conference list, several} -body {
+    run conferences
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C15 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference -n add C14 2014 mon 2014-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/list-several.txt]
+
+# TODO: Show with all the various pieces filled in.
+# ====> Less issues to see.
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

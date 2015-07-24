@@ -1,0 +1,49 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, staff, show listing
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-staff-1.0 {conference staff, wrong args, too many} -body {
+    run conference staff X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-staff-2.0 {conference staff, no conference} -body {
+    run conference staff
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-staff-3.0 {conference staff} -body {
+    run conference staff
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-staff -n Chair me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/staff.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
