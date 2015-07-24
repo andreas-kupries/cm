@@ -1,0 +1,5 @@
+~/.cm/managed
+Shift "Submissions due"
+Of    "C"
+By    1 days
+To    August 04, 2015 ... OK

@@ -1,0 +1,3 @@
+~/.cm/managed
+Conference "C", clear timeline ... 
+OK

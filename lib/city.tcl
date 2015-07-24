@@ -24,7 +24,7 @@ package require debug::caller
 package require dbutil
 package require try
 
-#package require cm::util
+package require cm::util
 package require cm::db
 #package require cm::validate::city
 
@@ -41,7 +41,7 @@ namespace eval ::cm::city {
 
     namespace import ::cmdr::color
     namespace import ::cmdr::ask
-    #namespace import ::cm::util
+    namespace import ::cm::util
     namespace import ::cm::db
 
     namespace import ::cmdr::table::general ; rename general table
@@ -131,7 +131,7 @@ proc ::cm::city::known-validation {} {
     set map {}
 
     db do eval {
-	SELECT city, state, nation
+	SELECT id, name AS city, state, nation
 	FROM   city
     } {
 	dict lappend map $id [label $city $state $nation]

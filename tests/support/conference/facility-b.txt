@@ -1,0 +1,5 @@
+~/.cm/managed
+Conference "C":
+- Set facility as "FACILITY (CITY, S, N)"
+- Set city     as "CITY, S, N"
+Saving ... OK

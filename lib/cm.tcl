@@ -710,8 +710,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input shift {
 		Number of days to shift the event by.
-		negative numbers to the past, positive numbers to the future.
-	    } {	optional ; interact ; validate integer }
+		Negative numbers to the past, positive numbers to the future.
+	    } {	optional ; interact ; validate integer ; generate [stop!] }
 	} [cm::call conference cmd_timeline_shift]
 
 	private timeline-set {
@@ -725,7 +725,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input date {
 		The new date for the event.
-	    } {	optional ; interact ; validate [cm::cvt date] }
+	    } {	optional ; interact ; validate [cm::cvt date]
+		generate [stop!] }
 	} [cm::call conference cmd_timeline_set]
 
 	private timeline-done {
@@ -2201,6 +2202,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private timeline-known {
+	    description {Print validation dictionary}
+	} [cm::call conference test-timeline-known]
 
 	# - -- --- ----- -------- -------------
 

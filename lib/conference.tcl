@@ -76,7 +76,9 @@ namespace eval ::cm::conference {
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
 	known-attachment get-attachment known-submitter its-hotel \
-	known-talks-vt
+	known-talks-vt \
+	\
+	test-timeline-known
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -101,12 +103,23 @@ namespace eval ::cm::conference {
     rename core config
 
     namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
 
 debug level  cm/conference
 debug prefix cm/conference {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::conference::test-timeline-known {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+    util pdict [known-timeline-validation]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 
@@ -600,7 +613,10 @@ proc ::cm::conference::cmd_timeline_init {config} {
     puts "Conference \"[color name [get $id]]\", initialize timeline ... "
     flush stdout
 
-    timeline-init $id
+    # Clear and re-initialize
+
+    timeline-clear $id
+    timeline-init  $id
 
     puts [color good OK]
     return
@@ -1834,7 +1850,7 @@ proc ::cm::conference::cmd_rate_show {config} {
 	    CONFERENCE RATE HOTEL
     }
 
-    [table t {Property Value} {
+    [table/d t {
 	db do eval {
 	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
 	    FROM   rate
@@ -1857,8 +1873,8 @@ proc ::cm::conference::cmd_rate_show {config} {
 				 ? [hdate $pdeadline]
 				 : [color bad Undefined]}]
 
-	    $t add Rate      "$rate $currency"
-	    $t add GroupCode $groupcode
+	    $t add Rate                   "$rate $currency"
+	    $t add GroupCode               $groupcode
 	    $t add Begin                   $begindate
 	    $t add End                     $enddate
 	    $t add {Registration deadline} $deadline
@@ -4855,8 +4871,8 @@ proc ::cm::conference::known-timeline-validation {} {
 	SELECT id, text, key
 	FROM   timeline_type
     } {
-	dict set known $text $id
-	dict set known $key  $id
+	dict set known [string tolower $text] $id
+	dict set known $key                   $id
     }
 
     debug.cm/conference {==> ($known)}
