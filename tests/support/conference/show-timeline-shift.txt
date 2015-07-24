@@ -1,0 +1,18 @@
+~/.cm/managed
+Conference "C", timeline:
++------+-----------------------------+--------------------+
+| Done | Event                       | When               |
++------+-----------------------------+--------------------+
+| No   | 1st Call for papers         | March 16, 2015     |
+| No   | 2nd Call for papers         | May 11, 2015       |
+| No   | 3rd Call for papers         | July 06, 2015      |
+| No   | WIP & BOF Reservations open | July 06, 2015      |
+| No   | Registration opens          | August 03, 2015    |
+| No   | Submissions due             | August 04, 2015    |
+| No   | Notifications to Authors    | August 10, 2015    |
+| No   | Author Materials due        | September 07, 2015 |
+| No   | Edit proceedings            | September 14, 2015 |
+| No   | Ship proceedings            | September 21, 2015 |
+| No   | Tutorial Start              | September 28, 2015 |
+| No   | Session Start               | September 30, 2015 |
++------+-----------------------------+--------------------+
