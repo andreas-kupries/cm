@@ -1,0 +1,9 @@
+~/.cm/managed
++-----------------------+------------------+
+| Rate                  | 99.00 USD        |
+| GroupCode             | GROUP            |
+| Begin                 | August 01, 2015  |
+| End                   | October 10, 2015 |
+| Registration deadline | October 03, 2015 |
+| Public deadline       | October 02, 2015 |
++-----------------------+------------------+

@@ -1,0 +1,3 @@
+~/.cm/managed
+Setting rates for conference "C" ... 
+OK

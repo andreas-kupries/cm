@@ -1,0 +1,139 @@
+--- lib/cm.tcl-baseline	2015-07-23 17:08:49.000000000 -0700
++++ lib/cm.tcl-merge	2015-07-23 17:08:49.000000000 -0700
+@@ -710,8 +710,8 @@
+ 	    }
+ 	    input shift {
+ 		Number of days to shift the event by.
+-		negative numbers to the past, positive numbers to the future.
+-	    } {	optional ; interact ; validate integer }
++		Negative numbers to the past, positive numbers to the future.
++	    } {	optional ; interact ; validate integer ; generate [stop!] }
+ 	} [cm::call conference cmd_timeline_shift]
+ 
+ 	private timeline-set {
+@@ -725,7 +725,8 @@
+ 	    }
+ 	    input date {
+ 		The new date for the event.
+-	    } {	optional ; interact ; validate [cm::cvt date] }
++	    } {	optional ; interact ; validate [cm::cvt date]
++		generate [stop!] }
+ 	} [cm::call conference cmd_timeline_set]
+ 
+ 	private timeline-done {
+@@ -773,12 +774,13 @@
+ 	    description { Add one or more sponsoring contacts }
+ 	    input name {
+ 		Names of the contacts to add
+-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator not m-lists
++	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator not m-lists
++		generate [stop!] }
+ 	} [cm::call conference cmd_sponsor_link]
+ 
+ 	private drop-sponsor {
+ 	    section {Conference Management}
+-	    description { Remove one or more sponsoring contacts }
++	    description { Remove a sponsoring contact }
+ 	    input name {
+ 		Name of the contact to remove
+ 	    } { 
+@@ -793,6 +795,20 @@
+ 	    description { Show the sponsors of the conference }
+ 	} [cm::call conference cmd_sponsor_show]
+ 
++	private sponsor-ping {
++	    section {Conference Management}
++	    description { Send a mail to the sponsors }
++	    option dry {
++		When present do not actually mail anything.
++	    } { presence }
++	    input template {
++		Name of the template holding mail subject and body.
++	    } { optional ; 
++		generate [cm::call template find mail-sponsors]
++		validate [cm::vt template] }
++	    # TODO: Allow for external file and/or stdin as mail input.
++	} [cm::call conference cmd_sponsor_ping]
++
+ 	# - -- --- ----  -------- ------------- ----------------------
+ 
+ 	private add-staff {
+@@ -807,7 +823,8 @@
+ 	    }
+ 	    input name {
+ 		Names of the contacts which are staff
+-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator people only
++	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator people only
++		generate [stop!] }
+ 	} [cm::call conference cmd_staff_link]
+ 
+ 	private drop-staff {
+@@ -827,6 +844,22 @@
+ 	    description { Show the staff of the conference }
+ 	} [cm::call conference cmd_staff_show]
+ 
++	private committee-ping {
++	    section {Conference Management}
++	    description { Send a mail to the program committee }
++	    option dry {
++		When present do not actually mail anything.
++	    } { presence }
++	    input template {
++		Name of the template holding mail subject and body.
++	    } { optional ; 
++		generate [cm::call template find mail-committee]
++		validate [cm::vt template] }
++	    # TODO: Allow for external file and/or stdin as mail input.
++	} [cm::call conference cmd_committee_ping]
++
++	# TODO: Full staff ping.
++
+ 	# - -- --- ----  -------- ------------- ----------------------
+ 
+ 	private schedule {
+@@ -912,26 +945,6 @@
+ 	# TODO: conference remove - if not used
+ 	# TODO: conference modify - change title, start, length, alignment
+ 
+-	private sponsor-ping {
+-	    section {Conference Management}
+-	    description { Send a mail to the sponsors }
+-	    input template {
+-		Name of the template holding mail subject and body.
+-	    } { optional ; 
+-		generate [cm::call template find mail-sponsors]
+-		validate [cm::vt template] }
+-	} [cm::call conference cmd_sponsor_ping]
+-
+-	private committee-ping {
+-	    section {Conference Management}
+-	    description { Send a mail to the program committee }
+-	    input template {
+-		Name of the template holding mail subject and body.
+-	    } { optional ; 
+-		generate [cm::call template find mail-committee]
+-		validate [cm::vt template] }
+-	} [cm::call conference cmd_committee_ping]
+-
+ 	# - -- --- ----  -------- ------------- ----------------------
+ 
+ 	private make-website {
+@@ -2192,6 +2205,18 @@
+ 
+ 	# - -- --- ----- -------- -------------
+ 
++	private timeline-known {
++	    description {Print validation dictionary}
++	} [cm::call conference test-timeline-known]
++
++	# - -- --- ----- -------- -------------
++
++	private tutorial-known {
++	    description {Print validation dictionary}
++	} [cm::call tutorial test-known]
++
++	# - -- --- ----- -------- -------------
++
+ 	private schedule-known {
+ 	    description {Print validation dictionary}
+ 	} [cm::call schedule test-known]

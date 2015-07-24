@@ -1,0 +1,50 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, tutorials, show listing
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-tutorials-1.0 {conference tutorials, wrong args, too many} -body {
+    run conference tutorials X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-tutorials-2.0 {conference tutorials, no conference} -body {
+    run conference tutorials
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-tutorials-3.0 {conference tutorials} -body {
+    run conference tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run tutorial create me foo FOO FUBAR
+    run conference add-tutorial 1 morning 2 @me:foo
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/tutorials.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

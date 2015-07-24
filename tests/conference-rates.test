@@ -1,0 +1,90 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, show rate details
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rates-1.0 {conference rates, no conference} -body {
+    run conference rates -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-rates-1.1 {conference rates, wrong args, too many} -body {
+    run conference rates X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rates-2.0 {conference rates, no hotel} -body {
+    run conference rates
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No hotel known"
+
+test conference-rates-2.1 {conference rates, no hotel linked} -body {
+    run conference rates
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No hotel known"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rates-3.0 {conference rates, default} -body {
+    run conference rates
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+    run conference hotel HOTEL
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/rates-default.txt]
+
+test conference-rates-3.1 {conference rates} -body {
+    run conference rates
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+    run conference hotel HOTEL
+    run conference rate 99 USD 2 \
+	-G GROUP \
+	-F 2015-08-01 \
+	-T 2015-10-10 \
+	-D 2015-10-03 \
+	-P 2015-10-02
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/rates.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,3 @@
+~/.cm/managed
+Adding sponsors to conference "C" ... 
+  "(@me) Myself" ... OK

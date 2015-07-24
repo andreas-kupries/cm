@@ -1,0 +1,2 @@
+~/.cm/managed
+Set description of "FOO" ... OK

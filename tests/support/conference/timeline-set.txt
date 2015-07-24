@@ -1,0 +1,4 @@
+~/.cm/managed
+Set "Submissions due"
+Of    "C"
+To    August 10, 2015 ... OK
