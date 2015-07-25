@@ -46,7 +46,7 @@ test tutorial-create-2.0 {tutorial create, duplicate} -body {
     run tutorial create me foo FOO FUBAR
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: Found a problem with input \"tag\": A tutorial name named \"foo\" already exists. Please use a different name."
+} -returnCodes error -match glob -result "* cmdr: Found a problem with input \"tag\": A tutorial tag named \"foo\" already exists. Please use a different name."
 
 # # ## ### ##### ######## ############# #####################
 

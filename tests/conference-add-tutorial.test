@@ -109,6 +109,8 @@ test conference-add-tutorial-2.4 {conference add-tutorial, bad halfday} -body {
     stage-open
     run contact create-person -E me@myself.org Myself me
     run tutorial create me foo FOO FUBAR
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
 } -cleanup {
     stage-close
 } -returnCodes error -match glob -result "* cmdr: Expected a dayhalf identifier for input \"half\", got \"noon\""
