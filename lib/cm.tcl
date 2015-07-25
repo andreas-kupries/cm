@@ -821,8 +821,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input shift {
 		Number of days to shift the event by.
-		negative numbers to the past, positive numbers to the future.
-	    } {	optional ; interact ; validate integer }
+		Negative numbers to the past, positive numbers to the future.
+	    } {	optional ; interact ; validate integer ; generate [stop!] }
+	    # TODO: Note, bad interaction between optional arg, neg sign of numbers, and option processing of cmdr ... See if fixable.
 	} [cm::call conference cmd_timeline_shift]
 
 	private timeline-set {
@@ -836,7 +837,8 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    input date {
 		The new date for the event.
-	    } {	optional ; interact ; validate [cm::cvt date] }
+	    } {	optional ; interact ; validate [cm::cvt date]
+		generate [stop!] }
 	} [cm::call conference cmd_timeline_set]
 
 	private timeline-done {
@@ -884,12 +886,13 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Add one or more sponsoring contacts }
 	    input name {
 		Names of the contacts to add
-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator not m-lists
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator not m-lists
+		generate [stop!] }
 	} [cm::call conference cmd_sponsor_link]
 
 	private drop-sponsor {
 	    section {Conference Management}
-	    description { Remove one or more sponsoring contacts }
+	    description { Remove a sponsoring contact }
 	    input name {
 		Name of the contact to remove
 	    } { 
@@ -904,6 +907,20 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show the sponsors of the conference }
 	} [cm::call conference cmd_sponsor_show]
 
+	private sponsor-ping {
+	    section {Conference Management}
+	    description { Send a mail to the sponsors }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call-db template find-p mail-sponsors]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_sponsor_ping]
+
 	# - -- --- ----  -------- ------------- ----------------------
 
 	private add-staff {
@@ -914,16 +931,17 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {
 		optional
 		validate [cm::vt staff-role]
-		generate [cm::call conference select-staff-role]
+		generate [cm::call db::staff-role select]
 	    }
 	    input name {
 		Names of the contacts which are staff
-	    } { list ; optional ; interact ; validate [cm::vt contact] } ; # TODO validator people only
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator people only
+		generate [stop!] }
 	} [cm::call conference cmd_staff_link]
 
 	private drop-staff {
 	    section {Conference Management}
-	    description { Remove one or more staff }
+	    description { Remove a staffer }
 	    input name {
 		Name of the staff to remove
 	    } { 
@@ -937,6 +955,22 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Show the staff of the conference }
 	} [cm::call conference cmd_staff_show]
+
+	private committee-ping {
+	    section {Conference Management}
+	    description { Send a mail to the program committee }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call-db template find-p mail-committee]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_committee_ping]
+
+	# TODO: Full staff ping.
 
 	# - -- --- ----  -------- ------------- ----------------------
 
@@ -1022,26 +1056,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	# - -- --- ----  -------- ------------- ----------------------
 	# TODO: conference remove - if not used
 	# TODO: conference modify - change title, start, length, alignment
-
-	private sponsor-ping {
-	    section {Conference Management}
-	    description { Send a mail to the sponsors }
-	    input template {
-		Name of the template holding mail subject and body.
-	    } { optional ; 
-		generate [cm::call-db template find-p mail-sponsors]
-		validate [cm::vt template] }
-	} [cm::call conference cmd_sponsor_ping]
-
-	private committee-ping {
-	    section {Conference Management}
-	    description { Send a mail to the program committee }
-	    input template {
-		Name of the template holding mail subject and body.
-	    } { optional ; 
-		generate [cm::call-db template find-p mail-committee]
-		validate [cm::vt template] }
-	} [cm::call conference cmd_committee_ping]
 
 	# - -- --- ----  -------- ------------- ----------------------
 
@@ -2343,6 +2357,18 @@ cmdr create cm::cm [file tail $::argv0] {
 	private contact-select {
 	    description {Print selection dict}
 	} [cm::call contact test-select]
+
+	# - -- --- ----- -------- -------------
+
+	private timeline-known {
+	    description {Print validation dictionary}
+	} [cm::call conference test-timeline-known]
+
+	# - -- --- ----- -------- -------------
+
+	private tutorial-known {
+	    description {Print validation dictionary}
+	} [cm::call tutorial test-known]
 
 	# - -- --- ----- -------- -------------
 

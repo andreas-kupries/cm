@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::db::staffrole
+package require cm::db::staff-role
 package require cm::util
 package require cmdr::validate::common
 
@@ -34,7 +34,7 @@ namespace eval ::cm::validate::staff-role {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::db::staffrole
+    namespace import ::cm::db::staff-role
     namespace import ::cm::util
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
@@ -45,7 +45,7 @@ namespace eval ::cm::validate::staff-role {
 proc ::cm::validate::staff-role::default  {p}   { return {} }
 proc ::cm::validate::staff-role::release  {p x} { return }
 proc ::cm::validate::staff-role::validate {p x} {
-    switch -exact -- [util match-substr id [staffrole known] nocase $x] {
+    switch -exact -- [util match-substr id [staff-role known] nocase $x] {
 	ok        { return $id }
 	fail      { fail $p STAFF-ROLE "a staff role"              $x }
 	ambiguous { fail $p STAFF-ROLE "an unambiguous staff role" $x }
@@ -53,7 +53,7 @@ proc ::cm::validate::staff-role::validate {p x} {
 }
 
 proc ::cm::validate::staff-role::complete {p x} {
-    complete-enum [dict keys [staffrole known]] nocase $x
+    complete-enum [dict keys [staff-role known]] nocase $x
 }
 
 # # ## ### ##### ######## ############# ######################

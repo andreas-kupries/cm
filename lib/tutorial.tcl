@@ -138,7 +138,7 @@ proc ::cm::tutorial::show {config} {
 }
 
 proc ::cm::tutorial::set-title {config} {
-    debug.cm/conference {}
+    debug.cm/tutorial {}
     tutorial setup
     db show-location
 
@@ -155,7 +155,7 @@ proc ::cm::tutorial::set-title {config} {
 }
 
 proc ::cm::tutorial::set-desc {config} {
-    debug.cm/conference {}
+    debug.cm/tutorial {}
     tutorial setup
     db show-location
 
@@ -177,7 +177,7 @@ proc ::cm::tutorial::set-desc {config} {
 }
 
 proc ::cm::tutorial::set-req {config} {
-    debug.cm/conference {}
+    debug.cm/tutorial {}
     tutorial setup
     db show-location
 
@@ -194,7 +194,7 @@ proc ::cm::tutorial::set-req {config} {
 }
 
 proc ::cm::tutorial::set-tag {config} {
-    debug.cm/conference {}
+    debug.cm/tutorial {}
     tutorial setup
     db show-location
 

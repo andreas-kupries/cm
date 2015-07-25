@@ -64,7 +64,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::db::dayhalf
     package require cm::db::location
     package require cm::db::rstatus
-    package require cm::db::staffrole
+    package require cm::db::staff-role
     package require cm::db::talk-state
     package require cm::db::talk-type
     package require cm::db::template
