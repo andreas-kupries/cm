@@ -1,0 +1,110 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, set facility
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-facility-1.0 {conference facility, no conference} -body {
+    run conference facility -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-facility-1.1 {conference facility, wrong args, not enough} -body {
+    run conference facility -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: location"
+
+test conference-facility-1.2 {conference facility, wrong args, too many} -body {
+    run conference facility FACILITY X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-facility-2.0 {conference facility, bad facility} -body {
+    run conference facility FACILITY
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a location name for input \"location\", got \"FACILITY\""
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-facility-3.0 {conference facility} -body {
+    run conference facility FACILITY
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new CITY S N
+    run location new FACILITY STREET ZIP CITY
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/facility.txt]
+
+test conference-facility-3.1 {conference facility, persists} -body {
+    run conference facility FACILITY
+    run conference show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new CITY S N
+    run location new FACILITY STREET ZIP CITY
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show-facility.txt]
+
+test conference-facility-3.2 {conference facility != hotel} -body {
+    run conference facility FACILITY
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new CITY S N
+    run location new FACILITY STREET-A ZIP CITY
+    run location new HOTEL    STREET-B ZIP CITY
+    run conference hotel HOTEL
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/facility-b.txt]
+
+test conference-facility-3.3 {conference facility, persists} -body {
+    run conference facility FACILITY
+    run conference show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new CITY S N
+    run location new FACILITY STREET-A ZIP CITY
+    run location new HOTEL    STREET-B ZIP CITY
+    run conference hotel HOTEL
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show-hotel-facility.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

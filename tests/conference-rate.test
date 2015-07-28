@@ -1,0 +1,137 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, set/change rate details
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rate-1.0 {conference rate, no conference} -body {
+    run conference rate -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-rate-1.1 {conference rate, wrong args, not enough} -body {
+    run conference rate -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-rate-1.2 {conference rate, wrong args, not enough} -body {
+    run conference rate -n 99
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-rate-1.3 {conference rate, wrong args, too many} -body {
+    run conference rate -n 99 USD 2 X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rate-2.0 {conference rate, no hotel} -body {
+    run conference rate -n 99 USD
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No hotel known to apply the rate to"
+
+test conference-rate-2.1 {conference rate, no hotel linked} -body {
+    run conference rate -n 99 USD
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No hotel known to apply the rate to"
+
+
+test conference-rate-2.2 {conference rate, bad rate} -body {
+    run conference rate -n RATE USD
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a double for input \"rate\", got \"RATE\""
+
+test conference-rate-2.3 {conference rate, bad decimal} -body {
+    run conference rate -n 99 USD DECIMAL
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a positive integer for input \"decimal\", got \"DECIMAL\""
+
+# TODO -F -T -D -P bad date for options.
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-rate-3.0 {conference rate} -body {
+    run conference rate 99 USD
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+    run conference hotel HOTEL
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/rate.txt]
+
+test conference-rate-3.1 {conference rate, persist} -body {
+    run conference rate 99 USD 2 \
+	-G GROUP \
+	-F 2015-08-01 \
+	-T 2015-10-10 \
+	-D 2015-10-03 \
+	-P 2015-10-02
+    run conference rates
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run city new C S N
+    run location new HOTEL STREET ZIP C
+    run conference hotel HOTEL
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/rates.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

@@ -1,0 +1,86 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, timeline, shift events
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-timeline-shift-1.0 {conference timeline-shift, no conference} -body {
+    run conference timeline-shift -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-timeline-shift-1.1 {conference timeline-shift, wrong args, not enough} -body {
+    run conference timeline-shift -n {Submissions due}
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Undefined: shift"
+
+test conference-timeline-shift-1.2 {conference timeline-shift, wrong args, too many} -body {
+    run conference timeline-shift -n {Submissions due} 10 X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-timeline-shift-2.0 {conference timeline-shift, bad event} -body {
+    run conference timeline-shift EVENT SHIFT
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected an event name for input \"event\", got \"EVENT\""
+
+test conference-timeline-shift-2.1 {conference timeline-shift, bad date} -body {
+    run conference timeline-shift {Submissions due} SHIFT
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected an integer for input \"shift\", got \"SHIFT\""
+
+# # ## ### ##### ######## ############# #####################
+## TODO: KNOWN BUG : Currently handling negative number incorrectly.
+
+test conference-timeline-shift-3.0 {conference timeline-shift} -body {
+    run conference timeline-shift {Submissions due} 1
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/timeline-shift.txt]
+
+test conference-timeline-shift-3.1 {conference timeline-shift, persist} -body {
+    run conference timeline-shift {Submissions due} 1
+    run conference timeline
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show-timeline-shift.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

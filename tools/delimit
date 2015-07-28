@@ -1,0 +1,5 @@
+#!/bin/sh
+thefile="$1"
+shift
+grep run "$thefile" | sed -e 's@run @./cm-limit . @'
+exit

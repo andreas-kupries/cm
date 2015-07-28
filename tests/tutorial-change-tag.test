@@ -1,0 +1,84 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - tutorial, change tag
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-tag-1.0 {tutorial change-tag, wrong args, not enough} -body {
+    run tutorial change-tag
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test tutorial-change-tag-1.1 {tutorial change-tag, wrong args, not enough} -body {
+    run tutorial change-tag ID
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test tutorial-change-tag-1.2 {tutorial change-tag, wrong args, too many} -body {
+    run tutorial change-tag ID TAG X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-tag-2.0 {tutorial change-tag, unknown} -body {
+    run tutorial change-tag @me:foo TAG
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a tutorial identifier for input \"tutorial\", got \"@me:foo\""
+
+# # ## ### ##### ######## ############# #####################
+
+test tutorial-change-tag-3.0 {tutorial change-tag} -body {
+    run tutorial change-tag @me:foo dog
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/change-tag.txt]
+
+test tutorial-change-tag-3.1 {tutorial change-tag, persists} -body {
+    run tutorial change-tag @me:foo dog
+    run tutorial show @me:dog
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/show-change-tag.txt]
+
+test tutorial-change-tag-3.2 {tutorial change-tag, persists} -body {
+    run tutorial change-tag @me:foo dog
+    run tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/list-change-tag.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

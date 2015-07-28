@@ -1,0 +1,31 @@
+#!/bin/sh
+
+if test "X$1" = "X"
+then
+    echo 1>&2 usage: $0 test-file...
+    exit 1
+fi
+
+ftilde
+rtilde
+sleep 2
+clear
+echo
+rm -f X.*
+
+mkdir tbak
+mv tests/*.test tbak/
+
+for test in "$@"
+do
+  test="$(basename "$test")"
+  mv tbak/$test tests/ 
+done
+
+./build.tcl test --log X
+echo
+echo tested = $(date)
+echo
+
+mv tbak/* tests/
+rmdir tbak

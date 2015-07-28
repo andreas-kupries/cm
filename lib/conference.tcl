@@ -38,7 +38,7 @@ package require cm::db::pschedule
 package require cm::db::registered
 package require cm::db::rstatus
 package require cm::db::schedule
-package require cm::db::staffrole
+package require cm::db::staff-role
 package require cm::db::talk-state
 package require cm::db::talk-type
 package require cm::db::template
@@ -79,7 +79,9 @@ namespace eval ::cm::conference {
 	select-submission get-submission \
 	get-submission-handle known-submissions-vt \
 	known-speaker known-attachment get-attachment known-submitter \
-	its-hotel known-talks-vt
+	its-hotel known-talks-vt \
+	\
+	test-timeline-known
 
     namespace ensemble create
 
@@ -98,7 +100,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::registered
     namespace import ::cm::db::rstatus
     namespace import ::cm::db::schedule
-    namespace import ::cm::db::staffrole
+    namespace import ::cm::db::staff-role
     namespace import ::cm::db::talk-state
     namespace import ::cm::db::talk-type
     namespace import ::cm::db::template
@@ -109,12 +111,23 @@ namespace eval ::cm::conference {
     namespace import ::cm::util
 
     namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
 
 debug level  cm/conference
 debug prefix cm/conference {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+ 
+proc ::cm::conference::test-timeline-known {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+    util pdict [known-timeline-validation]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 
@@ -575,7 +588,7 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     set sql [TimelineSQL $conference]
 
-    puts "Timeline of \"[color name [get $conference]]\":"
+    puts "Conference \"[color name [get $conference]]\", timeline:"
     [table t {Done Event When} {
 	#$t style cmdr/table/html ;# quick testing
 	db do eval $sql {
@@ -604,6 +617,9 @@ proc ::cm::conference::cmd_timeline_init {config} {
     puts "Conference \"[color name [get $id]]\", initialize timeline ... "
     flush stdout
 
+    # Clear and re-initialize
+
+    timeline-clear $id
     timeline-init $id
 
     puts [color good OK]
@@ -635,11 +651,13 @@ proc ::cm::conference::cmd_committee_ping {config} {
 
     set conference [current]
     set details    [details $conference]
+    set dry        [$config @dry]
     set template   [$config @template]
     set tlabel     [template 2name $template]
 
     puts "Mailing the committee of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
 
     set template     [template value $template]
     set destinations [db do eval {
@@ -659,6 +677,12 @@ proc ::cm::conference::cmd_committee_ping {config} {
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
 
+    if {![llength $addresses]} {
+	util user-error \
+	    "No destinations." \
+	    COMMITEE PING EMPTY
+    }
+
     set origins [db do eval {
 	SELECT dname
 	FROM   contact
@@ -673,6 +697,12 @@ proc ::cm::conference::cmd_committee_ping {config} {
 	set origins [string map {and, and} [join [linsert end-1 and] {, }]]
     } else {
 	set origins [join $origins {, }]
+    }
+
+    if {![llength $origins]} {
+	util user-error \
+	    "No chairs." \
+	    COMMITEE PING NO-CHAIRS
     }
 
     puts "From: $origins"
@@ -691,8 +721,14 @@ proc ::cm::conference::cmd_committee_ping {config} {
 		    [string map $map $template]]
     }] show
 
-    if {![ask yn "Send mail ? " no]} {
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
 	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
 	return
     }
 
@@ -882,7 +918,7 @@ proc ::cm::conference::cmd_submission_addsubmitter {config} {
     puts "Adding submitters to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach submitter [$config @submitter] {
-	puts -nonewline "  \"[color name [cm contact 2name $submitter]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $submitter]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -906,7 +942,7 @@ proc ::cm::conference::cmd_submission_dropsubmitter {config} {
     puts "Removing submitters from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach submitter [$config @submitter] {
-	puts -nonewline "  \"[color name [cm contact 2name $submitter]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $submitter]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1275,7 +1311,7 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
     puts "Adding speakers to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
-	puts -nonewline "  \"[color name [cm contact 2name $speaker]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $speaker]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1310,7 +1346,7 @@ proc ::cm::conference::cmd_submission_dropspeaker {config} {
     puts "Removing speakers from \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
     foreach speaker [$config @speaker] {
-	puts -nonewline "  \"[color name [cm contact 2name $speaker]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $speaker]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1428,21 +1464,34 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
     db show-location
 
     set conference [current]
+    set dry        [$config @dry]
     set template   [$config @template]
     set tlabel     [template 2name $template]
 
     puts "Mailing the sponsors of \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
 
     set template     [template value $template]
     set destinations [db do eval {
 	SELECT id, email
 	FROM   email
-	WHERE  contact IN (SELECT person
+	WHERE  contact IN (-- branch a: sponsors which are companies, mail their represenatives
+			   SELECT person
 			   FROM   liaison
 			   WHERE  company IN (SELECT contact
 					      FROM   sponsors
-					      WHERE  conference = :conference))
+					      WHERE  conference = :conference)
+			   UNION
+			   -- branch b: sponsors which are people, mail them directly
+			   SELECT id
+			   FROM contact
+			   WHERE id IN (SELECT contact
+					FROM   sponsors
+					WHERE  conference = :conference)
+			   AND   type = 1 -- sponsor is person
+			   -- TODO: in-memory cache of type/name mapping. or put into join ?
+			   )
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -1452,6 +1501,12 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
+
+    if {![llength $addresses]} {
+	util user-error \
+	    "No destinations." \
+	    SPONSOR PING EMPTY
+    }
 
     puts [util indent [join $addresses \n] "To: "]
 
@@ -1466,8 +1521,14 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 		    [string map $map $template]]
     }] show
 
-    if {![ask yn "Send mail ? " no]} {
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
 	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
 	return
     }
 
@@ -1523,7 +1584,7 @@ proc ::cm::conference::cmd_sponsor_link {config} {
     puts "Adding sponsors to conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1546,7 +1607,7 @@ proc ::cm::conference::cmd_sponsor_unlink {config} {
     puts "Removing sponsors from conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1607,10 +1668,10 @@ proc ::cm::conference::cmd_staff_link {config} {
     set conference [current]
     set role       [$config @role]
 
-    puts "Adding [staffrole 2name $role] to conference \"[color name [get $conference]]\" ... "
+    puts "Adding [staff-role 2name $role] to conference \"[color name [get $conference]]\" ... "
 
     foreach contact [$config @name] {
-	puts -nonewline "  \"[color name [cm contact 2name $contact]]\" ... "
+	puts -nonewline "  \"[color name [contact 2name $contact]]\" ... "
 	flush stdout
 
 	db do eval {
@@ -1634,7 +1695,10 @@ proc ::cm::conference::cmd_staff_unlink {config} {
 
     lassign [$config @name] role contact
 
-    puts -nonewline "  [staffrole 2name $role] \"[color name [cm contact 2name $contact]]\" ... "
+    debug.cm/conference {role    = ($role)}
+    debug.cm/conference {contact = ($contact)}
+
+    puts -nonewline "  [staff-role 2name $role] \"[color name [contact 2name $contact]]\" ... "
     flush stdout
 
     db do eval {
@@ -1783,7 +1847,7 @@ proc ::cm::conference::cmd_rate_show {config} {
 	    CONFERENCE RATE HOTEL
     }
 
-    [table t {Property Value} {
+    [table/d t {
 	db do eval {
 	    SELECT rate, decimal, currency, groupcode, begindate, enddate, deadline, pdeadline
 	    FROM   rate
@@ -2138,7 +2202,7 @@ proc ::cm::conference::cmd_registration_add {config} {
     }
 
     set c [get $conference]
-    set p [cm contact get $person]
+    set p [contact get $person]
 
     puts -nonewline "Register \"[color name $p]\" for \"[color name $c]\" ... "
     set close 0
@@ -2189,7 +2253,7 @@ proc ::cm::conference::cmd_registration_remove {config} {
     set person     [$config @person]
 
     set c [get $conference]
-    set p [cm contact get $person]
+    set p [contact get $person]
 
     puts -nonewline "Unregister \"[color name $p]\" from \"[color name $c]\" ... "
 
@@ -2257,7 +2321,7 @@ proc ::cm::conference::cmd_booking_add {config} {
     set hotel      [$config @hotel]
 
     set c [get $conference]
-    set p [cm contact get $person]
+    set p [contact get $person]
     set h [location get $hotel]
 
     puts -nonewline "Booking \"[color name $p]\" at \"[color name $h]\" for \"[color name $c]\" ... "
@@ -2285,7 +2349,7 @@ proc ::cm::conference::cmd_booking_remove {config} {
     set person     [$config @person]
 
     set c [get $conference]
-    set p [cm contact get $person]
+    set p [contact get $person]
 
     puts -nonewline "Unbooking \"[color name $p]\" for \"[color name $c]\" ... "
 
@@ -2936,7 +3000,7 @@ proc ::cm::conference::the-speakers {conference} {
 	dict set map $dname $tag
     }
 
-    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    dict unset map [dict get [contact get [dict get [details $conference] xmanagement]] xdname]
     return $map
 }
 
@@ -2950,7 +3014,7 @@ proc ::cm::conference::the-presenters {conference} {
 	dict set map $dname $tag
     }
 
-    dict unset map [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    dict unset map [dict get [contact get [dict get [details $conference] xmanagement]] xdname]
     return $map
 }
 
@@ -2958,7 +3022,7 @@ proc ::cm::conference::speaker-listing {conference} {
     debug.cm/conference {}
     # speaker-listing - TODO - general presenters
 
-    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    set mgmt [dict get [contact get [dict get [details $conference] xmanagement]] xdname]
 
     # Keynotes...
     set first 1
@@ -3011,7 +3075,7 @@ proc ::cm::conference::mail-speaker-listing {conference} {
     debug.cm/conference {}
     # speaker-listing - TODO - general presenters
 
-    set mgmt [dict get [cm contact details [dict get [details $conference] xmanagement]] xdname]
+    set mgmt [dict get [contact get [dict get [details $conference] xmanagement]] xdname]
 
     append text "\[\[ Known Speakers\n"
 
@@ -4077,7 +4141,7 @@ proc ::cm::conference::known-sponsor {} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $sponsors]
+    return [cm::db::contact::KnownLimited $sponsors]
 }
 
 proc ::cm::conference::known-speaker {p} {
@@ -4097,7 +4161,7 @@ proc ::cm::conference::known-speaker {p} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $talkers]
+    return [cm::db::contact::KnownLimited $talkers]
 }
 
 proc ::cm::conference::known-submitter {p} {
@@ -4115,7 +4179,7 @@ proc ::cm::conference::known-submitter {p} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $submitters]
+    return [cm::db::contact::KnownLimited $submitters]
 }
 
 proc ::cm::conference::get-attachment {id} {
@@ -4162,7 +4226,7 @@ proc ::cm::conference::known-sponsor-select {conference} {
 	return {}
     }
 
-    return [cm::contact::KnownSelectLimited $sponsors]
+    return [cm::db::contact::KnownSelectLimited $sponsors]
 }
 
 proc ::cm::conference::known-staff {} {
@@ -4183,7 +4247,32 @@ proc ::cm::conference::known-staff {} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $staff]
+    # Find the contact information for the staff
+    set known [cm::db::contact::KnownLimited $staff]
+
+    # Compute map for staff from contact to complete role+contact.
+    db do eval {
+	SELECT R.text  AS role,
+	       C.dname AS name,
+	       R.id    AS rid,
+	       C.id    AS cid
+	FROM   conference_staff S,
+	       staff_role       R,
+	       contact          C
+	WHERE  S.conference = :conference
+	AND    S.role       = R.id
+	AND    S.contact    = C.id
+	ORDER BY role, name
+    } {
+	dict set map $cid [list $rid $cid]
+    }
+
+    # Remap the contact information in known to role+contact
+    dict for {key id} $known {
+	dict set known $key [dict get $map $id]
+    }
+
+    return $known
 }
 
 proc ::cm::conference::known-staff-select {conference} {
@@ -4789,7 +4878,7 @@ proc ::cm::conference::Setup {} {
     db use dayhalf
     db use location
     db use rstatus
-    db use staffrole
+    db use staff-role
     db use talk-state
     db use talk-type
     db use template
@@ -5079,8 +5168,8 @@ proc ::cm::conference::Dump {} {
 	FROM   conference
 	ORDER BY title
     } {
-	set management [cm contact 2name-plain $management]
-	set submission [cm contact 2name-email $submission]
+	set management [contact 2name-plain $management]
+	set submission [contact 2name-email $submission]
 	set startdate  [isodate $startdate]
 	if {$alignment > 0} {
 	    set alignment  [weekday 2external $alignment]

@@ -1,0 +1,57 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, clear timeline
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-timeline-clear-1.0 {conference timeline-clear, no conference} -body {
+    run conference timeline-clear -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-timeline-clear-1.1 {conference timeline-clear, wrong args, too many} -body {
+    run conference timeline-clear X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-timeline-clear-3.0 {conference timeline-clear} -body {
+    run conference timeline-clear
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/timeline-clear.txt]
+
+test conference-timeline-clear-3.1 {conference timeline-clear, persist} -body {
+    run conference timeline-clear
+    run conference timeline
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show-timeline-clear.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

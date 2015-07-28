@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::db::staffrole 0
+# Package cm::db::staff-role 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -27,14 +27,14 @@ package require cm::util
 # # ## ### ##### ######## ############# ######################
 
 namespace eval ::cm {
-    namespace export conference
+    namespace export db
     namespace ensemble create
 }
 namespace eval ::cm::db {
-    namespace export staffrole
+    namespace export staff-role
     namespace ensemble create
 }
-namespace eval ::cm::db::staffrole {
+namespace eval ::cm::db::staff-role {
     namespace export 2name select known setup
     namespace ensemble create
 
@@ -44,13 +44,13 @@ namespace eval ::cm::db::staffrole {
 
 # # ## ### ##### ######## ############# ######################
 
-debug level  cm/db/staffrole
-debug prefix cm/db/staffrole {[debug caller] | }
+debug level  cm/db/staff-role
+debug prefix cm/db/staff-role {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::staffrole::2name {role} {
-    debug.cm/db/staffrole {}
+proc ::cm::db::staff-role::2name {role} {
+    debug.cm/db/staff-role {}
     setup
 
     return [db do onecolumn {
@@ -60,8 +60,8 @@ proc ::cm::db::staffrole::2name {role} {
     }]
 }
 
-proc ::cm::db::staffrole::known {} {
-    debug.cm/db/staffrole {}
+proc ::cm::db::staff-role::known {} {
+    debug.cm/db/staff-role {}
     setup
 
     # dict: label -> id
@@ -74,19 +74,19 @@ proc ::cm::db::staffrole::known {} {
 	dict set known [string tolower $text] $id
     }
 
-    debug.cm/db/staffrole {==> ($known)}
+    debug.cm/db/staff-role {==> ($known)}
     return $known
 }
 
-proc ::cm::db::staffrole::select {p} {
-    debug.cm/db/staffrole {}
+proc ::cm::db::staff-role::select {p} {
+    debug.cm/db/staff-role {}
     return [util select $p "staff role" Selection]
 }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::staffrole::Selection {} {
-    debug.cm/db/staffrole {}
+proc ::cm::db::staff-role::Selection {} {
+    debug.cm/db/staff-role {}
     setup
 
     # dict: label -> id
@@ -99,14 +99,14 @@ proc ::cm::db::staffrole::Selection {} {
 	dict set selection $text $id
     }
 
-    debug.cm/db/staffrole {==> ($selection)}
+    debug.cm/db/staff-role {==> ($selection)}
     return $selection
 }
 
 # # ## ### ##### ######## ############# ######################
 
-cm db setup cm::db::staffrole {
-    debug.cm/db/staffrole {}
+cm db setup cm::db::staff-role {
+    debug.cm/db/staff-role {}
 
     if {![dbutil initialize-schema ::cm::db::do error staff_role {
 	{
@@ -134,5 +134,5 @@ cm db setup cm::db::staffrole {
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::db::staffrole 0
+package provide cm::db::staff-role 0
 return

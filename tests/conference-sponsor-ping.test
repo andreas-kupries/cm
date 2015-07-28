@@ -1,0 +1,94 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conference mgmt, sponsors, mail ping
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-sponsor-ping-1.0 {conference sponsor-ping, wrong args, not enough} -body {
+    run conference sponsor-ping -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: Template \"mail-sponsors\" not found"
+
+test conference-sponsor-ping-1.1 {conference sponsor-ping, wrong args, too many} -body {
+    run conference sponsor-ping -n T X
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-sponsor-ping-2.0 {conference sponsor-ping, no conference} -body {
+    run conference sponsor-ping T
+} -setup {
+    stage-open
+    run template create T << T
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+test conference-sponsor-ping-2.1 {conference sponsor-ping, unknown template} -body {
+    run conference sponsor-ping T
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a template name for input \"template\", got \"T\""
+
+test conference-sponsor-ping-2.2 {conference sponsor-ping, no sponsors} -body {
+    run conference sponsor-ping -n T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No destinations."
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-sponsor-ping-3.0 {conference sponsor-ping, person} -body {
+    run conference sponsor-ping --dry T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run conference add-sponsor me
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/sponsor-ping.txt]
+
+test conference-sponsor-ping-3.1 {conference sponsor-ping, company (rep)} -body {
+    run conference sponsor-ping --dry T
+} -setup {
+    stage-open
+    run template create T << T
+    run contact create-person -E me@myself.org Myself me
+    run conference create -n C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+    run contact create-company -E com@com.com Com
+    run contact add-rep com me
+    run conference add-sponsor com
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/sponsor-ping.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests

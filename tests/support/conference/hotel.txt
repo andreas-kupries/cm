@@ -1,0 +1,6 @@
+~/.cm/managed
+Conference "C":
+- Set hotel    as "HOTEL (CITY, S, N)"
+- Set facility as the same
+- Set city     as "CITY, S, N"
+Saving ... OK

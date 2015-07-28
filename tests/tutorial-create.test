@@ -38,7 +38,15 @@ test tutorial-create-1.2 {tutorial create, wrong args, too many} -body {
 
 # # ## ### ##### ######## ############# #####################
 
-# TODO: duplicates
+test tutorial-create-2.0 {tutorial create, duplicate} -body {
+    run tutorial create me foo FOO FUBAR
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run tutorial create me foo FOO FUBAR
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Found a problem with input \"tag\": A tutorial tag named \"foo\" already exists. Please use a different name."
 
 # # ## ### ##### ######## ############# #####################
 
@@ -50,6 +58,26 @@ test tutorial-create-3.0 {tutorial create} -body {
 } -cleanup {
     stage-close
 } -result [viewFile support/tutorial/create.txt]
+
+test tutorial-create-3.1 {tutorial create, persists} -body {
+    run tutorial create me foo FOO FUBAR
+    run tutorials
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/list-create.txt]
+
+test tutorial-create-3.2 {tutorial create, persists} -body {
+    run tutorial create me foo FOO FUBAR
+    run tutorial show @me:foo
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+} -cleanup {
+    stage-close
+} -result [viewFile support/tutorial/show-create.txt]
 
 # # ## ### ##### ######## ############# #####################
 cleanupTests

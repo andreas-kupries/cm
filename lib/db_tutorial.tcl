@@ -16,6 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
+package require cmdr::color
 package require debug
 package require debug::caller
 package require dbutil
@@ -42,6 +43,7 @@ namespace eval ::cm::db::tutorial {
 	is-speaker scheduled schedule unschedule issues setup dump
     namespace ensemble create
 
+    namespace import ::cmdr::color
     namespace import ::cm::db
     namespace import ::cm::util
 }
@@ -53,7 +55,7 @@ debug prefix cm/db/tutorial {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::db::tutorial::all {config} {
+proc ::cm::db::tutorial::all {} {
     debug.cm/db/tutorial {}
     setup
 
@@ -136,7 +138,7 @@ proc ::cm::db::tutorial::issues {details} {
     setup
 
     dict with details {}
-    set sdetails [contact details $xspeaker]
+    set sdetails [contact get $xspeaker]
 
     set issues {}
     if {[dict get $sdetails xtag]       eq {}} { +issue "Speaker tag missing" }
