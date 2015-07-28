@@ -48,7 +48,7 @@ test conference-timeline-shift-2.0 {conference timeline-shift, bad event} -body 
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: Expected an event identifier for input \"event\", got \"EVENT\""
+} -returnCodes error -match glob -result "* cmdr: Expected an event name for input \"event\", got \"EVENT\""
 
 test conference-timeline-shift-2.1 {conference timeline-shift, bad date} -body {
     run conference timeline-shift {Submissions due} SHIFT

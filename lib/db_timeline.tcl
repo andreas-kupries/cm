@@ -79,7 +79,7 @@ proc ::cm::db::timeline::known {} {
     set known {}
 
     db do eval {
-	SELECT id, text
+	SELECT id, key, text
 	FROM   timeline_type
     } {
 	# nocase, assumes lower-case strings in "key".

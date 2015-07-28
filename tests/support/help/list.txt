@@ -39,7 +39,7 @@ cm [OPTIONS]
     cm conference add-sponsor [<name>...]
     cm conference add-staff [<role>] [<name>...]
     cm conference add-tutorial <day> <half> <track> [<tutorial>]
-    cm conference committee-ping [<template>]
+    cm conference committee-ping [OPTIONS] [<template>]
     cm conference create [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
     cm conference drop-sponsor [<name>]
     cm conference drop-staff [<name>]
@@ -60,7 +60,7 @@ cm [OPTIONS]
     cm conference select [<conference>]
     cm conference set-end [<enddate>]
     cm conference show
-    cm conference sponsor-ping [<template>]
+    cm conference sponsor-ping [OPTIONS] [<template>]
     cm conference sponsors
     cm conference staff
     cm conference timeline
@@ -292,6 +292,8 @@ cm [OPTIONS]
     cm test schedule-select
     cm test schedule-track-known <schedule>
     cm test schedule-track-select <schedule>
+    cm test timeline-known
+    cm test tutorial-known
     cm tutorial
     cm tutorial add [OPTIONS] <speaker> <tag> [<title>] [<description>]
     cm tutorial change-description <tutorial> [<text>]

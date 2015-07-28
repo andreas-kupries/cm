@@ -36,7 +36,7 @@ test conference-timeline-done-2.0 {conference timeline-done, bad event} -body {
     stage-open
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: Expected an event identifier for input \"event\", got \"EVENT\""
+} -returnCodes error -match glob -result "* cmdr: Expected an event name for input \"event\", got \"EVENT\""
 
 # # ## ### ##### ######## ############# #####################
 

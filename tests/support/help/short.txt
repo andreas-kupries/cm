@@ -138,17 +138,17 @@ cm conference add-staff [<role>] [<name>...]
 cm conference add-tutorial <day> <half> <track> [<tutorial>]
     Add a tutorial to the lineup
 
-cm conference committee-ping [<template>]
+cm conference committee-ping [OPTIONS] [<template>]
     Send a mail to the program committee
 
 cm conference create [OPTIONS] [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]
     Create a new conference
 
 cm conference drop-sponsor [<name>]
-    Remove one or more sponsoring contacts
+    Remove a sponsoring contact
 
 cm conference drop-staff [<name>]
-    Remove one or more staff
+    Remove a staffer
 
 cm conference drop-tutorial [<tutorial>...]
     Remove one or more tutorials from the lineup
@@ -202,7 +202,7 @@ cm conference set-end [<enddate>]
 cm conference show
     Show the details of the current conference
 
-cm conference sponsor-ping [<template>]
+cm conference sponsor-ping [OPTIONS] [<template>]
     Send a mail to the sponsors
 
 cm conference sponsors
@@ -919,6 +919,12 @@ cm test schedule-track-known <schedule>
 
 cm test schedule-track-select <schedule>
     Print selection dictionary
+
+cm test timeline-known
+    Print validation dictionary
+
+cm test tutorial-known
+    Print validation dictionary
 
 cm tutorial
     Manage the tutorials we can or have offered in conferences.

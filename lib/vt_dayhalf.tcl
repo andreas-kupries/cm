@@ -45,7 +45,7 @@ namespace eval ::cm::validate::dayhalf {
 proc ::cm::validate::dayhalf::default  {p}   { return {} }
 proc ::cm::validate::dayhalf::release  {p x} { return }
 proc ::cm::validate::dayhalf::validate {p x} {
-    switch -exact -- [util match-substr id [dayhalf known] nocase $x] {
+    switch -exact -- [util match-enum id [dayhalf known] nocase $x] {
 	ok        { return $id }
 	fail      { fail $p DAYHALF "a dayhalf identifier"              $x }
 	ambiguous { fail $p DAYHALF "an unambiguous dayhalf identifier" $x }
