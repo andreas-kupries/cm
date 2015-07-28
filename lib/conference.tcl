@@ -588,7 +588,7 @@ proc ::cm::conference::cmd_timeline_show {config} {
 
     set sql [TimelineSQL $conference]
 
-    puts "Timeline of \"[color name [get $conference]]\":"
+    puts "Conference \"[color name [get $conference]]\", timeline:"
     [table t {Done Event When} {
 	#$t style cmdr/table/html ;# quick testing
 	db do eval $sql {
@@ -4141,7 +4141,7 @@ proc ::cm::conference::known-sponsor {} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $sponsors]
+    return [cm::db::contact::KnownLimited $sponsors]
 }
 
 proc ::cm::conference::known-speaker {p} {
@@ -4161,7 +4161,7 @@ proc ::cm::conference::known-speaker {p} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $talkers]
+    return [cm::db::contact::KnownLimited $talkers]
 }
 
 proc ::cm::conference::known-submitter {p} {
@@ -4179,7 +4179,7 @@ proc ::cm::conference::known-submitter {p} {
 	return {}
     }
 
-    return [cm::contact::KnownLimited $submitters]
+    return [cm::db::contact::KnownLimited $submitters]
 }
 
 proc ::cm::conference::get-attachment {id} {
@@ -4226,7 +4226,7 @@ proc ::cm::conference::known-sponsor-select {conference} {
 	return {}
     }
 
-    return [cm::contact::KnownSelectLimited $sponsors]
+    return [cm::db::contact::KnownSelectLimited $sponsors]
 }
 
 proc ::cm::conference::known-staff {} {
@@ -4248,7 +4248,7 @@ proc ::cm::conference::known-staff {} {
     }
 
     # Find the contact information for the staff
-    set known [cm::contact::KnownLimited $staff]
+    set known [cm::db::contact::KnownLimited $staff]
 
     # Compute map for staff from contact to complete role+contact.
     db do eval {

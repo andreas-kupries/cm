@@ -48,7 +48,7 @@ test conference-facility-2.0 {conference facility, bad facility} -body {
     run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
 } -cleanup {
     stage-close
-} -returnCodes error -match glob -result "* cmdr: Expected a location identifier for input \"location\", got \"FACILITY\""
+} -returnCodes error -match glob -result "* cmdr: Expected a location name for input \"location\", got \"FACILITY\""
 
 # # ## ### ##### ######## ############# #####################
 

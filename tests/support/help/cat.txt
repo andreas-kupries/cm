@@ -5,8 +5,8 @@ Conference Management
     cm conference add-tutorial <day> <half> <track> [<tutorial>]                                             Add a tutorial to the lineup
     cm conference committee-ping [<template>]                                                                Send a mail to the program committee
     cm conference create [<title>] [<year>] [<alignment>] [<start>] [<length>] [<manager>] [<submission>]    Create a new conference
-    cm conference drop-sponsor [<name>]                                                                      Remove one or more sponsoring contacts
-    cm conference drop-staff [<name>]                                                                        Remove one or more staff
+    cm conference drop-sponsor [<name>]                                                                      Remove a sponsoring contact
+    cm conference drop-staff [<name>]                                                                        Remove a staffer
     cm conference drop-tutorial [<tutorial>...]                                                              Remove one or more tutorials from the lineup
     cm conference facility [<location>]                                                                      Select the location for presentations
     cm conference hotel [<location>]                                                                         Select the conference hotel
@@ -291,6 +291,8 @@ Advanced
         cm test schedule-select                     Print selection dictionary
         cm test schedule-track-known <schedule>     Print validation dictionary
         cm test schedule-track-select <schedule>    Print selection dictionary
+        cm test timeline-known                      Print validation dictionary
+        cm test tutorial-known                      Print validation dictionary
 
 Miscellaneous
     cm booking           Manage the hotel bookings by people
