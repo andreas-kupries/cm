@@ -1643,11 +1643,17 @@ cmdr create cm::cm [file tail $::argv0] {
 	    input pattern {
 		Filter list by the glob pattern
 	    } { optional ; default * }
-	    option with-mails {Show mail addresses} { presence }
+	    option with-mails {Show mail addresses} {
+		alias with-emails ; presence }
 	    option only {
 		Show only entries of the requested type(s).
 		If not specified show all.
 	    } { list ; validate [cm::vt contact-type] }
+	    option unreachable {
+		Show only entries which have no mails associated
+		with them, in other words, cannot be not reached
+		by campaigns.
+	    } { presence }
 	} [cm::call contact cmd_list]
 
 	private show {
@@ -2281,7 +2287,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    }
 	    option mail {
 		When present show speaker information inserted into a CFP.
-	    } { presence }
+	    } { alias email ; presence }
 	} [cm::call conference cmd_debug_speakers]
     }
 }

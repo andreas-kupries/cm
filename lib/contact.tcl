@@ -208,6 +208,7 @@ proc ::cm::contact::cmd_list {config} {
 
     set pattern  [string trim [$config @pattern]]
     set withmail [$config @with-mails]
+    set unreach  [$config @unreachable]
     set types    [$config @only] ;# type-codes!
 
     set titles {\# Type Tag Name Mails Flags Relations}
@@ -255,6 +256,10 @@ proc ::cm::contact::cmd_list {config} {
 		} {
 		    lappend mails "[expr {$inactive ? "-":" "}] $email"
 		}
+
+		# Ignore reachable contacts when --unreachable requested.
+		if {$unreach && [llength $mails]} continue
+
 		set mails [join $mails \n]
 		$t add $counter $type $tag $name $mails $flags $related
 	    } else {
@@ -263,6 +268,10 @@ proc ::cm::contact::cmd_list {config} {
 		    FROM   email
 		    WHERE  contact = :contact
 		}]
+
+		# Ignore reachable contacts when --unreachable requested.
+		if {$unreach && $mails} continue
+
 		if {!$mails} { set mails [color bad None] }
 		$t add $counter $type $tag $name $mails $flags $related
 	    }
@@ -872,35 +881,81 @@ proc ::cm::contact::liaisons {contact} {
     }]
 }
 
+proc ::cm::contact::aff-2-company {contact} {
+    debug.cm/contact {}
+    Setup
+    return [db do eval {
+	SELECT C.id, C.dname
+	FROM   contact     C,
+	       affiliation A
+	WHERE  A.company = :contact
+	AND    A.person  = C.id
+	ORDER BY C.dname
+    }]
+}
+
+proc ::cm::contact::representing {contact} {
+    debug.cm/contact {}
+    Setup
+    return [db do eval {
+	SELECT C.id, C.dname
+	FROM   contact     C,
+	       liaison     L
+	WHERE  L.person  = :contact
+	AND    L.company = C.id
+	ORDER BY C.dname
+    }]
+}
+
 proc ::cm::contact::related-formatted {contact type} {
     debug.cm/contact {}
+    set related {}
     if {$type != 1} {
-	# liaisons aka representatives
-	set related [dict values [liaisons $contact]]
-	if {[llength $related]} {
+	# liaisons aka representatives of the company
+	set reps [dict values [liaisons $contact]]
+	if {[llength $reps]} {
 	    # Hanging indent, TODO utility command
-	    set other [lassign $related primary]
-	    set related "Rep: $primary"
+	    set other [lassign $reps primary]
+	    append related \n "Rep: $primary"
 	    if {[llength $other]} {
 		append related \n [util indent [join $other \n] "   : "]
 	    }
 	}
-    } else {
-	# affiliations
-	set related [dict values [affiliated $contact]]
-	if {[llength $related]} {
+	# ... and inverse, the affiliated people ...
+	set affs [dict values [aff-2-company $contact]]
+	if {[llength $affs]} {
 	    # Hanging indent, TODO utility command
-	    set other [lassign $related primary]
-	    set related "Of: $primary"
+	    set other [lassign $affs primary]
+	    append related \n "Aff: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "   : "]
+	    }
+	}
+
+    } else {
+	# affiliations of the person
+	set affs [dict values [affiliated $contact]]
+	if {[llength $affs]} {
+	    # Hanging indent, TODO utility command
+	    set other [lassign $affs primary]
+	    append related \n "Of: $primary"
 	    if {[llength $other]} {
 		append related \n [util indent [join $other \n] "  : "]
 	    }
 	}
+	# ... and inverse, the represented companies
+	set reps [dict values [representing $contact]]
+	if {[llength $reps]} {
+	    # Hanging indent, TODO utility command
+	    set other [lassign $reps primary]
+	    append related \n "Rep: $primary"
+	    if {[llength $other]} {
+		append related \n [util indent [join $other \n] "   : "]
+	    }
+	}
     }
 
-    # TODO: List the inverted relations also ?
-
-    return $related
+    return [string trimleft $related \n]
 }
 
 # # ## ### ##### ######## ############# ######################
