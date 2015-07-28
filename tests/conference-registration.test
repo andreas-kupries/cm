@@ -1,0 +1,85 @@
+# -*- tcl -*- tcl.tk//DSL tcltest//EN//2.0 tcl.tk//DSL tcltest//EN//2.0
+## (c) 2015 Andreas Kupries
+# # ## ### ##### ######## ############# #####################
+## schedule management - conferences, registration status changes
+
+kt check Tcl     8.5
+kt check tcltest 2
+
+# # ## ### ##### ######## ############# #####################
+
+kt source support/common.tcl
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-registration-1.0 {conference registration, not enough} -body {
+    run conference registration -n
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-registration-1.1 {conference registration, wrong args, not enough} -body {
+    run conference registration -n
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, not enough*"
+
+test conference-registration-1.2 {conference registration, wrong args, too many} -body {
+    run conference registration REGISTRATION X
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: wrong#args, too many*"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-registration-2.0 {conference registration, bad status} -body {
+    run conference registration REGISTRATION
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "* cmdr: Expected a registration status for input \"status\", got \"REGISTRATION\""
+
+test conference-registration-2.1 {conference registration, no conference} -body {
+    run conference registration closed
+} -setup {
+    stage-open
+} -cleanup {
+    stage-close
+} -returnCodes error -match glob -result "*cm general: No conference chosen, please \"select\" a conference"
+
+# # ## ### ##### ######## ############# #####################
+
+test conference-registration-3.0 {conference registration} -body {
+    run conference registration open
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/registration.txt]
+
+test conference-registration-3.1 {conference registration, persists} -body {
+    run conference registration open
+    run conference show
+} -setup {
+    stage-open
+    run contact create-person -E me@myself.org Myself me
+    run conference -n add C 2015 mon 2015-10-01 5 me me@myself.org ;# auto active
+} -cleanup {
+    stage-close
+} -match glob -result [viewFile support/conference/show-registration.txt]
+
+# # ## ### ##### ######## ############# #####################
+cleanupTests
