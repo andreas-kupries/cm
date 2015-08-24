@@ -850,6 +850,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
+	    option separate {
+		When present send the committee members separate mails.
+	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
