@@ -879,6 +879,9 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private schedule-show {
 	    section {Conference Management}
+	    option merged {
+		When present show merging of physical and logical schedule.
+	    } { presence }
 	    description { Show the current logical schedule for the conference }
 	} [cm::call conference cmd_schedule_show]
 

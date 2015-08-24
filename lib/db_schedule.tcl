@@ -186,9 +186,14 @@ proc ::cm::db::schedule::of {conference} {
 	WHERE  conference = :conference
 	ORDER BY label
     } {
+	debug.cm/db/schedule {$label => Ta|$talk| Tu|$tutorial| S|$session|}
+
+	set speaker {}
 	# Explicit left outer joins -> talk              -> submission
 	#                           -> tutorial_schedule -> tutorial
 	if {$talk ne {}} {
+	    set speaker [join [p1 [::cm::conference::talk-speakers $talk]] {, }]
+
 	    set talk [db do onecolumn {
 		SELECT title
 		FROM   submission
@@ -198,6 +203,8 @@ proc ::cm::db::schedule::of {conference} {
 	    }]
 	}
 	if {$tutorial ne {}} {
+	    set speaker [join [p1 [::cm::conference::tutorial-speakers $tutorial]] {, }]
+
 	    set tutorial [db do onecolumn {
 		SELECT title
 		FROM   tutorial
@@ -206,7 +213,16 @@ proc ::cm::db::schedule::of {conference} {
 			      WHERE  id = :tutorial)
 	    }]
 	}
-	lappend r $label $talk $tutorial $session
+	lappend r $label $talk $tutorial $session $speaker
+    }
+    return $r
+}
+
+proc ::cm::db::schedule::p1 {speakers} {
+    debug.cm/db/schedule {}
+    set r {}
+    foreach {dname tag} $speakers {
+	lappend r $dname
     }
     return $r
 }

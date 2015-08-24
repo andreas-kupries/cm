@@ -687,7 +687,7 @@ proc ::cm::schedule::TrackList {pschedule {color {}}} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::schedule::ItemList {pschedule {color {}}} {
+proc ::cm::schedule::ItemList {pschedule {color {}} {map {}}} {
     debug.cm/schedule {}
 
     set items [pschedule item-all $pschedule]
@@ -733,7 +733,16 @@ proc ::cm::schedule::ItemList {pschedule {color {}}} {
 	    set length ([minute 2external $length])
 
 	    if {$track  eq {}} { set track $across       }
-	    if {$dmajor eq {}} { set dmajor <<${label}>> }
+	    if {$dmajor eq {}} {
+		set dmajor <<${label}>>
+		if {[dict exists $map $label]} {
+		    lassign [dict get $map $label] str speaker
+		    if {$str ne {}} {
+			set dmajor ">> $str "
+			set dminor $speaker
+		    }
+		}
+	    }
 
 	    if {($id eq $ai) && ($color ne {})} {
 		set mark   [color $color $mark] 

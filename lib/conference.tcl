@@ -2181,8 +2181,12 @@ proc ::cm::conference::cmd_schedule_show {config} {
     set pslabel [pschedule piece $xpschedule dname]
     puts "Schedule \"[color name $pslabel]\": " 
 
-    [table t {Slot Type Details} {
-	foreach {label talk tutorial session} [schedule of $conference] {
+    if {[$config @merged]} {
+	package require cm::schedule
+	# Show physical schedule for the conference, with the logical
+	# data filled in.
+
+	foreach {label talk tutorial session speaker} [schedule of $conference] {
 	    if {$talk ne {}} {
 		set type Talk
 		set note $talk
@@ -2196,7 +2200,44 @@ proc ::cm::conference::cmd_schedule_show {config} {
 		set type {}
 		set note {}
 	    }
-	    $t add $label $type $note
+	    dict set map $label [list $note $speaker]
+	}
+
+	set pschedule $xpschedule
+
+	set psd       [pschedule details $xpschedule]
+	dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
+
+	puts "\nSchedule \"[color name $xdname]\":"
+	[table/d t {
+	    if {$xactiveday ne {}} {
+		$t add Days "[pschedule day-cover $xid] ([color bold "@ $xactiveday"])"
+	    } else {
+		$t add Days [pschedule day-cover $xid]
+	    }
+	    $t add Tracks [::cm::schedule::TrackList $xid {}]
+	    $t add Items  [::cm::schedule::ItemList  $xid {} $map]
+	}] show
+
+	return
+    }
+
+    [table t {Slot Type Details Speaker} {
+	foreach {label talk tutorial session speaker} [schedule of $conference] {
+	    if {$talk ne {}} {
+		set type Talk
+		set note $talk
+	    } elseif {$tutorial ne {}} {
+		set type Tutorial
+		set note $tutorial
+	    } elseif {$session ne {}} {
+		set type Fixed
+		set note $session
+	    } else {
+		set type {}
+		set note {}
+	    }
+	    $t add $label $type $note $speaker
 	}
     }] show
     return
@@ -3234,12 +3275,27 @@ proc ::cm::conference::general-talks {conference} {
 }
 
 proc ::cm::conference::talk-speakers {talk} {
+    debug.cm/conference {}
     return [db do eval {
 	SELECT dname, tag
 	FROM   contact
 	WHERE  id IN (SELECT contact
 		      FROM   talker
 		      WHERE  talk = :talk)
+	ORDER BY dname
+    }]
+}
+
+proc ::cm::conference::tutorial-speakers {tutorial} {
+    debug.cm/conference {}
+    return [db do eval {
+	SELECT dname, tag
+	FROM   contact
+	WHERE  id IN (SELECT speaker
+		FROM   tutorial
+		WHERE  id IN (SELECT tutorial
+			      FROM   tutorial_schedule
+			      WHERE  id = :tutorial))
 	ORDER BY dname
     }]
 }
