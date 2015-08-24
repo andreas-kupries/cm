@@ -1,0 +1,131 @@
+Hi @mg:name@
+
+   Thank you for submitting your paper for presentation at Tcl @c:year@
+and congratulations on being accepted as a presenter.
+
+    If you are unable to attend the conference to present your paper
+please contact either me or Clif Flynt <clif@cflynt.com> ASAP and we
+will assist you in finding an alternative presenter. If you don't,
+your paper will not be published in the proceedings.
+
+[[ Basic Timeline
+
+@c:t:writedead@  Material due for initial printed proceedings
+		Generation, printing, shipping of initial
+		proceedings to match attendee's orders.
+
+@c:t:begin-t@  Tutorials start
+@c:t:begin-s@  Conference start
+
+Next day	Material due for re-issued printed proceedings
+		Material due for e-proceedings (flash drive).
+]]
+
+    The proceedings of the annual Tcl conferences are published via
+lulu.com.  Accordingly we place some restrictions on authors, please
+follow the instructions below so that your paper can be included in
+the proceedings.
+
+   Thank you in advance for your cooperation.
+
+Instructions to Authors:
+========================
+
+Please submit your paper for publication in one of the following
+formats:
+
+- PDF
+- Open Office Writer
+- MS Word 
+- LaTeX
+- Plain text
+- nroff
+- PostScript
+
+The PDF format is strongly prefered.
+
+Note: For PDF and PostScript submission please make sure that the
+files contain all fonts as embedded.
+
+Margins:
+   Please ensure there is at least 1" (2.54cm) margin at the top, left
+and right sides.  Please ensure a bottom margin of 1.5" (3.8cm).
+
+Pagination:
+  Don't paginate.  We will be required to have a consecutive running
+pagination throughout the final publication.  If you paginate we'll
+just have to spend time removing your page numbering and inserting our
+own.  The extra 0.5"(1.25cm) in the bottom margin is where us
+proceedings editors will be inserting our pagination.
+
+Table Of Contents:
+  Don't do this.  We will create the various table of contents in the
+final publication.  If you create your own we'll just have to spend
+time removing it before inserting our own.
+
+Images:
+  You are welcome to supply color images, however please note that
+they will appear in grey scale in the proceedings, so please preview
+your images in grey scale to ensure the reader can see what you want
+them to see.  In addition to embedding the image in the publication,
+please provide a full resolution image in case we need to make some
+adjustments to ensure they are printable.  Problems with embedded
+images were one of the issues we had in previous years.
+
+Fonts:
+   Please use 12pt font (and note the page count restrictions below)
+   and use common fonts such as Times, Helvetica or Arial.
+
+Suggestions:
+MS Word: 
+    Article Text:  Times New Roman or Arial
+    Tcl Code:      Courier
+Open Office Writer:
+    Article text:  Times New Roman or Arial.
+    Tcl Code:      Courier
+LaTeX
+    Computer Modern family
+
+Page count:
+   Be sensible. Use the number of pages you feel are needed to get
+your message across to the reader, without being excessive. 10-15
+pages should be enough for most. 20 should be ok as well, although
+approaching overly large. 300 pages is definitely excessive.
+
+Miscellaneous:
+  - Don't forget a title/author block at the top of your paper.
+
+  - If your work was grant funded...well you probably already know you
+    need to acknowledge the grant and how your granting agency wants
+    that to appear.
+
+  - Bibliography - if you quote or refer to prior work, please supply
+    a bibliography at the end of the document.
+
+
+The Process of Putting Together the Proceedings:
+================================================
+
+There will be two sets of proceedings.  An electronically readable
+set, and printed proceedings.  Both will be distributed at the
+conference (if you want printed proceedings be sure to order them when
+you register).
+
+Please get your papers to me as described above by October 20, 2014,
+or we will not be able to guarantee that they will appear in the
+initial printed proceedings.
+
+Following the conference an ISBN will be applied for and proceedings
+re-issued with that ISBN. Normally this process can be completed by
+January 1, enabling you to point your friends to the proceedings at
+Amazon.com and other booksellers.
+
+The electronics proceedings work a bit differently.  In addition to
+your paper you are encouraged to provide additional supporting
+'stuff'.  This could be code, or whatever else you want to provide.
+You can provide this information up through the end of the second day
+of the conference.
+
+----
+See you in @h:city@,
+@origins@
