@@ -1073,6 +1073,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	} [cm::call conference cmd_registration_remove]
 	alias drop
+
+	private nag {
+	    section {Registration Management}
+	    description { Send a mail to unregistered speakers }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    option raw {
+		Disable reformatting of the preview.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find nag-register]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_registration_nag]
     }
     alias registered = registration list
     alias register   = registration add
@@ -1125,6 +1142,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	} [cm::call conference cmd_booking_remove]
 	alias drop
+
+	private nag {
+	    section {Booking Management}
+	    description { Send a mail to speakers without hotel booking }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    option raw {
+		Disable reformatting of the preview.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find nag-booking]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_booking_nag]
     }
     alias bookings = booking list
     alias booked   = booking list
