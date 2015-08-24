@@ -648,6 +648,7 @@ proc ::cm::conference::cmd_committee_ping {config} {
     set conference [current]
     set details    [details $conference]
     set dry        [$config @dry]
+    set separate   [$config @separate]
     set template   [$config @template]
     set tlabel     [template get $template]
 
@@ -704,8 +705,8 @@ proc ::cm::conference::cmd_committee_ping {config} {
     puts "From: $origins"
     puts [util indent [join $addresses \n] "To: "]
 
-    # TODO: sponsor-ping - Allow conference placeholders ?
-    # TODO: sponsor-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
+    # TODO: committee-ping - Allow conference placeholders ?
+    # TODO: committee-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
 
     [table t Text {
 	lappend map @mg:sender@ [color red <<sender>>]
@@ -731,10 +732,24 @@ proc ::cm::conference::cmd_committee_ping {config} {
     set mconfig [mailer get-config]
     set template [string map [list @origins@ $origins] [insert $conference $template]]
 
-    mailer batch _ address name $destinations {
+    if {$separate} {
+	mailer batch _ address name $destinations {
+	    mailer send $mconfig \
+		[list $address] \
+		[mailgen call $address $name $template] \
+		0 ;# not verbose
+	}
+    } else {
+	# Single mail to the entire group. Default.
+
+	set addresses {}
+	mailer batch _ address name $destinations {
+	    lappend addresses $address
+	}
+
 	mailer send $mconfig \
-	    [list $address] \
-	    [mailgen call $address $name $template] \
+	    $addresses \
+	    [mailgen call {} $name $template] \
 	    0 ;# not verbose
     }
 
