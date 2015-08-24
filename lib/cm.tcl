@@ -1325,6 +1325,23 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# attachments: change type, mimetype, content
 	# talks:       change type, status
+
+	private accepted-ping {
+	    section {Submission Management}
+	    description { Send a mail to the proposers of accepted talks }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    option raw {
+		Disable reformatting of the preview.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { optional ; 
+		generate [cm::call template find mail-accepted]
+		validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_submission_ping_accepted]
     }
     alias submissions = submission list
     alias accepted    = submission accepted
