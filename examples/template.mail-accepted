@@ -1,12 +1,15 @@
+Tcl'@c:year@ - Paper proposal accepted, Author instructions
 Hi @mg:name@
 
    Thank you for submitting your paper for presentation at Tcl @c:year@
 and congratulations on being accepted as a presenter.
 
-    If you are unable to attend the conference to present your paper
-please contact either me or Clif Flynt <clif@cflynt.com> ASAP and we
-will assist you in finding an alternative presenter. If you don't,
-your paper will not be published in the proceedings.
+    Please tell us who will be holding the talk about your paper.
+
+    Especially if you are unable to attend the conference to present
+your paper please contact either me or Clif Flynt <clif@cflynt.com>
+ASAP and we will assist you in finding an alternative presenter. If
+you don't, your paper will not be published in the proceedings.
 
 [[ Basic Timeline
 
@@ -129,3 +132,4 @@ of the conference.
 ----
 See you in @h:city@,
 @origins@
+
