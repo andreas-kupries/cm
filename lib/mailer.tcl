@@ -272,6 +272,7 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
     if {[dict exists $mconfig -group] &&
 	[dict get    $mconfig -group]} {
 
+	dict unset mconfig -group
 	set thereceivers [join $receivers ,]
 
 	foreach dst $receivers {
