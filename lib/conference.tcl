@@ -75,7 +75,7 @@ namespace eval ::cm::conference {
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
-	get-talk-type get-talk-state known-talk-types known-talk-stati known-speaker \
+	get-talk-type get-talk-state known-talk-type known-talk-stati known-speaker \
 	known-attachment get-attachment known-submitter its-hotel \
 	known-talks-vt \
 	\
