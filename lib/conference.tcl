@@ -21,6 +21,7 @@ package require cmdr::color
 package require cmdr::table
 package require cmdr::validate::date
 package require cmdr::validate::weekday
+package require cmdr::validate::time::minute
 package require dbutil
 package require debug
 package require debug::caller
@@ -85,6 +86,7 @@ namespace eval ::cm::conference {
     namespace import ::cmdr::color
     namespace import ::cmdr::validate::date
     namespace import ::cmdr::validate::weekday
+    namespace import ::cmdr::validate::time::minute
     namespace import ::cm::db::booked
     namespace import ::cm::db::registered
     namespace import ::cm::db::pschedule
@@ -3686,12 +3688,13 @@ proc ::cm::conference::make_admin {conference} {
 	append text "* " [link Issues      {} issues] \n
     }
 
-    append text "* " [link Registered   {} registered] \n
-    append text "* " [link Booked       {} booked] \n
+    append text "* " [link Registered  {} registered] \n
+    append text "* " [link Booked      {} booked] \n
     append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
     append text "* " [link Campaign    {} campaign] \n
     append text "* " [link Events      {} events] \n
+    append text "* " [link Schedule    {} schedule] \n
     append text \n
 
     if {[llength $issues]} {
@@ -3708,6 +3711,7 @@ proc ::cm::conference::make_admin {conference} {
     make_admin_submissions $conference text submissions
     make_admin_campaign    $conference text campaign
     make_admin_timeline    $conference text events
+    make_admin_schedule    $conference text schedule
 
     # What else ...
 
@@ -3761,6 +3765,96 @@ proc ::cm::conference::make_admin_booked {conference textvar tag} {
 
     if {$first} {
 	append text "__No bookings__"
+    }
+
+    append text \n
+    return
+}
+
+proc ::cm::conference::make_admin_schedule {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+
+    # Schedule, internal display -- Just ordered items, with
+    # placeholders filled as much as possible.
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Schedule\n\n"
+
+    set details    [details $conference]
+    dict with details {}
+
+    if {$xpschedule eq {}} {
+	append text "__No schedule defined__" \n
+	return
+    }
+
+    set items [pschedule item-all $xpschedule]
+    # (id schedule day trackname start length parent label dmajor dminor)
+
+    # Quick bailout when there are no items.
+    if {![llength $items]} {
+	append text "__Schedule is empty__" \n
+	return
+    }
+
+    # Pull the logical data ...
+    package require cm::schedule
+    # Show physical schedule for the conference, with the logical
+    # data filled in.
+
+    foreach {label talk tutorial session speaker} [schedule of $conference] {
+	if {$talk ne {}} {
+	    set note $talk
+	} elseif {$tutorial ne {}} {
+	    set note $tutorial
+	} elseif {$session ne {}} {
+	    set note $session
+	} else {
+	    set note {}
+	}
+	dict set map $label [list $note $speaker]
+    }
+
+    #set psd       [pschedule details $xpschedule]
+    #dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
+
+    # Variant of ::cm::schedule::ItemList, generating markdown ...
+
+    set first 1
+    set lastday 0
+    foreach {id _ day track start length parent label dmajor dminor} $items {
+	if {$first} {
+	    append text |Day|Start|End|Length|Track|Note|Description|\n|-|-|-|-|-|-|-|\n
+	    set first 0
+	}
+
+	if {$day != $lastday} {
+	    append text ||||||||\n
+	    append text |__Day__|__Start__|__End__|__Length__|__Track__|__Note__|__Description__|\n
+	}
+
+	set parent [expr {$parent ne {}  ? "&#x21b3;&nbsp;" : ""}]
+	set end    [minute 2external [expr {$start + $length}]]
+	set start  [minute 2external $start]
+	set length [minute 2external $length]
+
+	if {$track  eq {}} { set track "&harr;"      }
+	if {$dmajor eq {}} {
+	    set dmajor "__Undefined ${label}__"
+	    if {[dict exists $map $label]} {
+		lassign [dict get $map $label] str speaker
+		if {$str ne {}} {
+		    set dmajor __${str}__
+		    set dminor __${speaker}__
+		}
+	    }
+	}
+
+	append text | $day | $start | $end | $length | $track | $dminor | $parent$dmajor |\n
+
+	set lastday $day
     }
 
     append text \n
