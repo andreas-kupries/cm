@@ -269,16 +269,29 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 
     set token [mime::initialize -string $corpus]
 
-    foreach dst $receivers {
-	puts -nonewline "    To: [color name $dst] ... "
+    if {[dict exists $mconfig -group] &&
+	[dict get    $mconfig -group]} {
+
+	set thereceivers [join $receivers ,]
+
+	foreach dst $receivers {
+	    set dst [color name $dst]
+	    lappend r $dst
+	}
+
+	puts -nonewline "    To: [join $r {, }] ..."
 	flush stdout
+
+	debug.cm/mailer {token   = $token}
+	debug.cm/mailer {dst     = $thereceivers}
+	debug.cm/mailer {mconfig = $mconfig}
 
 	try {
 	    # Can the 'From' be configured via -header here ?
 	    # I.e. mconfig ? Alternate: -originator
 
 	    set res [smtp::sendmessage $token \
-			 -header [list To $dst] \
+			 -header [list To $thereceivers] \
 			 {*}$mconfig]
 	    foreach item $res {
 		puts "    ERR $item"
@@ -286,6 +299,29 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 	} finally {
 	}
 	puts [color good OK]
+    } else {
+	foreach dst $receivers {
+	    puts -nonewline "    To: [color name $dst] ... "
+	    flush stdout
+
+	    debug.cm/mailer {token   = $token}
+	    debug.cm/mailer {dst     = $dst}
+	    debug.cm/mailer {mconfig = $mconfig}
+
+	    try {
+		# Can the 'From' be configured via -header here ?
+		# I.e. mconfig ? Alternate: -originator
+
+		set res [smtp::sendmessage $token \
+			     -header [list To $dst] \
+			     {*}$mconfig]
+		foreach item $res {
+		    puts "    ERR $item"
+		}
+	    } finally {
+	    }
+	    puts [color good OK]
+	}
     }
 
     mime::finalize $token
