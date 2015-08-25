@@ -731,7 +731,6 @@ proc ::cm::conference::cmd_committee_ping {config} {
 
     set mconfig [mailer get-config]
     set template [string map [list @origins@ $origins] [insert $conference $template]]
-
     if {$separate} {
 	mailer batch _ address name $destinations {
 	    mailer send $mconfig \
@@ -746,6 +745,8 @@ proc ::cm::conference::cmd_committee_ping {config} {
 	mailer batch _ address name $destinations {
 	    lappend addresses $address
 	}
+
+	lappend mconfig -group 1
 
 	mailer send $mconfig \
 	    $addresses \
