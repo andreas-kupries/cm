@@ -715,7 +715,7 @@ proc ::cm::schedule::ItemList {pschedule {color {}} {map {}}} {
     set ai    [pschedule item-active-get $pschedule]
     set lastday 0
 
-    set items [string trimright [[table tx {{} {} Day Start End Length {} Track {} Desc Note} {
+    set items [string trimright [[table tx {{} {} Day Start End Length {} Track {} Note Description} {
 	#                             active^  ^parent
 	$tx noheader
 	$tx plain
@@ -755,7 +755,7 @@ proc ::cm::schedule::ItemList {pschedule {color {}} {map {}}} {
 		set dminor [color $color $dminor]
 	    }
 
-	    $tx add $mark $parent $day $start $end $length | $track | $dmajor $dminor
+	    $tx add $mark $parent $day $start $end $length | $track | $dminor $dmajor
 	    set lastday $day
 	}
     }] show return] \n]
