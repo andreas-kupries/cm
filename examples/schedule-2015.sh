@@ -100,6 +100,14 @@ cms item placeholder @P2.1 -L 30 --child
 cms item placeholder @P2.2 -L 30 --child
 cms item placeholder @P2.3 -L 30 --child
 
+cms item event Break
+cms item event -L 15 Break --child
+
+cms item placeholder @S3
+cms item placeholder @P3.1 -L 30 --child
+cms item placeholder @P3.2 -L 30 --child
+cms item placeholder @P3.3 -L 30 --child
+
 cms item event 'Dinner Break' --across
 cms item event 'See registration or the hospitality suite for suggestions' 'On your own' \
     -L 02:30 --child
@@ -119,18 +127,26 @@ cms item placeholder @K2                        -L 01:30 --child
 cms item event Break
 cms item event -L 15 Break --child
 
-cms item placeholder @S3
-cms item placeholder @P3.1 -L 30 --child
-cms item placeholder @P3.2 -L 30 --child
-cms item placeholder @P3.3 -L 30 --child
-
-cms item event 'Lunch Break' --across
-cms item event 'Lots within walking distance' 'On your own' -L 60 --child
-
 cms item placeholder @S4
 cms item placeholder @P4.1 -L 30 --child
 cms item placeholder @P4.2 -L 30 --child
 cms item placeholder @P4.3 -L 30 --child
+
+cms item event 'Lunch Break' --across
+cms item event 'Lots within walking distance' 'On your own' -L 60 --child
+
+cms item placeholder @S5
+cms item placeholder @P5.1 -L 30 --child
+cms item placeholder @P5.2 -L 30 --child
+cms item placeholder @P5.3 -L 30 --child
+
+cms item event Break
+cms item event -L 15 Break --child
+
+cms item placeholder @S6
+cms item placeholder @P6.1 -L 30 --child
+cms item placeholder @P6.2 -L 30 --child
+cms item placeholder @P6.3 -L 30 --child
 
 cms item event WIPs
 cms item event 'Short discussions of an interesting project. Sign up at registration' 'Work in Progress' \
@@ -149,6 +165,10 @@ cms track select 'Tech Session'
 
 cms item event 'Welcome'
 cms item event 'Welcome and Announcements' Host -L 0 --child
+
+cms item placeholder @S7
+cms item placeholder @P7.1 -L 30 --child
+cms item placeholder @P7.1 -L 30 --child
 
 cms item event 'Tcl Community Association'
 cms item event 'What is going on with Tcl Community Association' 'Townhall' \

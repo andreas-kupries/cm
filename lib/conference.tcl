@@ -3893,12 +3893,14 @@ proc ::cm::conference::make_admin_registered {conference textvar tag} {
     append text "# Registered\n\n"
 
     set first 1
+    set n 1
     foreach {dname walkin ta tb tc td} [registered listing $conference] {
 	if {$first} {
-	    append text |Who|Walkin|1-Morning|1-Afternoon|2-Morning|2-Afternoon|\n|-|-|-|-|-|-|\n
+	    append text |\#|Who|Walkin|1-Morning|1-Afternoon|2-Morning|2-Afternoon|\n|-|-|-|-|-|-|-|\n
 	    set first 0
 	}
-	append text | $dname | $walkin | $ta | $tb | $tc | $td |\n
+	append text | $n | $dname | $walkin | $ta | $tb | $tc | $td |\n
+	incr n
     }
 
     if {$first} {
@@ -3919,12 +3921,14 @@ proc ::cm::conference::make_admin_booked {conference textvar tag} {
     append text "# Booked\n\n"
 
     set first 1
+    set n 1
     foreach {dname _ locname _ _ cityname state nation} [booked listing $conference] {
 	if {$first} {
-	    append text |Who|Hotel|City|\n|-|-|-|\n
+	    append text |\#|Who|Hotel|City|\n|-|-|-|-|\n
 	    set first 0
 	}
-	append text | $dname | $locname | [city label $cityname $state $nation] |\n
+	append text | $n | $dname | $locname | [city label $cityname $state $nation] |\n
+	incr n
     }
 
     if {$first} {
@@ -4150,6 +4154,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
     append text "# Accepted Talks\n\n"
 
     set first 1
+    set n 1
     db do eval {
 	SELECT S.id         AS id,
 	       S.submitdate AS submitdate,
@@ -4165,7 +4170,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	ORDER BY submitdate, id
     } {
 	if {$first} {
-	    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
+	    append text |\#|When||Invited|By|Title|\n|-|-|-|-|-|-|\n
 	    set first 0
 	}
 
@@ -4191,7 +4196,8 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	    set issue "__Missing abstract/summary__"
 	}
 
-	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
+	append text | $n | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
+	incr n
     }
 
     if {$first} {
@@ -4214,6 +4220,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     append text "# Submissions\n\n"
 
     set first 1
+    set n 1
     db do eval {
 	SELECT S.id         AS id,
 	       S.submitdate AS submitdate,
@@ -4229,7 +4236,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	ORDER BY submitdate, id
     } {
 	if {$first} {
-	    append text |When||Invited|By|Title|\n|-|-|-|-|-|\n
+	    append text |\#|When||Invited|By|Title|\n|-|-|-|-|-|-|\n
 	    set first 0
 	}
 
@@ -4255,7 +4262,8 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	    set issue "__Missing abstract/summary__"
 	}
 
-	append text | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
+	append text | $n | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
+	incr n
     }
 
     if {$first} {
