@@ -4014,15 +4014,16 @@ proc ::cm::conference::make_admin_schedule {conference textvar tag} {
 	    if {[dict exists $map $label]} {
 		lassign [dict get $map $label] str speaker
 		if {$str ne {}} {
-		    set dmajor __${str}__
+		    set dmajor __[string trim $str]__
 		    set dminor __${speaker}__
 		}
 	    }
 	}
 
-	append text | $day | $start | $end | $length | $track | $dminor | $parent$dmajor |\n
-
 	set lastday $day
+	if {$dmajor eq "____"} { continue } ;# skip empty slots
+
+	append text | $day | $start | $end | $length | $track | $dminor | $parent$dmajor |\n
     }
 
     append text \n

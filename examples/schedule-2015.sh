@@ -156,7 +156,7 @@ cms item event 'Banquet' -B 18:00 --across
 cms item event 'Conference Banquet' 'Tcl Community Association' -L 01:30 --child
 
 cms track select Community
-cms item event   'Social and BOFs' -B 19:00
+cms item event   'Social and BOFs' -B 19:30
 cms item event   'Hospitality suite' 'Tcl Community Association'  -L 05:00 --child
 
 # #############################################################################
