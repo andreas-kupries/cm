@@ -257,6 +257,8 @@ proc ::cm::mailer::batch {r a n destinations script} {
 
 proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
     debug.cm/mailer {}
+    set ok yes
+
     #if {[suspended]} return
     #if {![llength $receivers]} return
 
@@ -296,6 +298,7 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 			 {*}$mconfig]
 	    foreach item $res {
 		puts "    ERR $item"
+		set ok no
 	    }
 	} finally {
 	}
@@ -318,6 +321,7 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 			     {*}$mconfig]
 		foreach item $res {
 		    puts "    ERR $item"
+		    set ok no
 		}
 	    } finally {
 	    }
@@ -330,7 +334,7 @@ proc ::cm::mailer::send {mconfig receivers corpus {verbose 0}} {
 
     variable mailcounter
     incr     mailcounter
-    return
+    return $ok
 }
 
 # # ## ### ##### ######## ############# ######################
