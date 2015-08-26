@@ -1379,6 +1379,21 @@ cmdr create cm::cm [file tail $::argv0] {
 		validate [cm::vt template] }
 	    # TODO: Allow for external file and/or stdin as mail input.
 	} [cm::call conference cmd_submission_ping_accepted]
+
+	private speaker-ping {
+	    section {Submission Management}
+	    description { Send a mail to all speakers (presentations, not tutorials) }
+	    option dry {
+		When present do not actually mail anything.
+	    } { presence }
+	    option raw {
+		Disable reformatting of the preview.
+	    } { presence }
+	    input template {
+		Name of the template holding mail subject and body.
+	    } { validate [cm::vt template] }
+	    # TODO: Allow for external file and/or stdin as mail input.
+	} [cm::call conference cmd_submission_ping_speakers]
     }
     alias submissions = submission list
     alias accepted    = submission accepted

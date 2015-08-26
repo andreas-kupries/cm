@@ -64,6 +64,7 @@ namespace eval ::cm::conference {
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_submission_ping_accepted \
+	cmd_submission_ping_speakers \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink cmd_debug_speakers \
 	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove cmd_booking_nag \
@@ -1307,6 +1308,116 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	util user-error \
 	    "No chairs." \
 	    ACCEPTED PING NO-CHAIRS
+    }
+
+    puts "From: $origins"
+    puts [util indent [join $addresses \n] "To: "]
+
+    # TODO: accepted-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
+
+    [table t Text {
+	lappend map @mg:sender@ [color red <<sender>>]
+	lappend map @mg:name@   [color red <<name>>]
+	lappend map @origins@   [color red $origins]
+	$t noheader
+
+	set str [insert $conference [string map $map $template]]
+	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
+
+	$t add $str
+    }] show
+
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
+	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
+	return
+    }
+
+    set mconfig [mailer get-config]
+    set template [string map [list @origins@ $origins] [insert $conference $template]]
+
+    mailer batch _ address name $destinations {
+	mailer send $mconfig \
+	    [list $address] \
+	    [mailgen call $address $name $template] \
+	    0 ;# not verbose
+    }
+
+    puts [color good OK]
+}
+
+proc ::cm::conference::cmd_submission_ping_speakers {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set dry        [$config @dry]
+    set raw        [$config @raw]
+    set template   [$config @template]
+    set tlabel     [template get $template]
+
+    puts "Mailing the speakers of accepted talks for \"[color name [get $conference]]\":"
+    puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
+
+    set template     [template details $template]
+    set destinations [db do eval {
+	-- From the inside out
+	-- -- Locate the submissions for the conference which have
+	--      an associated talk, IOW are accepted.
+	-- -- Find their speakers
+	-- -- Find their email addresses.
+	SELECT id, email
+	FROM   email
+	WHERE  contact IN (SELECT contact
+			   FROM   talker
+			   WHERE  talk IN (SELECT id
+					   FROM talk
+					   WHERE submission IN (SELECT id
+								FROM submission
+								WHERE conference = :conference)))
+    }]
+
+    debug.cm/conference {destinations = ($destinations)}
+
+    set addresses    [lsort -dict [dict values $destinations]]
+    set destinations [dict keys $destinations]
+
+    debug.cm/conference {addresses    = ($addresses)}
+    debug.cm/conference {destinations = ($destinations)}
+
+    if {![llength $addresses]} {
+	util user-error \
+	    "No destinations." \
+	    SPEAKER PING EMPTY
+    }
+
+    set origins [db do eval {
+	SELECT dname
+	FROM   contact
+	WHERE  id IN (SELECT contact
+		      FROM   conference_staff
+		      WHERE  conference = :conference
+		      AND    role       = 3) -- program chair
+    }]
+
+    set origins [lsort -dict $origins]
+    if {[llength $origins] > 1} {
+	set origins [string map {and, and} [join [linsert end-1 and] {, }]]
+    } else {
+	set origins [join $origins {, }]
+    }
+
+    if {![llength $origins]} {
+	util user-error \
+	    "No chairs." \
+	    SPEAKER PING NO-CHAIRS
     }
 
     puts "From: $origins"
