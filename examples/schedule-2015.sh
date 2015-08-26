@@ -168,7 +168,7 @@ cms item event 'Welcome and Announcements' Host -L 0 --child
 
 cms item placeholder @S7
 cms item placeholder @P7.1 -L 30 --child
-cms item placeholder @P7.1 -L 30 --child
+cms item placeholder @P7.2 -L 30 --child
 
 cms item event 'Tcl Community Association'
 cms item event 'What is going on with Tcl Community Association' 'Townhall' \
