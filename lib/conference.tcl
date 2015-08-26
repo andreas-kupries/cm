@@ -1257,36 +1257,74 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
     if {$dry} { puts [color note "Dry run"] }
 
     set template     [template details $template]
+
+    # Special case stuff here: Record the talk ids, to mark them as
+    # mailed later, and excluded talks which got the mail already.
+    #
+    # TODO: Add a command to reset this flag for all or specific talks.
+
     set destinations [db do eval {
-	-- From the inside out
-	-- -- Locate the submissions for the conference which have
-	--      an associated talk, IOW are accepted.
-	-- -- Find their submitters.
-	-- -- Find their email addresses.
-	SELECT id, email
-	FROM   email
-	WHERE  contact IN (SELECT contact
-			   FROM   submitter
-			   WHERE  submission IN (SELECT S.id AS id
-						 FROM   submission S
-						 ,      talk       T
-						 WHERE  S.conference = :conference
-						 AND    T.submission = S.id))
+	SELECT E.id    AS id
+	,      E.email AS email
+	,      T.id    AS talk
+	FROM   submission S
+	,      talk       T
+	,      submitter  SU
+	,      email      E
+	WHERE  S.conference  = :conference  -- submissions for conference
+	AND    T.submission  = S.id         -- with talk (<=> accepted)
+	AND    NOT T.done_mail              -- not mailed yet
+	AND    SU.submission = S.id         -- submitters
+	AND    SU.contact    = E.contact    -- and their emails
     }]
 
     debug.cm/conference {destinations = ($destinations)}
 
-    set addresses    [lsort -dict [dict values $destinations]]
-    set destinations [dict keys $destinations]
+    if {![llength $destinations]} {
+	# Check if we generally have destinations.
+	# Choose the error based on that.
+
+	set destinations [db do eval {
+	    SELECT E.id    AS id
+	    ,      E.email AS email
+	    ,      T.id    AS talk
+	    FROM   submission S
+	    ,      talk       T
+	    ,      submitter  SU
+	    ,      email      E
+	    WHERE  S.conference  = :conference  -- submissions for conference
+	    AND    T.submission  = S.id         -- with talk (<=> accepted)
+	    AND    SU.submission = S.id         -- submitters
+	    AND    SU.contact    = E.contact    -- and their emails
+	}]
+
+	if {[llength $destinations]} {
+	    util user-error \
+		"Already mailed all destinations." \
+		ACCEPTED PING DONE
+	} else {
+	    util user-error \
+		"No destinations." \
+		ACCEPTED PING EMPTY
+	}
+    }
+
+    # restructure for mailer below
+    # => dest addresses (display)
+    # => dest identifiers (mailer)
+    # => (dest -> talk) map
+    set dx        {}
+    set addresses {}
+    set map       {}
+    foreach {dst dstaddr talk} $destinations {
+	lappend addresses $dstaddr
+	lappend dx        $dst
+	dict set map $dst $talk
+    }
+    set destinations $dx
 
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
-
-    if {![llength $addresses]} {
-	util user-error \
-	    "No destinations." \
-	    ACCEPTED PING EMPTY
-    }
 
     set origins [db do eval {
 	SELECT dname
@@ -1341,11 +1379,20 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
     set mconfig [mailer get-config]
     set template [string map [list @origins@ $origins] [insert $conference $template]]
 
-    mailer batch _ address name $destinations {
-	mailer send $mconfig \
+    mailer batch receiver address name $destinations {
+	if {[mailer send $mconfig \
 	    [list $address] \
 	    [mailgen call $address $name $template] \
-	    0 ;# not verbose
+		 0]} {
+
+	    puts "Mark mailed"
+	    set talk [dict get $map $receiver]
+	    db do eval {
+		UPDATE talk
+		SET    done_mail = 1
+		WHERE  id = :talk
+	    }
+	}
     }
 
     puts [color good OK]
@@ -1489,7 +1536,12 @@ proc ::cm::conference::cmd_submission_accept {config} {
 	} else {
 	    db do eval {
 		INSERT INTO talk
-		VALUES (NULL, :submission, :type, 1, 0)
+		VALUES ( NULL         -- id
+		       , :submission  -- ^submission
+		       , :type        -- ^type
+		       , 1            -- ^state "pending"
+		       , 0            -- isremote
+		       , 0)           -- done_mail
 	    }
 
 	    puts [color good OK]
@@ -6004,6 +6056,7 @@ proc ::cm::conference::Setup {} {
 	    type	INTEGER	NOT NULL REFERENCES talk_type,
 	    state	INTEGER	NOT NULL REFERENCES talk_state,
 	    isremote	INTEGER	NOT NULL,			-- hangout, skype, other ? => TEXT?
+	    done_mail	INTEGER	NOT NULL,	-- acceptance mail has gone out for this one already
 
 	    UNIQUE (submission) -- Not allowed to have the same submission in multiple conferences.
 
@@ -6014,6 +6067,7 @@ proc ::cm::conference::Setup {} {
 	    {type	INTEGER 1 {} 0}
 	    {state	INTEGER 1 {} 0}
 	    {isremote	INTEGER 1 {} 0}
+	    {done_mail	INTEGER 1 {} 0}
 	} {}
     }]} {
 	db setup-error talk $error
