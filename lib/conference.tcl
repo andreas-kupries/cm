@@ -65,7 +65,7 @@ namespace eval ::cm::conference {
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_submission_ping_accepted \
-	cmd_submission_ping_speakers \
+	cmd_submission_ping_speakers cmd_submission_done_accepted cmd_submission_clear_accepted \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink cmd_debug_speakers \
 	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove cmd_booking_nag \
@@ -1014,6 +1014,13 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    # When accepted, check for speakers and attachments.
 	    # These are issues if found missing.
 	    if {$talk ne {}} {
+		set mailed [expr {[db do onecolumn {
+		    SELECT done_mail
+		    FROM   talk
+		    WHERE  id = :talk
+		}] ? [color good yes]
+		   : [color bad no]}]
+
 		set accepted 1
 		set alabel [color good yes]
 		if {![db do eval {
@@ -1031,6 +1038,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 		    +issue "No materials"
 		}
 	    } else {
+		set mailed n/a
 		set accepted 0
 		set alabel [color bad no]
 	    }
@@ -1043,7 +1051,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    $t add Id        [get-submission-handle $id]
 	    $t add Submitted [hdate $submitdate]
 	    $t add Title     $title
-	    $t add Accepted  $alabel
+	    $t add Accepted  "$alabel (Mailed: $mailed)"
 
 	    if {$invited} {
 		$t add [color note Invited] yes
@@ -1099,7 +1107,7 @@ proc ::cm::conference::cmd_submission_list {config} {
     set w [util tspace $w 60]
 
     puts "Submissions for \"[color name [get $conference]]\""
-    [table t {Id Date Authors {} Title Accepted} {
+    [table t {Id Date Authors {} Title Accepted Mailed} {
 	db do eval {
 	    SELECT id, title, invited, submitdate, abstract, summary
 	    FROM   submission
@@ -1136,6 +1144,13 @@ proc ::cm::conference::cmd_submission_list {config} {
 	    # These are issues if found missing.
 	    if {$talk ne {}} {
 		set accepted [color good yes]
+		set mailed [expr {[db do onecolumn {
+		    SELECT done_mail
+		    FROM   talk
+		    WHERE  id = :talk
+		}] ? [color good yes]
+		   : [color bad no]}]
+
 		if {![db do eval {
 		    SELECT count(id)
 		    FROM   talker
@@ -1151,6 +1166,7 @@ proc ::cm::conference::cmd_submission_list {config} {
 		    +issue "No materials"
 		}
 	    } else {
+		set mailed n/a
 		set accepted [color bad no]
 	    }
 
@@ -1159,7 +1175,7 @@ proc ::cm::conference::cmd_submission_list {config} {
 	    }
 
 	    set title [util adjust $w $title]
-	    $t add [get-submission-handle $id] $submitdate $authors $invited $title $accepted
+	    $t add [get-submission-handle $id] $submitdate $authors $invited $title $accepted $mailed
 	}
     }] show
     return
@@ -1239,6 +1255,68 @@ proc ::cm::conference::cmd_submission_list_accepted {config} {
 		$authors $speakers $invited $title $attachments
 	}
     }] show
+    return
+}
+
+proc ::cm::conference::cmd_submission_done_accepted {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to change submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Setting accept-mail-done flag for \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    db do eval {
+	UPDATE talk
+	SET    done_mail = 1
+	WHERE  id = :talk
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_submission_clear_accepted {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set submission [$config @submission]
+
+    set talk [db do onecolumn {
+	SELECT id
+	FROM   talk
+	WHERE  submission = :submission
+    }]
+    if {$talk eq {}} {
+	util user-error \
+	    "Unable to change submission which is not an accepted talk" \
+	    NOT-A-TALK
+    }
+
+    puts "Resetting accept-mail-done flag for \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
+
+    db do eval {
+	UPDATE talk
+	SET    done_mail = 0
+	WHERE  id = :talk
+    }
+
+    puts [color good OK]
     return
 }
 
@@ -6697,10 +6775,13 @@ proc ::cm::conference::Dump {} {
 	# talks
 	set first 1
 	db do eval {
-	    SELECT T.id AS tid, S.title AS title, X.text AS type
-	    FROM   talk       T,
-	           submission S,
-	           talk_type  X
+	    SELECT T.id        AS tid
+	    ,      S.title     AS title
+	    ,      X.text      AS type
+	    ,      T.done_mail AS done
+	    FROM   talk       T
+	    ,      submission S
+	    ,      talk_type  X
 	    WHERE  T.submission = S.id
 	    AND    T.type = X.id
 	    ORDER BY S.title
@@ -6709,6 +6790,14 @@ proc ::cm::conference::Dump {} {
 
 	    cm dump save \
 		submission accept -type $type $title
+
+	    if {$done} {
+		cm dump save \
+		    submission accepted-ping-done  $title
+	    } else {
+		cm dump save \
+		    submission accepted-ping-clear $title
+	    }
 
 	    db do eval {
 		SELECT dname
