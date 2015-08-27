@@ -1380,6 +1380,22 @@ cmdr create cm::cm [file tail $::argv0] {
 	    # TODO: Allow for external file and/or stdin as mail input.
 	} [cm::call conference cmd_submission_ping_accepted]
 
+	private accepted-ping-clear {
+	    section {Submission Management}
+	    description { Clear mail-done flag for an accepted talk }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	} [cm::call conference cmd_submission_clear_accepted]
+
+	private accepted-ping-done {
+	    section {Submission Management}
+	    description { Set mail-done flag for an accepted talk }
+	    input submission {
+		The submission to modify
+	    } { validate [cm::vt submission] }
+	} [cm::call conference cmd_submission_done_accepted]
+
 	private speaker-ping {
 	    section {Submission Management}
 	    description { Send a mail to all speakers (presentations, not tutorials) }
