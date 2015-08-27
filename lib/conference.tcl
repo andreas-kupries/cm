@@ -26,6 +26,7 @@ package require dbutil
 package require debug
 package require debug::caller
 package require struct::set
+package require struct::matrix
 package require try
 
 package provide cm::conference 0 ;# circular via contact, campaign
@@ -3318,6 +3319,8 @@ proc ::cm::conference::make_schedule {conference} {
 
     set details    [details $conference]
     dict with details {}
+    # xpschedule
+    # xpstart - Start date
 
     # Generate nice schedule table (tracked)
     # Generated as embedded native HTML.
@@ -3329,13 +3332,10 @@ proc ::cm::conference::make_schedule {conference} {
     # No bailout for empty schedule!
     # We expect to be only called if there are items.
 
-    set map [ScheduleMap $conference]
-    # label -> (note speaker/string type) ... TODO: Fix speaker, must have enough to allow creation of link to bio.
+    set map [ScheduleMap $conference 1]
+    # label -> (note speaker type)
 
-    puts RAW
-    puts I|[join $items |\n|]|
-    puts M|$map|
-    puts -
+    debug.cm/conference {placeholders = [debug pdict $map]}
 
     # Resolve placeholders in all items.
     # Drop (leaf) items which are empty after trimming.
@@ -3346,44 +3346,54 @@ proc ::cm::conference::make_schedule {conference} {
 		lassign [dict get $map $label] str speaker
 		if {$str ne {}} {
 		    set dmajor [string trim $str]
-		    set dminor ${speaker} ;# TODO: Fixed speakers => make links
+		    set dminor ${speaker}
 		}
 	    }
 	}
 	if {($dmajor eq {}) &&
-	    ($parent eq {})} continue
+	    ($parent ne {})} {
+	    continue
+	}
 
-	lappend tmp $id $schedule $day $trackname $start $length $parent $dmajor $dminor
+	lappend tmp [list $id $day $trackname $start $length $parent $dmajor $dminor]
+	#                 0   1    2          3      4       5       6       7
     }
     set items $tmp
     unset map
 
-    # Convert set of items into a map, aggregate leafs into parents, plus set of groups
-    foreach {id schedule day trackname start length parent dmajor dminor} $items {
-	set entry [list $id $schedule $day $trackname $start $length $dmajor $dminor]
+    debug.cm/conference {G=[join $items \nG=]}
+
+    # Convert set of items into a map, aggregate leafs into parents,
+    # plus set of groups
+    foreach entry $items {
+	set parent [lindex $entry 5]
+	set entry  [lreplace $entry 5 5] ;# remove parent reference.
+
 	if {$parent eq {}} {
+	    # Toplevel, group, retain
 	    lappend tmp $entry
 	} else {
+	    # Leaf. Record under the parent.
 	    dict lappend map $parent $entry
 	}
     }
 
-    puts Grouped
-    puts G|[join $tmp |\n|]|
-    puts L|$map|
-    puts -
+    # tmp = items ... id day track start length dmajor dminor
+    #                 0  1   2     3     4      5      6
+
+    debug.cm/conference {X=[join $tmp \nX=]}
+    debug.cm/conference {children = [debug pdict $map]}
 
     # Drop empty groups, i.e. without leaf entries inside.
     set items {}
     foreach entry $tmp {
-	lassign $entry id
-	if {![dict exists $map $id] || ![llength [dict get $map $id]]} continue
+	set id [lindex $entry 0]
+	if {![dict exists $map $id]}        continue ; # group, no children, ignore
+	if {![llength [dict get $map $id]]} continue ; # ditto
 	lappend items $entry
     }
 
-    puts Reduced
-    puts E|[join $items |\n|]|
-    puts -
+    debug.cm/conference {R=[join $items \nR=]}
 
     # Determine range of days and tracks from the set of groups ...
     # On per-day basis determine all relevant times (interval
@@ -3391,42 +3401,280 @@ proc ::cm::conference::make_schedule {conference} {
     # properly contained in their groups.
 
     foreach entry $items {
-	lassign $entry _ _ day trackname start length _ _
+	lassign $entry _ day trackname start length _ _
 	lappend days   $day
-	lappend tracks $trackname
 
-puts |$entry|$start|$length
+	# Record only items not across all tracks.
+	if {$trackname ne {}} {
+	    lappend tracks $trackname
+	}
+
+	debug.cm/conference {record  $day '$trackname' $start $length}
 
 	set end    [minute 2external [expr {$start + $length}]]
 	set start  [minute 2external $start]
 
+	if {$end eq "00:00"} { set end 24:00 }
+
+	debug.cm/conference {record' $day '$trackname' $start $length $end}
+
 	dict lappend times $day $start
 	dict lappend times $day $end
+
+	set entry [lreplace $entry 4 4 $end]
+	set entry [lreplace $entry 3 3 $start]
+
+	dict lappend dmap $day $entry
     }
+
+    # dmap = items ... id day track start end dmajor dminor
+    #                  0  1   2     3     4   5      6
 
     # Sort and reduce the collections.
     set days   [lsort -dict -uniq $days]
-    set tracks [lsort -dict -uniq $days]
+    set tracks [lsort -dict -uniq $tracks]
     dict for {day tlist} $times {
 	dict set times $day [lsort -dict -uniq $tlist]
     }
 
     # Debug output of intermediate ...
-    append text $days   \n
-    append text $tracks \n
-    append text $items  \n
-    append text $map    \n
-    append text $times  \n
+    #append text $days   \n\n
+    #append text $tracks \n\n
+    #append text $items  \n\n
+    #append text $map    \n\n
+    #append text $times  \n\n
+    #append text $dmap   \n\n
 
-    #
-    append text <table> \n
-    append text </table> \n
+    # Table width, plus column map, from track names to column
+    set ntracks [llength $tracks]
+    set col 0 ; foreach t $tracks { dict set cmap $t $col ; incr col }
+
+    append text "# Days" \n\n
+    foreach day $days {
+	append text "* " [link [hdate [clock add $xstart $day days]] {} D$day] \n
+    }
+    append text \n
+
+    append text "# Schedule" \n\n
+    foreach day $days {
+	if {$day} { append text ---\n\n }
+
+	append text [anchor D$day] \n
+	append text "<table class='table table-bordered'>\n"
+	#puts __/$day/
+
+	set dtracks    $tracks
+	set dayentries [dict get $dmap  $day]
+	set daytimes   [dict get $times $day]
+	set ntimes     [llength $daytimes]
+
+        # dayentries = items ... id day track start end dmajor dminor
+
+	# Row map, from times to rows.
+	set row 0 ; foreach t $daytimes { dict set rmap $t $row ; incr row }
+
+	#puts ==R|$rmap|
+	#puts ==C|$cmap|
+
+	# dayentries = entries of the day
+	# daytimes   = relevant times in the day, rows of the matrix
+	# rmap       = map (time  -> row)
+	# cmap       = map (track -> column)
+
+	struct::matrix M
+	# cell data -> col-span/row-span/day-entry-index
+	#            | -1         <=> nothing to do
+	#            | empty cell <=> make empty cell
+	M add columns $ntracks
+	M add rows    $ntimes
+
+	# Multi-phase setup
+	# I.   enter tracked items.
+	# II.  remove empty columns
+	# III. enter items across tracks.
+	# IV.  remove empty rows
+
+	# Ad I.
+	set idx 0
+        foreach entry $dayentries {
+            lassign $entry _ _ trackname start end _ _
+	    # Ignore items across tracks here.
+            if {$trackname eq {}} {incr idx ; continue }
+
+	    #puts __|$entry|==T|$trackname|==S|$start|==E|$end|
+
+	    set col      [dict get $cmap $trackname]
+            set rowstart [dict get $rmap $start]
+            set rowend   [dict get $rmap $end]
+            set rspan    [expr {$rowend - $rowstart}]      
+
+            # Mark the shadowed areas for this item.
+            for {set r $rowstart} {$r < $rowend} {incr r} {
+		M set cell $col $r [list -1 $rowstart]
+	    }
+
+            M set cell $col $rowstart [list 1 $rspan $idx]
+            incr idx
+        }
+
+	# Ad II.
+	for {set col [expr {[M columns]-1}]} {$col >= 0} {incr col -1} {
+	    if {![ColEmpty M $col]} continue
+	    #puts DEL-c/$col
+	    M delete column $col
+	    set dtracks [lreplace $dtracks $col $col]
+	}
+
+	# Ad III.
+	set idx 0
+	foreach entry $dayentries {
+	    lassign $entry _ _ trackname start end _ _
+	    # Ignore items linked specific tracks.
+            if {$trackname ne {}} { incr idx ; continue }
+
+	    #puts __|$entry|==T|$trackname|==S|$start|==E|$end|
+
+	    set rowstart [dict get $rmap $start]
+	    set rowend   [dict get $rmap $end]
+	    set rspan    [expr {$rowend - $rowstart}]	   
+	    set cspan    [M columns]
+
+	    # Mark row/col shadowed area for this cell.
+	    for {set r $rowstart} {$r < $rowend} {incr r} {
+		M set cell 0 $r [list -1 $rowstart]
+	    }
+	    for {set c 0} {$c < $cspan} {incr c} { M set cell $c $rowstart -1 }
+
+	    M set cell 0 $rowstart [list $cspan $rspan $idx]
+	    incr idx
+	}
+
+	# Ad IV.
+	for {set row [expr {[M rows]-1}]} {$row >= 0} {incr row -1} {
+	    if {![RowEmpty M $row]} continue
+	    # Have to adjust row-span info (step I) which reaches the
+	    # deleted row
+	    RowAdjust M $row
+	    M delete row $row
+	    #puts DEL-r/$row
+	}
+
+	# Day header.
+	append text \t <tr> "<th colspan='" [M columns] '> \
+	    [hdate [clock add $xstart $day days]] \
+	    </th></tr>\n
+
+	# Track header ...
+	# Based on the dtracks! (step II removed unused tracks)
+	append text \t<tr>\n
+	#append text \t\t<td></td>\n
+	foreach track $dtracks {
+	    append text \t\t<td> $track </td>\n
+	}
+	append text \t</tr>\n
+
+	# Iterate the matrix of items, generate their rows and cells.
+
+	for {set row 0} {$row < [M rows]} {incr row} {
+	    append text \t<tr>\n
+
+	    for {set col 0} {$col < [M columns]} {incr col} {
+		set data [M get cell $col $row]
+
+		# empty cell is empty
+		if {$data eq {}} {
+		    append text \t\t<td>&nbsp\;</td>\n
+		    continue
+		}
+
+		lassign $data cspan rspan idx
+
+		# nothing to do for shadowed cells.
+		if {$cspan == -1} continue
+
+		# pull data, need time and major text
+		set entry [lindex $dayentries $idx]
+		# dayentries = items ... id day track start end dmajor dminor
+		lassign $entry id _ _ start end dmajor dminor
+
+		if {$end eq "24:00"} { set end Midnight }
+
+		append text \t\t<td
+		if {$cspan > 1} {
+		    append text " colspan='" $cspan '
+		}
+		if {$rspan > 1} {
+		    append text " rowspan='" $rspan '
+		}
+		append text ><b> $start " &mdash; " $end "<br/>" $dmajor </b>
+
+		# cell children, i.e. leafs -- We have some, for group
+		# without were eliminated already.
+		append text \n\t\t<ul>\n
+		#puts /$id
+		set children [dict get $map $id]
+		foreach entry $children {
+		    #puts |$entry|
+		    lassign $entry id _ _ _ _ dmajor dminor
+		    append text \t\t\t<li> $dmajor
+		    if {$dminor ne {}} {
+			append text <br/><i>$dminor</i>
+		    }
+		    append text </li>\n
+		}
+		append text \t\t</ul>
+		append text </td>\n
+	    }
+
+	    append text \t</tr>\n
+	}
+
+        # Cleanup for next day
+        M destroy
+        append text </table> \n\n
+    }
 
     # TODO: Generate vCalendar
     return $text
 }
 
-proc ::cm::conference::ScheduleMap {conference} {
+proc ::cm::conference::ColEmpty {m col} {
+    for {set row 0} {$row < [$m rows]} {incr row} {
+	set v [$m get cell $col $row]
+	if {$v eq {}}            continue
+	if {[lindex $v 0] == -1} continue
+	return no
+    }
+    return yes
+}
+
+proc ::cm::conference::RowEmpty {m row} {
+    for {set col 0} {$col < [$m columns]} {incr col} {
+	set v [$m get cell $col $row]
+	if {$v eq {}}            continue
+	if {[lindex $v 0] == -1} continue
+	return no
+    }
+    return yes
+}
+
+proc ::cm::conference::RowAdjust {m row} {
+    for {set col 0} {$col < [$m columns]} {incr col} {
+        set v [$m get cell $col $row]
+        if {$v eq {}}            continue
+        if {[lindex $v 0] == -1} {
+	    set origin [lindex $v 1]
+	    #puts Adjust/c$col/$row/=>/$origin/
+	    # Adjust rowspan in origin to account for the lost row.
+	    lassign [$m get cell $col $origin] cspan rspan idx
+	    incr rspan -1
+	    $m set cell $col $origin [list $cspan $rspan $idx]
+	}
+    }
+    return
+}
+
+proc ::cm::conference::ScheduleMap {conference {links 0}} {
     debug.cm/conference {}
 
     # Pull the logical data ... ==> Move to db::schedule
@@ -3434,7 +3682,7 @@ proc ::cm::conference::ScheduleMap {conference} {
     # Show physical schedule for the conference, with the logical
     # data filled in.
 
-    foreach {label talk tutorial session speaker} [schedule of $conference] {
+    foreach {label talk tutorial session speaker} [schedule of $conference $links] {
 	if {$talk ne {}} {
 	    set type Talk
 	    set note $talk
@@ -3513,7 +3761,8 @@ proc ::cm::conference::keynotes {conference} {
     debug.cm/conference {}
 
     return [db do eval {
-	SELECT C.dname     AS dname
+	SELECT DISTINCT
+               C.dname     AS dname
 	,      C.tag       AS tag
 	,      C.biography AS biography
 	FROM contact    C  -- (id)
@@ -3535,7 +3784,8 @@ proc ::cm::conference::general-talks {conference} {
     debug.cm/conference {}
 
     return [db do eval {
-	SELECT C.dname     AS dname
+	SELECT DISTINCT
+	       C.dname     AS dname
 	,      C.tag       AS tag
 	,      C.biography AS biography
 	FROM contact    C  -- (id)
@@ -3556,7 +3806,7 @@ proc ::cm::conference::general-talks {conference} {
 proc ::cm::conference::talk-speakers {talk} {
     debug.cm/conference {}
     return [db do eval {
-	SELECT dname, tag
+	SELECT DISTINCT dname, tag
 	FROM   contact
 	WHERE  id IN (SELECT contact
 		      FROM   talker
@@ -3568,7 +3818,7 @@ proc ::cm::conference::talk-speakers {talk} {
 proc ::cm::conference::tutorial-speakers {tutorial} {
     debug.cm/conference {}
     return [db do eval {
-	SELECT dname, tag
+	SELECT DISTINCT dname, tag
 	FROM   contact
 	WHERE  id IN (SELECT speaker
 		FROM   tutorial
