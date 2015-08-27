@@ -173,7 +173,7 @@ proc ::cm::db::schedule::drop {conference} {
     return
 }
 
-proc ::cm::db::schedule::of {conference} {
+proc ::cm::db::schedule::of {conference {links 0}} {
     debug.cm/db/schedule {}
     setup
     # -- TODO: tutorial setup
@@ -192,26 +192,58 @@ proc ::cm::db::schedule::of {conference} {
 	# Explicit left outer joins -> talk              -> submission
 	#                           -> tutorial_schedule -> tutorial
 	if {$talk ne {}} {
-	    set speaker [join [p1 [::cm::conference::talk-speakers $talk]] {, }]
-
-	    set talk [db do onecolumn {
+	    set s [::cm::conference::talk-speakers $talk]
+	    if {$links} {
+		set speaker [join [::cm::conference::link-speakers $s] {, }]
+	    } else {
+		set speaker [join [p1 $s] {, }]
+	    }
+	    
+	    set title [db do onecolumn {
 		SELECT title
 		FROM   submission
 		WHERE  id IN (SELECT submission
 			      FROM   talk
 			      WHERE  id = :talk)
 	    }]
+
+	    if {$links} {
+		set talk [::cm::conference::link $title abstracts.html T$talk]
+	    } else {
+		set talk $title
+	    }
 	}
 	if {$tutorial ne {}} {
-	    set speaker [join [p1 [::cm::conference::tutorial-speakers $tutorial]] {, }]
+	    set s [::cm::conference::tutorial-speakers $tutorial]
+	    if {$links} {
+		set speaker [join [::cm::conference::link-speakers $s] {, }]
+	    } else {
+		set speaker [join [p1 $s] {, }]
+	    }
 
-	    set tutorial [db do onecolumn {
+	    set title [db do onecolumn {
 		SELECT title
 		FROM   tutorial
 		WHERE  id IN (SELECT tutorial
 			      FROM   tutorial_schedule
 			      WHERE  id = :tutorial)
 	    }]
+
+	    if {$links} {
+		lassign [db do eval {
+		    SELECT C.tag, T.tag
+		    FROM   tutorial          T
+		    ,      contact           C
+		    ,      tutorial_schedule S
+		    WHERE  S.id = :tutorial
+		    AND    T.id = S.tutorial
+		    AND    C.id = T.speaker
+		}] stag tag
+		set tag $stag:$tag
+		set tutorial [::cm::conference::link $title tutorials.html $tag]
+	    } else {
+		set tutorial $title
+	    }
 	}
 	lappend r $label $talk $tutorial $session $speaker
     }
