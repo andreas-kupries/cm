@@ -2348,27 +2348,7 @@ proc ::cm::conference::cmd_schedule_show {config} {
     puts "Schedule \"[color name $pslabel]\": " 
 
     if {[$config @merged]} {
-	package require cm::schedule
-	# Show physical schedule for the conference, with the logical
-	# data filled in.
-
-	foreach {label talk tutorial session speaker} [schedule of $conference] {
-	    if {$talk ne {}} {
-		set type Talk
-		set note $talk
-	    } elseif {$tutorial ne {}} {
-		set type Tutorial
-		set note $tutorial
-	    } elseif {$session ne {}} {
-		set type Fixed
-		set note $session
-	    } else {
-		set type {}
-		set note {}
-	    }
-	    dict set map $label [list $note $speaker]
-	}
-
+	set map       [ScheduleMap $conference]
 	set pschedule $xpschedule
 
 	set psd       [pschedule details $xpschedule]
@@ -2389,20 +2369,8 @@ proc ::cm::conference::cmd_schedule_show {config} {
     }
 
     [table t {Slot Type Details Speaker} {
-	foreach {label talk tutorial session speaker} [schedule of $conference] {
-	    if {$talk ne {}} {
-		set type Talk
-		set note $talk
-	    } elseif {$tutorial ne {}} {
-		set type Tutorial
-		set note $tutorial
-	    } elseif {$session ne {}} {
-		set type Fixed
-		set note $session
-	    } else {
-		set type {}
-		set note {}
-	    }
+	foreach {label data} [ScheduleMap $conference] {
+	    lassign $data note speaker type
 	    $t add $label $type $note $speaker
 	}
     }] show
@@ -2976,6 +2944,12 @@ proc ::cm::conference::cmd_website_make {config} {
 	puts "Talks:     [color bad None]"
     }
 
+    if {[llength [schedule of $conference]]} {
+	puts "Schedule:  [color good Yes]"
+    } else {
+	puts "Schedule:  [color bad None]"
+    }
+
     set rstatus [registration-mode $conference]
     puts "Registration: $rstatus"
 
@@ -3016,7 +2990,12 @@ proc ::cm::conference::cmd_website_make {config} {
 	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
     }
 
-    lappend navbar {*}[make_page Schedule   schedule   make_schedule]
+    if {[llength [schedule of $conference]]} {
+	lappend navbar {*}[make_page Schedule   schedule   make_schedule $conference]
+    } else {
+	lappend navbar {*}[make_page Schedule   schedule   make_schedule_none]
+    }
+
     if {[have-talks $conference]} {
 	make_page   Abstracts  abstracts  make_abstracts $conference
     } else {
@@ -3329,18 +3308,152 @@ proc ::cm::conference::make_tutorials {conference} {
     return $text
 }
 
-proc ::cm::conference::make_schedule {} {
-    # make-schedule - TODO: Move text into a configurable template
-    # make-schedule - TODO: data driven on schedule data
-
-    return [util undent {
-	The schedule will be finalized and put up after
-	all the notifications to authors have been sent
-	out on @c:t:authornote@.
-
-	Please check back after.
-    }]
+proc ::cm::conference::make_schedule_none {} {
+    debug.cm/conference {}
+    return [template use www-schedule.none]
 }
+
+proc ::cm::conference::make_schedule {conference} {
+    debug.cm/conference {}
+
+    set details    [details $conference]
+    dict with details {}
+
+    # Generate nice schedule table (tracked)
+    # Generated as embedded native HTML.
+    # Because we need rowspan and colspan attributes
+
+    set items [pschedule item-all $xpschedule]
+    # (id schedule day trackname start length parent label dmajor dminor)
+
+    # No bailout for empty schedule!
+    # We expect to be only called if there are items.
+
+    set map [ScheduleMap $conference]
+    # label -> (note speaker/string type) ... TODO: Fix speaker, must have enough to allow creation of link to bio.
+
+    puts RAW
+    puts I|[join $items |\n|]|
+    puts M|$map|
+    puts -
+
+    # Resolve placeholders in all items.
+    # Drop (leaf) items which are empty after trimming.
+
+    foreach {id schedule day trackname start length parent label dmajor dminor} $items {
+	if {$dmajor eq {}} {
+	    if {[dict exists $map $label]} {
+		lassign [dict get $map $label] str speaker
+		if {$str ne {}} {
+		    set dmajor [string trim $str]
+		    set dminor ${speaker} ;# TODO: Fixed speakers => make links
+		}
+	    }
+	}
+	if {($dmajor eq {}) &&
+	    ($parent eq {})} continue
+
+	lappend tmp $id $schedule $day $trackname $start $length $parent $dmajor $dminor
+    }
+    set items $tmp
+    unset map
+
+    # Convert set of items into a map, aggregate leafs into parents, plus set of groups
+    foreach {id schedule day trackname start length parent dmajor dminor} $items {
+	set entry [list $id $schedule $day $trackname $start $length $dmajor $dminor]
+	if {$parent eq {}} {
+	    lappend tmp $entry
+	} else {
+	    dict lappend map $parent $entry
+	}
+    }
+
+    puts Grouped
+    puts G|[join $tmp |\n|]|
+    puts L|$map|
+    puts -
+
+    # Drop empty groups, i.e. without leaf entries inside.
+    set items {}
+    foreach entry $tmp {
+	lassign $entry id
+	if {![dict exists $map $id] || ![llength [dict get $map $id]]} continue
+	lappend items $entry
+    }
+
+    puts Reduced
+    puts E|[join $items |\n|]|
+    puts -
+
+    # Determine range of days and tracks from the set of groups ...
+    # On per-day basis determine all relevant times (interval
+    # start/end) No need to check the leafs, we assume that these are
+    # properly contained in their groups.
+
+    foreach entry $items {
+	lassign $entry _ _ day trackname start length _ _
+	lappend days   $day
+	lappend tracks $trackname
+
+puts |$entry|$start|$length
+
+	set end    [minute 2external [expr {$start + $length}]]
+	set start  [minute 2external $start]
+
+	dict lappend times $day $start
+	dict lappend times $day $end
+    }
+
+    # Sort and reduce the collections.
+    set days   [lsort -dict -uniq $days]
+    set tracks [lsort -dict -uniq $days]
+    dict for {day tlist} $times {
+	dict set times $day [lsort -dict -uniq $tlist]
+    }
+
+    # Debug output of intermediate ...
+    append text $days   \n
+    append text $tracks \n
+    append text $items  \n
+    append text $map    \n
+    append text $times  \n
+
+    #
+    append text <table> \n
+    append text </table> \n
+
+    # TODO: Generate vCalendar
+    return $text
+}
+
+proc ::cm::conference::ScheduleMap {conference} {
+    debug.cm/conference {}
+
+    # Pull the logical data ... ==> Move to db::schedule
+    package require cm::schedule
+    # Show physical schedule for the conference, with the logical
+    # data filled in.
+
+    foreach {label talk tutorial session speaker} [schedule of $conference] {
+	if {$talk ne {}} {
+	    set type Talk
+	    set note $talk
+	} elseif {$tutorial ne {}} {
+	    set type Tutorial
+	    set note $tutorial
+	} elseif {$session ne {}} {
+	    set type Fixed
+	    set note $session
+	} else {
+	    set type {}
+	    set note {}
+	}
+	dict set map $label [list $note $speaker $type]
+    }
+
+    return $map
+}
+
 
 proc ::cm::conference::make_abstracts_none {} {
     debug.cm/conference {}
@@ -3967,23 +4080,7 @@ proc ::cm::conference::make_admin_schedule {conference textvar tag} {
 	return
     }
 
-    # Pull the logical data ...
-    package require cm::schedule
-    # Show physical schedule for the conference, with the logical
-    # data filled in.
-
-    foreach {label talk tutorial session speaker} [schedule of $conference] {
-	if {$talk ne {}} {
-	    set note $talk
-	} elseif {$tutorial ne {}} {
-	    set note $tutorial
-	} elseif {$session ne {}} {
-	    set note $session
-	} else {
-	    set note {}
-	}
-	dict set map $label [list $note $speaker]
-    }
+    set map [ScheduleMap $conference]
 
     #set psd       [pschedule details $xpschedule]
     #dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
