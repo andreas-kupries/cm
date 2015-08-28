@@ -1075,7 +1075,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    if {$accepted} {
 		set speakers [talk-speakers $talk]
 		if {[llength $speakers]} {
-		    $t add Speakers [join $speakers \n]
+		    $t add Speakers [join [p1 $speakers] \n]
 		}
 
 		# TODO: attachments - determine and show size ?
@@ -1398,9 +1398,11 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
     foreach {dst dstaddr talk} $destinations {
 	lappend addresses $dstaddr
 	lappend dx        $dst
-	dict set map $dst $talk
+	dict lappend map $dst $talk ;# single speaker may multiple talks
     }
-    set destinations $dx
+    # Speaker can occur multiple times (1 per talk)
+    set addresses    [lsort -uniq $addresses]
+    set destinations [lsort -uniq $dx]
 
     debug.cm/conference {addresses    = ($addresses)}
     debug.cm/conference {destinations = ($destinations)}
@@ -1433,12 +1435,12 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
     # TODO: accepted-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
 
     [table t Text {
-	lappend map @mg:sender@ [color red <<sender>>]
-	lappend map @mg:name@   [color red <<name>>]
-	lappend map @origins@   [color red $origins]
+	lappend tmap @mg:sender@ [color red <<sender>>]
+	lappend tmap @mg:name@   [color red <<name>>]
+	lappend tmap @origins@   [color red $origins]
 	$t noheader
 
-	set str [insert $conference [string map $map $template]]
+	set str [insert $conference [string map $tmap $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
 
 	$t add $str
@@ -1464,12 +1466,14 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	    [mailgen call $address $name $template] \
 		 0]} {
 
-	    puts "Mark mailed"
-	    set talk [dict get $map $receiver]
-	    db do eval {
-		UPDATE talk
-		SET    done_mail = 1
-		WHERE  id = :talk
+	    set talks  [dict get $map $receiver]
+	    puts "Mark mailed ([llength $talks])"
+	    foreach talk $talks {
+		db do eval {
+		    UPDATE talk
+		    SET    done_mail = 1
+		    WHERE  id = :talk
+		}
 	    }
 	}
     }
@@ -3891,6 +3895,16 @@ proc ::cm::conference::talk-speakers {talk} {
 		      WHERE  talk = :talk)
 	ORDER BY dname
     }]
+}
+
+proc ::cm::conference::p1 {speakers} {
+    # see also db::schedule::p1
+    debug.cm/db/schedule {}
+    set r {}
+    foreach {dname tag} $speakers {
+	lappend r $dname
+    }
+    return $r
 }
 
 proc ::cm::conference::tutorial-speakers {tutorial} {
