@@ -1741,7 +1741,7 @@ proc ::cm::conference::cmd_submission_nag {config} {
 	set talks [dict get $map $receiver]
 	set tt {}
 	foreach t $talks { append tt "   * [get-talk-title $t]\n" }
-	set ctemplate [string map [list @talk@ $tt] $template]
+	set ctemplate [string map [list @talks@ $tt] $template]
 	#puts "$address|$name|$receiver = [dict get $map $receiver]\n$tt"
 
 	mailer send $mconfig \
