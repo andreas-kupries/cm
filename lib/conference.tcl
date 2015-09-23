@@ -669,6 +669,7 @@ proc ::cm::conference::cmd_committee_ping {config} {
 			   FROM   conference_staff
 			   WHERE  conference = :conference
 			   AND    role       = 4) -- program committee
+	AND NOT inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -1355,7 +1356,8 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	AND    T.submission  = S.id         -- with talk (<=> accepted)
 	AND    NOT T.done_mail              -- not mailed yet
 	AND    SU.submission = S.id         -- submitters
-	AND    SU.contact    = E.contact    -- and their emails
+	AND    SU.contact    = E.contact    -- and their active emails
+	AND    NOT E.inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -1375,7 +1377,8 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	    WHERE  S.conference  = :conference  -- submissions for conference
 	    AND    T.submission  = S.id         -- with talk (<=> accepted)
 	    AND    SU.submission = S.id         -- submitters
-	    AND    SU.contact    = E.contact    -- and their emails
+	    AND    SU.contact    = E.contact    -- and their active emails
+	    AND    NOT inactive
 	}]
 
 	if {[llength $destinations]} {
@@ -1503,7 +1506,7 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
 	-- -- Locate the submissions for the conference which have
 	--      an associated talk, IOW are accepted.
 	-- -- Find their speakers
-	-- -- Find their email addresses.
+	-- -- Find their active email addresses.
 	SELECT id, email
 	FROM   email
 	WHERE  contact IN (SELECT contact
@@ -1513,6 +1516,7 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
 					   WHERE submission IN (SELECT id
 								FROM submission
 								WHERE conference = :conference)))
+	AND NOT inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -1620,7 +1624,8 @@ proc ::cm::conference::cmd_submission_nag {config} {
 	WHERE  S.conference  = :conference  -- submissions for conference
 	AND    T.submission  = S.id         -- with talk (<=> accepted)
 	AND    SU.submission = S.id         -- submitters
-	AND    SU.contact    = E.contact    -- and their emails, and no attachments.
+	AND    SU.contact    = E.contact    -- and their active emails, and no attachments.
+	AND    NOT E.inactive
 	AND    0 = (SELECT count(id)
 		    FROM   attachment A
 		    WHERE  A.talk = T.id)
@@ -1643,7 +1648,8 @@ proc ::cm::conference::cmd_submission_nag {config} {
 	    WHERE  S.conference  = :conference  -- submissions for conference
 	    AND    T.submission  = S.id         -- with talk (<=> accepted)
 	    AND    SU.submission = S.id         -- submitters
-	    AND    SU.contact    = E.contact    -- and their emails
+	    AND    SU.contact    = E.contact    -- and their active emails
+	    AND    NOT E.inactive
 	}]
 
 	if {[llength $destinations]} {
@@ -2015,6 +2021,7 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
 			   AND   type = 1 -- sponsor is person
 			   -- TODO: in-memory cache of type/name mapping. or put into join ?
 			   )
+	AND NOT inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -2832,7 +2839,7 @@ proc ::cm::conference::cmd_registration_nag {config} {
 	--      an associated talk, IOW are accepted.
 	-- -- Find their speakers
 	-- -- Ignore those which are registered to the conference
-	-- -- Find their email addresses.
+	-- -- Find their active email addresses.
 	SELECT id, email
 	FROM   email
 	WHERE  contact IN (SELECT contact
@@ -2845,6 +2852,7 @@ proc ::cm::conference::cmd_registration_nag {config} {
 			   AND contact NOT IN (SELECT contact
 					       FROM registered
 					       WHERE conference = :conference))
+	AND NOT inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
@@ -3042,7 +3050,7 @@ proc ::cm::conference::cmd_booking_nag {config} {
 	--      an associated talk, IOW are accepted.
 	-- -- Find their speakers
 	-- -- Ignore those which are booked to the conference
-	-- -- Find their email addresses.
+	-- -- Find their active email addresses.
 	SELECT id, email
 	FROM   email
 	WHERE  contact IN (SELECT contact
@@ -3055,6 +3063,7 @@ proc ::cm::conference::cmd_booking_nag {config} {
 			   AND contact NOT IN (SELECT contact
 					       FROM booked
 					       WHERE conference = :conference))
+	AND NOT inactive
     }]
 
     debug.cm/conference {destinations = ($destinations)}
