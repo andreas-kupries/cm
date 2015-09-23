@@ -4765,12 +4765,12 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
 	}]
 	set prefix Attachment
 	foreach {aid title} $attachments {
-	    file mkdir $dstdir/static/asset
+	    file mkdir $dstdir/static/assets/talk$talk
 
-	    # TODO: some way of getting the mime-type associated to the asset-file ?
+	    # TODO: some way of getting the mime-type associated with the asset-file ?
 
 	    set in  [db do incrblob -readonly attachment data $aid]
-	    set out [open $dstdir/static/asset/attachment$aid w]
+	    set out [open $dstdir/static/assets/talk$talk/$title w]
 
 	    fconfigure $in  -encoding binary -translation binary
 	    fconfigure $out -encoding binary -translation binary
@@ -4779,7 +4779,7 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
 	    close $in
 	    close $out
 
-	    append text | $prefix | [link $title asset/attachment$aid] |\n
+	    append text | $prefix | [link $title assets/talk$talk/$title] |\n
 	    set prefix {}
 	}
     }
