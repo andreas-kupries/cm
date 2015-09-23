@@ -66,6 +66,7 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_submission_ping_accepted \
 	cmd_submission_ping_speakers cmd_submission_done_accepted cmd_submission_clear_accepted \
+	cmd_submission_nag \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink cmd_debug_speakers \
 	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove cmd_booking_nag \
@@ -1586,6 +1587,160 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
 	    [list $address] \
 	    [mailgen call $address $name $template] \
 	    0 ;# not verbose
+    }
+
+    puts [color good OK]
+}
+
+proc ::cm::conference::cmd_submission_nag {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set dry        [$config @dry]
+    set raw        [$config @raw]
+    set template   [$config @template]
+    set tlabel     [template get $template]
+
+    puts "Mailing the author of talks with materials due for \"[color name [get $conference]]\":"
+    puts "Using template: [color name $tlabel]"
+    if {$dry} { puts [color note "Dry run"] }
+
+    set template     [template details $template]
+
+    set destinations [db do eval {
+	SELECT E.id    AS id
+	,      E.email AS email
+	,      T.id    AS talk
+	FROM   submission S
+	,      talk       T
+	,      submitter  SU
+	,      email      E
+	WHERE  S.conference  = :conference  -- submissions for conference
+	AND    T.submission  = S.id         -- with talk (<=> accepted)
+	AND    SU.submission = S.id         -- submitters
+	AND    SU.contact    = E.contact    -- and their emails, and no attachments.
+	AND    0 = (SELECT count(id)
+		    FROM   attachment A
+		    WHERE  A.talk = T.id)
+    }]
+
+    debug.cm/conference {destinations = ($destinations)}
+
+    if {![llength $destinations]} {
+	# Check if we generally have destinations.
+	# Choose the error based on that.
+
+	set destinations [db do eval {
+	    SELECT E.id    AS id
+	    ,      E.email AS email
+	    ,      T.id    AS talk
+	    FROM   submission S
+	    ,      talk       T
+	    ,      submitter  SU
+	    ,      email      E
+	    WHERE  S.conference  = :conference  -- submissions for conference
+	    AND    T.submission  = S.id         -- with talk (<=> accepted)
+	    AND    SU.submission = S.id         -- submitters
+	    AND    SU.contact    = E.contact    -- and their emails
+	}]
+
+	if {[llength $destinations]} {
+	    util user-error \
+		"No materials due." \
+		MATERIALS PING DONE
+	} else {
+	    util user-error \
+		"No destinations." \
+		MATERIALS PING EMPTY
+	}
+    }
+
+    # restructure for mailer below
+    # => dest addresses (display)
+    # => dest identifiers (mailer)
+    # => (dest -> talk) map
+    set dx        {}
+    set addresses {}
+    set map       {}
+    foreach {dst dstaddr talk} $destinations {
+	lappend addresses $dstaddr
+	lappend dx        $dst
+	dict lappend map $dst $talk ;# single speaker may be part of multiple talks
+    }
+    # Speaker can occur multiple times (1 per talk)
+    set addresses    [lsort -uniq $addresses]
+    set destinations [lsort -uniq $dx]
+
+    debug.cm/conference {addresses    = ($addresses)}
+    debug.cm/conference {destinations = ($destinations)}
+
+    set origins [db do eval {
+	SELECT dname
+	FROM   contact
+	WHERE  id IN (SELECT contact
+		      FROM   conference_staff
+		      WHERE  conference = :conference
+		      AND    role       = 3) -- program chair
+    }]
+
+    set origins [lsort -dict $origins]
+    if {[llength $origins] > 1} {
+	set origins [string map {and, and} [join [linsert end-1 and] {, }]]
+    } else {
+	set origins [join $origins {, }]
+    }
+
+    if {![llength $origins]} {
+	util user-error \
+	    "No chairs." \
+	    MATERIALS PING NO-CHAIRS
+    }
+
+    puts "From: $origins"
+    puts [util indent [join $addresses \n] "To: "]
+
+    # TODO: materials-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
+
+    [table t Text {
+	lappend tmap @mg:sender@ [color red <<sender>>]
+	lappend tmap @mg:name@   [color red <<name>>]
+	lappend tmap @origins@   [color red $origins]
+	$t noheader
+
+	set str [insert $conference [string map $tmap $template]]
+	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
+
+	$t add $str
+    }] show
+
+    if {!$dry &&
+	(![cmdr interactive?] ||
+	 ![ask yn "Send mail ? " no])} {
+	puts [color note Aborted]
+	return
+    }
+    if {$dry} {
+	puts [color note "Skipped mailing"]
+	return
+    }
+
+    set mconfig [mailer get-config]
+    set template [string map [list @origins@ $origins] [insert $conference $template]]
+
+    mailer batch receiver address name $destinations {
+
+	# customize template by author, set of relevant talks.
+	set talks [dict get $map $receiver]
+	set tt {}
+	foreach t $talks { append tt "   * [get-talk-title $t]\n" }
+	set ctemplate [string map [list @talk@ $tt] $template]
+	#puts "$address|$name|$receiver = [dict get $map $receiver]\n$tt"
+
+	mailer send $mconfig \
+	    [list $address] \
+	    [mailgen call $address $name $ctemplate] 0
     }
 
     puts [color good OK]

@@ -1,0 +1,18 @@
+Tcl'@c:year@ - Reminder to authors: Materials due
+Hi @mg:name@
+
+According to my notes you are an author for the following talks at the
+conference:
+@talks@
+Please remember, all material you wish to have included in the first
+printing of the proceedings is due
+
+	@c:t:writedead@
+
+This will give our Editor, Ron, the time to assemble it, have Lulu
+print it, and get it shipped to the hotel in time for the conference.
+
+----
+See you in @h:city@,
+@origins@
+
