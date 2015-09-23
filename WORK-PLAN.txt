@@ -1,6 +1,8 @@
 NOW
 ===
 
+reports: people with no active email - especially if author, speaker, etc.
+
 -- talks
 --- issues: no talks (no accepted submissions)
 --- issues in talk:
