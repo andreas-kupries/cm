@@ -5,5 +5,5 @@ Schedule "SCHEDULE":
 | Active |                                                |
 | Days   | 0...0 (@ 0)                                    |
 | Tracks | -> TRACK (1)                                   |
-| Items  | -> * 0 09:00 09:30 (00:30) | TRACK | DESC NOTE |
+| Items  | -> * 0 09:00 09:30 (00:30) | TRACK | NOTE DESC |
 +--------+------------------------------------------------+

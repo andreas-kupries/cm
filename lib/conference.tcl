@@ -60,7 +60,7 @@ namespace eval ::cm::conference {
 	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
 	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
-	cmd_submission_setsummary cmd_submission_setabstract cmd_registration \
+	cmd_submission_setsummary cmd_submission_setabstract cmd_registration cmd_proceedings \
 	cmd_submission_accept cmd_submission_reject cmd_submission_addspeaker \
 	cmd_submission_dropspeaker cmd_submission_attach cmd_submission_detach \
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
@@ -76,7 +76,7 @@ namespace eval ::cm::conference {
 	\
 	select label current get insert known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
-	known-rstatus get-role select-timeline get-timeline select-submission get-submission \
+	known-rstatus known-pvisible get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
 	get-talk-type get-talk-state known-talk-type known-talk-stati known-speaker \
 	known-attachment get-attachment known-submitter its-hotel \
@@ -227,6 +227,7 @@ proc ::cm::conference::cmd_create {config} {
 			30,       -- minutes per talk
 			3,        -- talks per session
 			1,        -- registration pending
+			1,        -- proceedings hidden
 			NULL      -- No linked schedule.
 	        )
 	    }
@@ -305,7 +306,8 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Year             $xyear
 	$t add Management       $xmanagement
 	$t add {Submissions To} $xsubmission
-	$t add Registrations    [get-rstatus $xrstatus] ;# TODO: colorize the status
+	$t add Registrations    [get-rstatus $xrstatus]   ;# TODO: colorize the status
+	$t add Proceedings      [get-pvisible $xpvisible] ;# TODO: colorize the status
 	$t add Start            $xstart
 	$t add End              $xend
 	$t add Aligned          $xalign
@@ -1987,6 +1989,29 @@ proc ::cm::conference::cmd_registration {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_proceedings {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set newvisible [$config @status] 
+
+    puts -nonewline "Conference \"[color name [get $conference]]\" proceedings = [get-pvisible $newvisible] ... "
+    flush stdout
+
+    db do eval {
+	UPDATE conference
+	SET    pvisible = :newvisible
+	WHERE  id       = :conference
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_sponsor_ping {config} {
     debug.cm/conference {}
     Setup
@@ -3200,6 +3225,9 @@ proc ::cm::conference::cmd_website_make {config} {
     set rstatus [registration-mode $conference]
     puts "Registration: $rstatus"
 
+    set pvisible [proceedings-visible $conference]
+    puts "Proceedings: $pvisible"
+
     # # ## ### ##### ######## #############
     puts "Filling in..."
 
@@ -3255,7 +3283,12 @@ proc ::cm::conference::cmd_website_make {config} {
 	make_page  Speakers  bios  make_speakers_none
     }
 
-    lappend navbar {*}[make_page Proceedings       proceedings make_proceedings]
+    if {$pvisible eq "visible"} {
+	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings $conference]
+    } else {
+	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings_none]
+    }
+
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
 
@@ -3413,6 +3446,11 @@ proc ::cm::conference::rate-have-group-code {conference} {
 proc ::cm::conference::registration-mode {conference} {
     debug.cm/conference {}
     return [get-rstatus [dict get [details $conference] xrstatus]]
+}
+
+proc ::cm::conference::proceedings-visible {conference} {
+    debug.cm/conference {}
+    return [get-pvisible [dict get [details $conference] xpvisible]]
 }
 
 proc ::cm::conference::make_registration_pending {} {
@@ -3928,6 +3966,7 @@ proc ::cm::conference::ScheduleMap {conference {links 0}} {
     # Show physical schedule for the conference, with the logical
     # data filled in.
 
+    set map {}
     foreach {label talk tutorial session speaker} [schedule of $conference $links] {
 	if {$talk ne {}} {
 	    set type Talk
@@ -4449,16 +4488,69 @@ proc ::cm::conference::make_disclaimer {} {
     }]
 }
 
-proc ::cm::conference::make_proceedings {} {
+proc ::cm::conference::make_proceedings {conference} {
     debug.cm/conference {}
-    # make-proceedings - TODO: Move text into a configurable template
-    # make-proceedings - TODO: flag/data controlled
-    return [util undent {
-	Our proceedings will be made public next year,
-	as part of the next conference.
+    upvar 1 dstdir dstdir
 
-	Please check back.
-    }]
+    set text [template use www-proceedings]
+    append text \n
+
+    set first 1
+    set n 1
+    db do eval {
+	SELECT S.id         AS id,
+	       S.title      AS title
+	FROM   submission S
+	WHERE  conference = :conference
+	AND    0 < (SELECT count (T.id)
+		    FROM   talk T
+		    WHERE  T.submission = S.id)
+	ORDER BY title
+    } {
+	if {$first} {
+	    append text |Talk|Speakers|Media|\n|-|-|-|\n
+	    set first 0
+	}
+
+	set talk [db do onecolumn {
+	    SELECT id
+	    FROM   talk
+	    WHERE  submission = :id
+	}]
+	set attachments [db do eval {
+	    SELECT id, type
+	    FROM   attachment
+	    WHERE  talk = :talk
+	    ORDER BY type
+	}]
+
+	set speakers [talk-speakers $talk]
+	if {[llength $speakers]} {
+	    set speakers [join [link-speakers $speakers] {, }]
+	}
+
+	export_attachments $dstdir $talk $attachments
+
+	if {[llength $attachments]} {
+	    set tmp {}
+	    foreach {aid atitle} $attachments {
+		lappend tmp [link $atitle assets/talk$talk/$atitle]
+	    }
+	    set attachments [join $tmp {<br>}]
+	} else {
+	    set attachments n/a
+	}
+
+	append text |$title|$speakers|$attachments|\n
+    }
+
+    append text \n
+    return $text
+}
+
+proc ::cm::conference::make_proceedings_none {} {
+    debug.cm/conference {}
+    return [template use www-proceedings.none]
 }
 
 proc ::cm::conference::make_admin {conference} {
@@ -4927,22 +5019,11 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
 	    WHERE  talk = :talk
 	    ORDER BY type
 	}]
+
+	export_attachments $dstdir $talk $attachments
+
 	set prefix Attachment
 	foreach {aid title} $attachments {
-	    file mkdir $dstdir/static/assets/talk$talk
-
-	    # TODO: some way of getting the mime-type associated with the asset-file ?
-
-	    set in  [db do incrblob -readonly attachment data $aid]
-	    set out [open $dstdir/static/assets/talk$talk/$title w]
-
-	    fconfigure $in  -encoding binary -translation binary
-	    fconfigure $out -encoding binary -translation binary
-	    fcopy $in $out
-
-	    close $in
-	    close $out
-
 	    append text | $prefix | [link $title assets/talk$talk/$title] |\n
 	    set prefix {}
 	}
@@ -4961,6 +5042,27 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
     append text \n
 
     return $text
+}
+
+proc ::cm::conference::export_attachments {dstdir talk attachments} {
+    debug.cm/conference {}
+
+    foreach {aid title} $attachments {
+	file mkdir $dstdir/static/assets/talk$talk
+
+	# TODO: some way of getting the mime-type associated with the asset-file ?
+
+	set in  [db do incrblob -readonly attachment data $aid]
+	set out [open $dstdir/static/assets/talk$talk/$title w]
+
+	fconfigure $in  -encoding binary -translation binary
+	fconfigure $out -encoding binary -translation binary
+	fcopy $in $out
+
+	close $in
+	close $out
+    }
+    return
 }
 
 proc ::cm::conference::make_sidebar {conference} {
@@ -5680,6 +5782,24 @@ proc ::cm::conference::known-rstatus {} {
     return $known
 }
 
+proc ::cm::conference::known-pvisible {} {
+    debug.cm/conference {}
+    Setup
+
+    # dict: label -> id
+    set known {}
+
+    db do eval {
+	SELECT id, text
+	FROM   pvisible
+    } {
+	dict set known $text $id
+    }
+
+    debug.cm/conference {==> ($known)}
+    return $known
+}
+
 proc ::cm::conference::known-talk-state {} {
     debug.cm/conference {}
     Setup
@@ -5751,6 +5871,7 @@ proc ::cm::conference::issues {details} {
     # xtalklen    
     # xsesslen    
     # xrstatus
+    # xpvisible
 
     set issues {}
 
@@ -5905,6 +6026,7 @@ proc ::cm::conference::details {id} {
 	       'xtalklen',    talklength,
 	       'xsesslen',    sessionlen,
 	       'xrstatus',    rstatus,
+	       'xpvisible',   pvisible,
 	       'xpschedule',  pschedule
 	FROM  conference
 	WHERE id = :id
@@ -5930,7 +6052,8 @@ proc ::cm::conference::write {id details} {
 	       length     = :xlength,
 	       talklength = :xtalklen,
 	       sessionlen = :xsesslen,
-	       rstatus    = :xrstatus
+	       rstatus    = :xrstatus,
+	       pvisible   = :xpvisible
 	WHERE id = :id
     }
 }
@@ -6093,6 +6216,17 @@ proc ::cm::conference::get-rstatus {id} {
     return [db do onecolumn {
 	SELECT text
 	FROM   rstatus
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::conference::get-pvisible {id} {
+    debug.cm/conference {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT text
+	FROM   pvisible
 	WHERE  id = :id
     }]
 }
@@ -6398,6 +6532,7 @@ proc ::cm::conference::Setup {} {
 						-- 		  shorter talks => longer sessions.
 						-- 		  standard: 30 min x3
 	    rstatus	INTEGER NOT NULL REFERENCES rstatus,
+	    pvisible	INTEGER NOT NULL REFERENCES pvisible,
 
 	    pschedule   INTEGER REFERENCES pschedule
 
@@ -6439,6 +6574,7 @@ proc ::cm::conference::Setup {} {
 	    {talklength		INTEGER	1 {} 0}
 	    {sessionlen		INTEGER	1 {} 0}
 	    {rstatus		INTEGER	1 {} 0}
+	    {pvisible		INTEGER	1 {} 0}
 	    {pschedule		INTEGER	0 {} 0}
 	} {}
     }]} {
@@ -6661,6 +6797,23 @@ proc ::cm::conference::Setup {} {
 	}
     }
 
+    if {![dbutil initialize-schema ::cm::db::do error pvisible {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    text	TEXT	NOT NULL UNIQUE
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {text	TEXT    1 {} 0}
+	} {}
+    }]} {
+	db setup-error pvisible $error
+    } else {
+	db do eval {
+	    INSERT OR IGNORE INTO pvisible VALUES (1,'hidden');
+	    INSERT OR IGNORE INTO pvisible VALUES (2,'visible');
+	}
+    }
+
     if {![dbutil initialize-schema ::cm::db::do error talk {
 	{
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -6772,7 +6925,7 @@ proc ::cm::conference::Dump {} {
 	SELECT id, title, year, management, submission,
 	       city, hotel, facility,
 	       startdate, enddate, alignment, length,
-	       talklength, sessionlen, rstatus, pschedule
+	       talklength, sessionlen, rstatus, pvisible, pschedule
 	FROM   conference
 	ORDER BY title
     } {
@@ -6805,6 +6958,9 @@ proc ::cm::conference::Dump {} {
 
 	cm dump save \
 	    conference registration [get-rstatus $rstatus]
+
+	cm dump save \
+	    conference proceedings [get-pvisible $pvisible]
 
 	# timeline
 	cm dump step 

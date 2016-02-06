@@ -971,6 +971,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { validate [cm::vt rstatus] }
 	} [cm::call conference cmd_registration]
 
+	private proceedings {
+	    section {Conference Management}
+	    description { Set the visibility status of the conference proceedings. }
+	    input status {
+		The new visibility status.
+	    } { validate [cm::vt pvisible] }
+	} [cm::call conference cmd_proceedings]
+
 	# - -- --- ----  -------- ------------- ----------------------
 
 	private add-tutorial {
