@@ -23,6 +23,7 @@ Details of "C":
 | Management     | (@me) Myself                                    |
 | Submissions To | me@myself.org                                   |
 | Registrations  | open                                            |
+| Proceedings    | hidden                                          |
 | Start          | September 28, 2015                              |
 | End            | October 02, 2015                                |
 | Aligned        | Monday                                          |

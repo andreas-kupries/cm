@@ -3,7 +3,10 @@ Details of "C":
 +----------------+-------------------------------------------------+
 | Property       | Value                                           |
 +----------------+-------------------------------------------------+
-| Issues         | - No schedule defined                           |
+| Issues         | - Location is not known                         |
+|                | - Hotel is not known                            |
+|                | - Facility is not known                         |
+|                | - No schedule defined                           |
 |                | - No rate information                           |
 |                | - No sponsors                                   |
 |                | - Staff trouble: No one is "Chair"              |
@@ -20,15 +23,15 @@ Details of "C":
 | Management     | (@me) Myself                                    |
 | Submissions To | me@myself.org                                   |
 | Registrations  | pending                                         |
-| Proceedings    | hidden                                          |
+| Proceedings    | visible                                         |
 | Start          | September 28, 2015                              |
 | End            | October 02, 2015                                |
 | Aligned        | Monday                                          |
 | Days           | 4                                               |
 |                |                                                 |
-| In             | CITY, S, N                                      |
-| @Hotel         | FACILITY (CITY, S, N)                           |
-| @Facility      | FACILITY (CITY, S, N)                           |
+| In             |                                                 |
+| @Hotel         |                                                 |
+| @Facility      |                                                 |
 |                |                                                 |
 | Minutes/Talk   | 30                                              |
 | Talks/Session  | 3                                               |
