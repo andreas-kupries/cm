@@ -947,6 +947,14 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::cvt date] }
 	} [cm::call conference cmd_end_set]
 
+	private set-start {
+	    section {Conference Management} Advanced
+	    description { Set/fix the conference start-date }
+	    input startdate {
+		New start date
+	    } { optional ; interact ; validate [cm::cvt date] }
+	} [cm::call conference cmd_start_set]
+
 	# - -- --- ----  -------- ------------- ----------------------
 	# TODO: conference remove - if not used
 	# TODO: conference modify - change title, start, length, alignment
