@@ -57,7 +57,7 @@ namespace eval ::cm::conference {
 	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_timeline_set cmd_timeline_done cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
-	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_rate_show \
+	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_start_set cmd_rate_show \
 	cmd_rate_set cmd_staff_show cmd_staff_link cmd_staff_unlink \
 	cmd_submission_add cmd_submission_drop cmd_submission_show cmd_submission_list \
 	cmd_submission_setsummary cmd_submission_setabstract cmd_registration cmd_proceedings \
@@ -2517,10 +2517,34 @@ proc ::cm::conference::cmd_end_set {config} {
     set conference [current]
     set details    [details $conference]
     set end        [$config @enddate]
+    set start      [dict set details xstart]
 
-    dict set details xend $end
+    dict set details xend    $end
+    dict set details xlength [day-range $start $end]
 
     puts "Setting new end-date \"[hdate $end]\" for conference \"[color name [get $conference]]\" ... "
+    flush stdout
+
+    write $conference $details
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::conference::cmd_start_set {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+    set details    [details $conference]
+    set start      [$config @startdate]
+    set end        [dict set details xend]
+
+    dict set details xstart  $start
+    dict set details xlength [day-range $start $end]
+
+    puts "Setting new start-date \"[hdate $start]\" for conference \"[color name [get $conference]]\" ... "
     flush stdout
 
     write $conference $details
@@ -5507,6 +5531,10 @@ proc ::cm::conference::hmon {x} {
 
 proc ::cm::conference::hyear {x} {
     clock format $x -format %Y
+}
+
+proc ::cm::conference::day-range {start end} {
+    expr {($end - $start)/86400 + 1}
 }
 
 proc ::cm::conference::when {s e} {
