@@ -2517,7 +2517,7 @@ proc ::cm::conference::cmd_end_set {config} {
     set conference [current]
     set details    [details $conference]
     set end        [$config @enddate]
-    set start      [dict set details xstart]
+    set start      [dict get $details xstart]
 
     dict set details xend    $end
     dict set details xlength [day-range $start $end]
@@ -2539,7 +2539,7 @@ proc ::cm::conference::cmd_start_set {config} {
     set conference [current]
     set details    [details $conference]
     set start      [$config @startdate]
-    set end        [dict set details xend]
+    set end        [dict get $details xend]
 
     dict set details xstart  $start
     dict set details xlength [day-range $start $end]
