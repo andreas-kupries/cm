@@ -4811,6 +4811,7 @@ proc ::cm::conference::make_admin_campaign {conference textvar tag} {
 
     set campaign [cm campaign get-for $conference]
     if {$campaign eq {}} {
+	set clabel [get $conference]
 	append text "__Conference \"$clabel\" has no campaign__"
 	return
     }
