@@ -254,7 +254,7 @@ proc ::cm::location::cmd_contact {config} {
 	    set new [$config @$key set?]
 	    puts "${label}: $new"
 	} else {
-	    set v [dict get $details $key]
+	    set v [dict get $details x$key]
 	    set new [ask string $label $v]
 	}
 	dict set details x$key $new
