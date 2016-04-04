@@ -251,7 +251,7 @@ proc ::cm::location::cmd_contact {config} {
 	locallink  {Local   Url  }
     } {
 	if {[$config @$key set?]} {
-	    set new [$config @$key set?]
+	    set new [$config @$key]
 	    puts "${label}: $new"
 	} else {
 	    set v [dict get $details x$key]
