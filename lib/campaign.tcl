@@ -409,12 +409,15 @@ proc ::cm::campaign::cmd_mail {config} {
     puts "Destinations: [llength $destinations]"
     debug.cm/campaign {destinations = ($destinations)}
 
-    # Check for preceding runs with the same template, take their receivers, and drop them from the set of destinations. No duplicate delivery!
+    # Check for preceding runs with the same template in the current
+    # campaign, take their receivers, and drop them from the set of
+    # destinations. No duplicate delivery!
 
     db do eval {
 	SELECT date, id AS mailrun
 	FROM   campaign_mailrun
 	WHERE template = :template
+	AND   campaign = :campaign
 	ORDER BY date
     } {
 	set date [clock format $date -format {%Y-%m-%d %H:%M:%S}]
