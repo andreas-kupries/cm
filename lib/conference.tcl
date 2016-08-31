@@ -5388,7 +5388,9 @@ proc ::cm::conference::web-sponsors-inline {id mgmt} {
     }
 
     if {[llength $sponsors] > 1} {
-	set sponsors [string map {and, and} [join [linsert $sponsors end-1 and] {, }]]
+	set sponsors [lsort -dict $sponsors]
+	set sponsors [join [linsert $sponsors end-1 and] {, }]
+	set sponsors [string map {and, and} $sponsors]
     } else {
 	set sponsors [join $sponsors {}]
     }
