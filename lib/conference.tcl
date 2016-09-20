@@ -3315,6 +3315,7 @@ proc ::cm::conference::cmd_website_make {config} {
 
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
+    make_page   {Registration Confirmation}        confirm     make_confirm
 
     make_internal_page Administrivia __dwarf make_admin $conference
 
@@ -4504,12 +4505,14 @@ proc ::cm::conference::make_contact {} {
     return
 }
 
+proc ::cm::conference::make_confirm {} {
+    debug.cm/conference {}
+    return [template use www-confirm]
+}
+
 proc ::cm::conference::make_disclaimer {} {
     debug.cm/conference {}
-    # make-abstracts - TODO: Move text into a configurable template
-    return [util undent {
-	This is the disclaimer and copyright.
-    }]
+    return [template use www-disclaimer]
 }
 
 proc ::cm::conference::make_proceedings {conference} {
