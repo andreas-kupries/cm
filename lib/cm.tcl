@@ -1710,6 +1710,15 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [stop!] }
 	} [cm::call contact cmd_set_bio]
 
+	private get-bio {
+	    section {Contact Management}
+	    description {Get the biography of the specified contact.}
+	    input name {
+		Name of the contact to query
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
+	} [cm::call contact cmd_get_bio]
+
 	private add-mail {
 	    section {Contact Management}
 	    description {Add more email address to a contact}
