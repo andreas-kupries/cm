@@ -40,7 +40,7 @@ namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
 	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge \
-	cmd_set_tag cmd_set_bio cmd_disable cmd_enable liaisons \
+	cmd_set_tag cmd_set_bio cmd_get_bio cmd_disable cmd_enable liaisons \
 	cmd_disable_mail cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
@@ -708,6 +708,19 @@ proc ::cm::contact::cmd_set_bio {config} {
     return
 }
 
+proc ::cm::contact::cmd_get_bio {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+
+    puts "Biography of \"[color name [get $contact]]\" ..."
+    puts [retrieve-bio $contact]
+    puts [color good OK]
+    return
+}
+
 proc ::cm::contact::cmd_add_company {config} {
     debug.cm/contact {}
     Setup
@@ -1092,6 +1105,17 @@ proc ::cm::contact::update-bio {contact bio} {
 	WHERE  id        = :contact
     }
     return
+}
+
+proc ::cm::contact::retrieve-bio {contact} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT biography
+	FROM   contact
+	WHERE  id = :contact
+    }]
 }
 
 proc ::cm::contact::add-affiliation {contact affiliation} {
