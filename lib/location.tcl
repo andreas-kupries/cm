@@ -251,8 +251,10 @@ proc ::cm::location::cmd_contact {config} {
 	locallink  {Local   Url  }
     } {
 	if {[$config @$key set?]} {
-	    set new [$config @$key]
-	    puts "${label}: $new"
+	    set new [string trim [$config @$key]]
+	    if {$new ne {}} {
+		puts "${label}: $new"
+	    }
 	} else {
 	    set v [dict get $details x$key]
 	    set new [ask string $label $v]
@@ -532,20 +534,25 @@ proc ::cm::location::write {id details} {
     dict with details {}
     # xstaffcount is ignored, derived data.
 
-    db do eval {
+    set cmd {
 	UPDATE location
-	SET    city           = :xcity,
-	       streetaddress  = :xstreet,
-	       zipcode        = :xzipcode,
-	       book_fax       = :xbookfax,
-	       book_link      = :xbooklink,
-	       book_phone     = :xbookphone,
-	       local_fax      = :xlocalfax,
-	       local_link     = :xlocallink,
-	       local_phone    = :xlocalphone,
-	       transportation = :xtransport
-	WHERE id = :id
+	SET    city           = :xcity
+	,      streetaddress  = :xstreet
+	,      zipcode        = :xzipcode
     }
+
+    # Set only the parts which are not empty strings.
+    foreach ref {
+	bookphone  bookfax  booklink
+	localphone localfax locallink
+    } {
+	if {[set x$ref] eq ""} continue
+	append cmd ",      $ref       = :x$ref"
+    }
+    append cmd {	WHERE id = :id}
+
+    db do eval $cmd
+    return
 }
 
 proc ::cm::location::the-current {} {
