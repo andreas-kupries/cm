@@ -1,6 +1,18 @@
 ## -*- tcl -*-
 # # ## ### ##### ######## ############# #####################
-## CM - Validation Type - Color modi
+## CM - Validation Type - Slot types for schedules.
+
+# @@ Meta Begin
+# Package cm::validate::schedule-slot-type 0
+# Meta author      {Andreas Kupries}
+# Meta category    ?
+# Meta description ?
+# Meta location    http:/core.tcl.tk/akupries/cm
+# Meta platform    tcl
+# Meta require     ?
+# Meta subject     ?
+# Meta summary     ?
+# @@ Meta End
 
 # # ## ### ##### ######## ############# #####################
 ## Requisites
