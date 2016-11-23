@@ -542,12 +542,16 @@ proc ::cm::location::write {id details} {
     }
 
     # Set only the parts which are not empty strings.
-    foreach ref {
-	bookphone  bookfax  booklink
-	localphone localfax locallink
+    foreach {ref col} {
+	xbookphone  book_phone
+	xbookfax    book_fax
+	xbooklink   book_link
+	xlocalphone local_phone
+	xlocalfax   local_fax
+	xlocallink  local_link
     } {
-	if {[set x$ref] eq ""} continue
-	append cmd ",      $ref       = :x$ref"
+	if {[set $ref] eq ""} continue
+	append cmd ",      $col       = :$ref"
     }
     append cmd {	WHERE id = :id}
 
