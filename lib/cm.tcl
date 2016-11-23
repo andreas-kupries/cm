@@ -701,7 +701,10 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private timeline-shift {
 	    section {Conference Management}
-	    description { Shift an event of the timeline for the conference }
+	    description {
+		Shift an event of the timeline for the conference
+		(cfp1|cfp2|cfp3|wipopen|submitdead|regopen|authornote|writedead|procedit|procship|begin-t|begin-s)
+	    }
 	    input event {
 		The event to shift.
 	    } {	optional
@@ -719,6 +722,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Set an event of the timeline for the conference to an exact date }
 	    input event {
 		The event to set the date of.
+		(cfp1|cfp2|cfp3|wipopen|submitdead|regopen|authornote|writedead|procedit|procship|begin-t|begin-s)
 	    } {	optional
 		validate [cm::vt timeline]
 		generate [cm::call conference select-timeline]
@@ -734,6 +738,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Mark an event on the timeline for the conference as done. }
 	    input event {
 		The event to mark as done.
+		(cfp1|cfp2|cfp3|wipopen|submitdead|regopen|authornote|writedead|procedit|procship|begin-t|begin-s)
 	    } {	optional
 		validate [cm::vt timeline]
 		generate [cm::call conference select-timeline]
@@ -816,6 +821,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Add one or more staff }
 	    input role {
 		The role to staff
+		(Chair|Facilities chair|Program chair|Program committee|Hotel liaison|Web admin|Proceedings editor)
 	    } {
 		optional
 		validate [cm::vt staff-role]
@@ -892,7 +898,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Name of the slot to edit.
 	    } { validate [cm::vt schedule-slot] }
 	    input type {
-		New type of the slot
+		New type of the slot (talk|tutorial|fixed)
 	    } { validate [cm::vt schedule-slot-type] }
 	    input value {
 		New value of the slot, type-dependent interpretation.
@@ -975,7 +981,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Set the registration status of the conference. }
 	    input status {
-		The new registration status.
+		The new registration status (pending|open|closed).
 	    } { validate [cm::vt rstatus] }
 	} [cm::call conference cmd_registration]
 
@@ -983,7 +989,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Conference Management}
 	    description { Set the visibility status of the conference proceedings. }
 	    input status {
-		The new visibility status.
+		The new visibility status (hidden|visible).
 	    } { validate [cm::vt pvisible] }
 	} [cm::call conference cmd_proceedings]
 
@@ -997,7 +1003,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Day of the tutorial as integer - 1 <=> 1st day of conference, etc.
 	    } { validate [cm::cvt posint] }
 	    input half {
-		Overall part of the day for the tutorial (morning, afternoon, evening)
+		Overall part of the day for the tutorial (morning|afternoon|evening)
 	    } { validate [cm::vt dayhalf] }
 	    input track {
 		On days with multiple tutorials in parallel, the id of the track.
@@ -1311,6 +1317,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		state of the chosen submission.
 		invited => keynote
 		regular => submitted
+		(invited|submitted|keynote|panel)
 	    } { validate [cm::vt talk-type] }
 	    input submission {
 		The submission to accept.
@@ -1776,7 +1783,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option with-mails {Show mail addresses} {
 		alias with-emails ; presence }
 	    option only {
-		Show only entries of the requested type(s).
+		Show only entries of the requested type(s) (Person|Company|Mailinglist).
 		If not specified show all.
 	    } { list ; validate [cm::vt contact-type] }
 	    option unreachable {
@@ -1800,6 +1807,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Fix the type of the specified contacts. Resets flags to defaults.}
 	    input type {
 		The new type of the contact
+		(Person|Company|Mailinglist).
 	    } { validate [cm::vt contact-type] }
 	    input name {
 		Name of the contacts to modify.
