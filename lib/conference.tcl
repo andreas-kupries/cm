@@ -135,6 +135,10 @@ proc ::cm::conference::cmd_list {config} {
 
     set cid [config get* @current-conference {}]
 
+    # FUTURE: Options to sort by
+    # - C.title
+    # - CC.name, CC.state, CC.nation
+
     [table t {{} Name Start End City} {
 	db do eval {
 	    SELECT C.id                    AS id,
@@ -147,7 +151,7 @@ proc ::cm::conference::cmd_list {config} {
 	    FROM      conference C
             LEFT JOIN city      CC
 	    ON        CC.id = C.city
-	    ORDER BY C.title
+	    ORDER BY C.startdate
 	} {
 	    set start "[date 2external $start] [hwday $start]"
 	    set end   "[date 2external $end] [hwday $end]"
