@@ -539,6 +539,7 @@ proc ::cm::location::write {id details} {
 	SET    city           = :xcity
 	,      streetaddress  = :xstreet
 	,      zipcode        = :xzipcode
+	,      transportation = :xtransport
     }
 
     # Set only the parts which are not empty strings.
