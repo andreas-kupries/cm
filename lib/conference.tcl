@@ -772,7 +772,7 @@ proc ::cm::conference::cmd_committee_ping {config} {
 proc ::cm::conference::cmd_submission_add {config} {
     debug.cm/conference {}
     Setup
-    db show-location
+    if {![$config @raw]} { db show-location }
 
     # submission-add - TODO - Block submissions to a past/locked conference
     # => trigger on the conference timeline ?!
@@ -783,10 +783,12 @@ proc ::cm::conference::cmd_submission_add {config} {
     set title      [$config @title]
     set authors    [$config @author]
     set now        [$config @on]
-    set abstract   [read stdin]
+    set abstract   [string trim [read stdin]]
 
-    puts -nonewline "Add submission \"[color name $title]\" to conference \"[color name [get $conference]]\" ... "
-    flush stdout
+    if {![$config @raw]} {
+	puts -nonewline "Add submission \"[color name $title]\" to conference \"[color name [get $conference]]\" ... "
+	flush stdout
+    }
 
     db do transaction {
 	db do eval {
@@ -802,10 +804,14 @@ proc ::cm::conference::cmd_submission_add {config} {
 	}
     }
 
-    puts -nonewline "Id [color name [get-submission-handle $submission]] ... "
-    flush stdout
-
-    puts [color good OK]
+    if {![$config @raw]} {
+	puts -nonewline "Id [color name [get-submission-handle $submission]] ... "
+	flush stdout
+	puts [color good OK]
+    } else {
+	# raw. print id of new submission. nothing else.
+	puts [get-submission-handle $submission]
+    }
     return
 }
 
@@ -848,7 +854,7 @@ proc ::cm::conference::cmd_submission_setsummary {config} {
 
     set conference [current]
     set submission [$config @submission] 
-    set summary    [read stdin]
+    set summary    [string trim [read stdin]]
 
     puts -nonewline "Set summary of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
     flush stdout
@@ -870,7 +876,7 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
 
     set conference [current]
     set submission [$config @submission] 
-    set abstract   [read stdin]
+    set abstract   [string trim [read stdin]]
 
     puts -nonewline "Set abstract of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
     flush stdout

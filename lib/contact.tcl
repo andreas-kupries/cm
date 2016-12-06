@@ -390,12 +390,13 @@ proc ::cm::contact::cmd_add_mail {config} {
     Setup
     db show-location
 
-    set contact [$config @name]
+    set contact  [$config @name]
+    set disabled [$config @disabled]
 
     puts -nonewline "Add mails to \"[color name [get $contact]]\" ... "
     flush stdout
 
-    add-mails $contact $config
+    add-mails $contact $config $disabled
 
     puts [color good OK]
     return
@@ -481,16 +482,7 @@ proc ::cm::contact::cmd_disable_mail {config} {
 	puts -nonewline "Disabling email \"[color name [get-email $email]]\" ... "
 	flush stdout
 
-	db do transaction {
-	    # set inactive
-	    db do eval {
-		UPDATE email
-		SET inactive = 1
-		WHERE id = :email
-	    } 
-	    # ... and drop the mail from all active campaigns.
-	    campaign drop-mail $email
-	}
+	disable-mail $email
 
 	puts [color good OK]
     }
@@ -973,10 +965,16 @@ proc ::cm::contact::related-formatted {contact type} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::contact::add-mails {id config} {
+proc ::cm::contact::add-mails {id config {disabled 0}} {
     debug.cm/contact {}
     foreach mail [$config @email] {
-	new-mail $id [string trim $mail]
+	set mail [string trim $mail]
+	if {[has-mail $mail]} continue
+
+	set mailid [new-mail $id $mail]
+	if {$disabled} {
+	    disable-mail $mailid
+	}
     }
     return
 }
@@ -1207,6 +1205,35 @@ proc ::cm::contact::has-person {name} {
 	WHERE  type = 1		-- person
 	AND    name = :name
     }]
+}
+
+proc ::cm::contact::has-mail {email} {
+    debug.cm/contact {}
+    Setup
+
+    set email [string tolower $email]
+    return [db do exists {
+	SELECT id
+	FROM   email
+	WHERE  email = :email
+    }]
+}
+
+proc ::cm::contact::disable-mail {email} {
+    debug.cm/contact {}
+    Setup
+
+    db do transaction {
+	# set inactive
+	db do eval {
+	    UPDATE email
+	    SET    inactive = 1
+	    WHERE  id = :email
+	} 
+	# ... and drop the mail from all active campaigns.
+	campaign drop-mail $email
+    }
+    return
 }
 
 # # ## ### ##### ######## ############# ######################
