@@ -1110,9 +1110,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
-	    option raw {
-		Disable reformatting of the preview.
-	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
@@ -1178,9 +1175,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Send a mail to speakers without hotel booking }
 	    option dry {
 		When present do not actually mail anything.
-	    } { presence }
-	    option raw {
-		Disable reformatting of the preview.
 	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
@@ -1397,9 +1391,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
-	    option raw {
-		Disable reformatting of the preview.
-	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
@@ -1430,9 +1421,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
-	    option raw {
-		Disable reformatting of the preview.
-	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { validate [cm::vt template] }
@@ -1444,9 +1432,6 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Send a mail to authors with materials due }
 	    option dry {
 		When present do not actually mail anything.
-	    } { presence }
-	    option raw {
-		Disable reformatting of the preview.
 	    } { presence }
 	    input template {
 		Name of the template holding mail subject and body.
