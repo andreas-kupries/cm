@@ -622,6 +622,11 @@ proc ::cm::contact::cmd_merge {config} {
 	# - affiliation.company
 	# - liaison.person
 	# - liaison.company
+	# - conference.management
+	# - conference_staff.contact
+	# - sponsors.contact
+	# - submitter.contact
+	# - talker.contact
 	#
 	# Note: There is no need to update campaigns as emails are
 	# neither added/enabled nor removed/disabled.
@@ -654,6 +659,26 @@ proc ::cm::contact::cmd_merge {config} {
 		UPDATE liaison
 		SET    company = :primary
 		WHERE  company = :secondary
+		;
+		UPDATE conference
+		SET    management = :primary
+		WHERE  management = :secondary
+		;
+		UPDATE conference_staff
+		SET    contact = :primary
+		WHERE  contact = :secondary
+		;
+		UPDATE sponsors
+		SET    contact = :primary
+		WHERE  contact = :secondary
+		;
+		UPDATE submitter
+		SET    contact = :primary
+		WHERE  contact = :secondary
+		;
+		UPDATE talker
+		SET    contact = :primary
+		WHERE  contact = :secondary
 		;
 		DELETE
 		FROM   contact
