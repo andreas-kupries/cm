@@ -190,6 +190,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	#when-set ... generate db immediately ?
     }
 
+    option raw {
+	When present change command output to be machine-readable, i.e.
+	easier use in a script.
+    } {	presence }
+
     option debug {
 	Placeholder. Processed before reaching cmdr.
     } {
@@ -1730,6 +1735,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Contact Management}
 	    description {Add more email address to a contact}
 	    use .mails
+	    option disabled {
+		Add the mail as disabled. Note, no change is made to
+		the status if the mail already exists.
+	    } { presence }
 	    input name {
 		Name of the contact to extend. No mailing lists.
 	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
