@@ -460,6 +460,19 @@ proc ::cm::campaign::cmd_mail {config} {
 
     set text [conference insert $conference $text]
 
+    if {[$config @dry]} {
+	[table t Text {
+	    lappend tmap @mg:sender@ [color red <<sender>>]
+	    lappend tmap @mg:name@   [color red <<name>>]
+	    $t headers 0
+	    set str [string map $tmap $text]
+	    #if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
+	    $t add $str
+	}] show
+	puts [color note {Dry run}]
+	return
+    }
+
     db do eval {
 	INSERT INTO campaign_mailrun
 	VALUES (NULL, :campaign, :template, :now)
@@ -470,16 +483,27 @@ proc ::cm::campaign::cmd_mail {config} {
 	set mconfig [mailer get-config]
     }
 
+    set max 0
+    mailer batch receiver address name $destinations {
+	incr max
+    }
+
+    set k 1
     mailer batch receiver address name $destinations {
 	# Insert address and name into the template
 	puts "To: $name [color name $address]"
+
+	puts -nonewline "\[$k/$max\] "
+	incr k
 
 	if {!$fake} {
 	    mailer send $mconfig \
 		[list $address] \
 		[mailgen call $address $name $text] \
 		0 ;# not verbose
-	}
+	    puts {Waiting 5 ...}
+	    after 5000
+	} else { puts "" }
 
 	db do eval {
 	    INSERT INTO campaign_received

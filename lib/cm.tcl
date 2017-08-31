@@ -65,7 +65,8 @@ proc ::cm::main {argv} {
 	debug.cm {trap - cmdline user error}
 	puts stderr "$::argv0 cmdr: [cmdr color error $e]"
 	return 1
-
+    } trap {CMDR QUIT} {e o} {
+	# Nothing to do.
     } trap {CM} {e o} {
 	debug.cm {trap - other user error}
 	puts stderr "$::argv0 general: [cmdr color error $e]"
@@ -673,6 +674,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	private list {
 	    section {Conference Management}
 	    description { Show a table of all known conferences }
+
+	    option no-errors {
+		Suppress display of problems
+	    } { alias N ; presence }
+
 	} [cm::call conference cmd_list]
 
 	private select {
@@ -1478,6 +1484,11 @@ cmdr create cm::cm [file tail $::argv0] {
 		updated in full, but no mails are actuall send out.
 		This option is only for testing.
 	    } { presence }
+	    option dry {
+		When present do not actually mail anything.
+		Do not update the database either. Show the
+		filled template.
+	    } { presence }
 	    option force {
 		Force mail run, even if the template has issues.
 	    } { presence }
@@ -1604,6 +1615,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { list ; optional ; interact ; validate [cm::vt email] }
 	}
 
+	common .ilinks {
+	    input link {
+		One or more known links
+	    } { list ; optional ; interact ; validate str }
+	}
+
 	private create-person {
 	    section {Contact Management}
 	    description {Create a new contact for a person}
@@ -1707,6 +1724,26 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [stop!] }
 	} [cm::call contact cmd_set_bio]
 
+	private hide-bio {
+	    section {Contact Management}
+	    description {Hide the biography of one or more contacts from public view}
+	    # This does not affect use in a conference site.
+	    input name {
+		Name of the contact to modify
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
+	} [cm::call contact cmd_hide_bio]
+
+	private publish-bio {
+	    section {Contact Management}
+	    description {Open the biography of one or more contacts to public view}
+	    # This does not affect use in a conference site.
+	    input name {
+		Name of the contact to modify
+	    } { list ; optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding mlists
+		generate [stop!] }
+	} [cm::call contact cmd_publish_bio]
+
 	private get-bio {
 	    section {Contact Management}
 	    description {Get the biography of the specified contact.}
@@ -1746,11 +1783,32 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .imails
 	} [cm::call contact cmd_disable_mail]
 
-	private squash-mail {
+	private hide-mail {
+	    section {Contact Management}
+	    description {Hide one or more email addresses from public view}
+	    # This does not affect use in campaigns.
+	    use .imails
+	} [cm::call contact cmd_hide_mail]
+
+	private publish-mail {
+	    section {Contact Management}
+	    description {Open one or more email addresses to public view}
+	    # This does not affect use in campaigns.
+	    use .imails
+	} [cm::call contact cmd_publish_mail]
+
+	private remove-mail {
 	    section {Contact Management}
 	    description {Fully remove one or more email addresses}
 	    use .imails
 	} [cm::call contact cmd_squash_mail]
+	alias squash-mail
+
+	private remove-link {
+	    section {Contact Management}
+	    description {Fully remove one or more links}
+	    use .ilinks
+	} [cm::call contact cmd_squash_link]
 
 	private disable {
 	    section {Contact Management}

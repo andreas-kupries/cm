@@ -668,8 +668,8 @@ proc ::cm::schedule::TrackList {pschedule {color {}}} {
     set at [pschedule track-piece $at dname]
 
     set tracks [string trimright [[table tx {{} Track Count} {
-	$tx noheader
-	$tx plain
+	$tx headers 0
+	$tx borders 0
 	foreach {name icount} $trackstats {
 	    set mark [expr {$at eq $name ? "->" : ""}]
 	    if {($at eq $name) && ($color ne {})} {
@@ -717,8 +717,8 @@ proc ::cm::schedule::ItemList {pschedule {color {}} {map {}}} {
 
     set items [string trimright [[table tx {{} {} Day Start End Length {} Track {} Note Description} {
 	#                             active^  ^parent
-	$tx noheader
-	$tx plain
+	$tx headers 0
+	$tx borders 0
 
 	foreach {id _ day track start length parent label dmajor dminor} $items {
 

@@ -40,11 +40,13 @@ namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
 	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge \
-	cmd_set_tag cmd_set_bio cmd_get_bio cmd_disable cmd_enable liaisons \
-	cmd_disable_mail cmd_squash_mail cmd_mail_fix cmd_retype cmd_rename \
+	cmd_set_tag cmd_set_bio cmd_hide_bio cmd_publish_bio cmd_get_bio cmd_disable \
+	cmd_enable liaisons cmd_disable_mail cmd_hide_mail cmd_publish_mail \
+	cmd_squash_mail cmd_squash_link cmd_mail_fix cmd_retype \
+	cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
-	get-name get-links get-email get-the-link related-formatted
+	get-name get-links get-email get-link get-the-link related-formatted
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -81,6 +83,7 @@ proc ::cm::contact::cmd_show {config} {
 	           CT.text        AS type,
 	           C.dname        AS name,
 	    	   C.biography    AS bio,
+	    	   C.bio_public   AS bio_public,
 	           C.can_recvmail AS crecv,
 	    	   C.can_register AS creg,
 	    	   C.can_book     AS cbook,
@@ -104,29 +107,66 @@ proc ::cm::contact::cmd_show {config} {
 	    if {$ctalk} { lappend flags Talk     }
 	    if {$csubm} { lappend flags Submit   }
 
+	    set biodisplay [util adjust $w $bio]
+	    if {!$bio_public} {
+		set biodisplay [color bad (Private)]\n$biodisplay
+	    }
+	    
 	    $t add Tag                $tag
 	    $t add Name               [color name $name]
 	    $t add Type               $type
 	    $t add Flags              [join $flags {, }]
-	    $t add Biography          [util adjust $w $bio]
+	    $t add Biography          $biodisplay
 
 	    # Coded left self-joins for various relations...
 
+	    # Submissions, and associated talks
+	    
+	    set first 1
+	    db do eval {
+		SELECT S.id    AS submission
+		,      C.year  AS year
+		,      P.title AS title
+		FROM submitter  S
+		,    submission P
+		,    conference C
+		WHERE S.contact    = :id
+		AND   S.submission = P.id
+		AND   P.conference = C.id
+	    } {
+		if {$first} { $t add Submissions {} }
+		set first 0
+
+		set presented [db do exists {
+		    SELECT *
+		    FROM talk T
+		    WHERE T.submission = :submission
+		}]
+
+		if {$presented} {
+		    $t add - "${year}: $title ([color note Presented])"
+		} else {
+		    $t add - "${year}: $title"
+		}
+	    }
+	    	    
 	    # Emails for the contact
 	    set first 1
 	    db do eval {
-		SELECT email, inactive
+		SELECT email, inactive, public
 		FROM   email
 		WHERE  contact = :id
 	    } {
 		if {$first} { $t add Emails {} }
 		set first 0
-
+		set display $email
 		if {$inactive} {
-		    $t add - "$email ([color bad Disabled])"
-		} else {
-		    $t add - $email
+		    append display " ([color bad Disabled])"
 		}
+		if {!$public} {
+		    append display " ([color bad Private])"
+		}
+		$t add - $display
 	    }
 
 	    # Links for the contact
@@ -135,13 +175,16 @@ proc ::cm::contact::cmd_show {config} {
 		SELECT link
 		FROM   link
 		WHERE  contact = :id
+		ORDER BY link
 	    } {
 		if {$first} { $t add Links {} }
 		set first 0
 		$t add - $link
 	    }
 
-	    # Affiliations. Expected for persons, to list companies, their, well, affiliations
+	    # Affiliations. Expected for persons, to list companies,
+	    # their, well, affiliations
+	    
 	    set first 1
 	    db do eval {
 		SELECT C.dname
@@ -149,13 +192,16 @@ proc ::cm::contact::cmd_show {config} {
 		       affiliation A
 		WHERE  A.person  = :contact
 		AND    A.company = C.id
+		ORDER BY C.dname
 	    } {
 		if {$first} { $t add Affiliations {} }
 		set first 0
 		$t add - [color name $dname]
 	    }
 
-	    # Liaisons. Expected for companies, to list persons, their representatives
+	    # Liaisons. Expected for companies, to list persons, their
+	    # representatives
+	    
 	    set first 1
 	    db do eval {
 		SELECT C.dname
@@ -163,13 +209,16 @@ proc ::cm::contact::cmd_show {config} {
 		       liaison L
 		WHERE  L.company = :contact
 		AND    L.person = C.id
+		ORDER BY C.dname
 	    } {
 		if {$first} { $t add Representatives {} }
 		set first 0
 		$t add - [color name $dname]
 	    }
 
-	    # Reverse affiliations. Expected for companies, to list persons, the affiliated
+	    # Reverse affiliations. Expected for companies, to list
+	    # persons, the affiliated
+	    
 	    set first 1
 	    db do eval {
 		SELECT C.dname
@@ -177,13 +226,16 @@ proc ::cm::contact::cmd_show {config} {
 		       affiliation A
 		WHERE  A.company = :contact
 		AND    A.person  = C.id
+		ORDER BY C.dname
 	    } {
 		if {$first} { $t add Affiliated {} }
 		set first 0
 		$t add - [color name $dname]
 	    }
 
-	    # Reverse liaisons. Expected for persons, to list the companies they represent
+	    # Reverse liaisons. Expected for persons, to list the
+	    # companies they represent
+	    
 	    set first 1
 	    db do eval {
 		SELECT C.dname
@@ -479,13 +531,43 @@ proc ::cm::contact::cmd_disable_mail {config} {
     db show-location
 
     foreach email [$config @email] {
-	puts -nonewline "Disabling email \"[color name [get-email $email]]\" ... "
+	puts "Disabling email \"[color name [get-email $email]]\" ... "
 	flush stdout
 
 	disable-mail $email
 
 	puts [color good OK]
     }
+    return
+}
+
+proc ::cm::contact::cmd_hide_mail {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach email [$config @email] {
+	puts "Hiding email \"[color name [get-email $email]]\" ... "
+	flush stdout
+
+	hide-mail $email
+    }
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_publish_mail {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach email [$config @email] {
+	puts "Publishing email \"[color name [get-email $email]]\" ... "
+	flush stdout
+
+	publish-mail $email
+    }
+    puts [color good OK]
     return
 }
 
@@ -512,6 +594,29 @@ proc ::cm::contact::cmd_squash_mail {config} {
 		DELETE
 		FROM  email
 		WHERE id = :email
+		;
+	    } 
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
+proc ::cm::contact::cmd_squash_link {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach link [$config @link] {
+	puts -nonewline "Deleting link \"[color name $link]\" ... "
+	flush stdout
+
+	db do transaction {
+	    db do eval {
+		DELETE
+		FROM  link
+		WHERE link = :link
 		;
 	    } 
 	}
@@ -720,6 +825,38 @@ proc ::cm::contact::cmd_set_bio {config} {
     flush stdout
 
     update-bio $contact $bio
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_hide_bio {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts "Hide biography of \"[color name [get $contact]]\" ... "
+	flush stdout
+
+	hide-bio $contact
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_publish_bio {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts "Publish biography of \"[color name [get $contact]]\" ... "
+	flush stdout
+
+	publish-bio $contact
+    }
 
     puts [color good OK]
     return
@@ -1023,7 +1160,7 @@ proc ::cm::contact::new-mlist {dname} {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
 		3, :name, :dname,	-- mailing list, name, dname
-		NULL,			-- no initial bio
+		NULL, 0,		-- no initial description, not generally public
 		1,0,0,0,0)              -- can flags
     }
     return [db do last_insert_rowid]
@@ -1038,7 +1175,7 @@ proc ::cm::contact::new-company {dname} {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
 		2, :name, :dname,	-- company, name, dname
-		NULL,			-- no initial bio
+		NULL, 0,		-- no initial description, not generally public
 		1,0,0,0,1)              -- can flags
 
 	-- TODO/Note: talker for a company submission should have company affiliation.
@@ -1056,7 +1193,7 @@ proc ::cm::contact::new-person {dname} {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
 		1, :name, :dname,	-- type (person), name, dname
-		NULL,			-- no initial bio
+		NULL, 0,		-- no initial bio, not generally public
 		1,1,1,1,1)              -- can flags
     }
     return [db do last_insert_rowid]
@@ -1126,6 +1263,30 @@ proc ::cm::contact::update-bio {contact bio} {
 	UPDATE contact
 	SET    biography = :bio
 	WHERE  id        = :contact
+    }
+    return
+}
+
+proc ::cm::contact::hide-bio {contact} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    bio_public = 0
+	WHERE  id         = :contact
+    }
+    return
+}
+
+proc ::cm::contact::publish-bio {contact} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    bio_public = 1
+	WHERE  id         = :contact
     }
     return
 }
@@ -1261,6 +1422,36 @@ proc ::cm::contact::disable-mail {email} {
     return
 }
 
+proc ::cm::contact::hide-mail {email} {
+    debug.cm/contact {}
+    Setup
+
+    db do transaction {
+	# set private
+	db do eval {
+	    UPDATE email
+	    SET    public = 0
+	    WHERE  id     = :email
+	} 
+    }
+    return
+}
+
+proc ::cm::contact::publish-mail {email} {
+    debug.cm/contact {}
+    Setup
+
+    db do transaction {
+	# set private
+	db do eval {
+	    UPDATE email
+	    SET    public = 1
+	    WHERE  id     = :email
+	} 
+    }
+    return
+}
+
 # # ## ### ##### ######## ############# ######################
 
 proc ::cm::contact::get-mlist {name} {
@@ -1311,6 +1502,17 @@ proc ::cm::contact::get-email {id} {
     return [db do onecolumn {
 	SELECT email
 	FROM   email
+	WHERE  id = :id
+    }]
+}
+
+proc ::cm::contact::get-link {id} {
+    debug.cm/contact {}
+    Setup
+
+    return [db do onecolumn {
+	SELECT link
+	FROM   link
 	WHERE  id = :id
     }]
 }
@@ -1602,8 +1804,9 @@ proc ::cm::contact::Setup {} {
 	    type	 INTEGER NOT NULL REFERENCES contact_type,
 	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	    dname	 TEXT	 NOT NULL,		-- display name
-	    biography	 TEXT,
-
+	    biography	 TEXT,                          -- a person's bio, or list/project/company description
+	    bio_public   INTEGER NOT NULL,		-- bio is generally public
+	    
 	    can_recvmail INTEGER NOT NULL,	-- valid recipient of conference mail (call for papers)
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
@@ -1616,6 +1819,7 @@ proc ::cm::contact::Setup {} {
 	    {name		TEXT    1 {} 0}
 	    {dname		TEXT    1 {} 0}
 	    {biography		TEXT    0 {} 0}
+	    {bio_public		INTEGER 1 {} 0}
 	    {can_recvmail	INTEGER 1 {} 0}
 	    {can_register	INTEGER 1 {} 0}
 	    {can_book		INTEGER 1 {} 0}
@@ -1634,11 +1838,13 @@ proc ::cm::contact::Setup {} {
 	    email	TEXT	NOT NULL UNIQUE,
 	    contact	INTEGER	NOT NULL REFERENCES contact,
 	    inactive	INTEGER	NOT NULL	-- mark outdated addresses
+	    public	INTEGER	NOT NULL	-- mark visible addresses
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {email	TEXT    1 {} 0}
 	    {contact	INTEGER 1 {} 0}
 	    {inactive	INTEGER 1 {} 0}
+	    {public	INTEGER 1 {} 0}
 	} {contact}
     }]} {
 	db setup-error email $error
@@ -1680,7 +1886,6 @@ proc ::cm::contact::Setup {} {
 	    INSERT OR IGNORE INTO contact_type VALUES (3,'Mailinglist');
 	}
     }
-
 
     if {![dbutil initialize-schema ::cm::db::do error affiliation {
 	{
@@ -1730,7 +1935,7 @@ proc ::cm::contact::Dump {} {
 
     # Step I. Core contact information.
     db do eval {
-	SELECT id, tag, type, dname, biography, can_recvmail
+	SELECT id, tag, type, dname, biography, bio_public, can_recvmail
 	FROM   contact
 	ORDER BY dname
     } {
@@ -1741,7 +1946,7 @@ proc ::cm::contact::Dump {} {
 	    ORDER BY link
 	}]
 	set mail [db do eval {
-	    SELECT email, inactive
+	    SELECT email, inactive, public
 	    FROM   email
 	    WHERE contact = :id
 	    ORDER BY email
@@ -1761,10 +1966,14 @@ proc ::cm::contact::Dump {} {
 	}
 
 	if {$type != 3} {
-	    foreach {mail inactive} $mail {
+	    foreach {mail inactive public} $mail {
 		cm dump save  contact add-mail $dname -E $mail
-		if {!$inactive} continue
-		cm dump save  contact disable-mail $mail
+		if {$inactive} {
+		    cm dump save  contact disable-mail $mail
+		}
+		if {!$public} {
+		    cm dump save  contact hide-mail $mail
+		}
 	    }
 	}
 
@@ -1777,6 +1986,9 @@ proc ::cm::contact::Dump {} {
 	    cm dump save \
 		contact set-bio $dname \
 		< [cm dump write contact$id $biography]
+	}
+	if {!$bio_public} {
+	    cm dump save contact hide-bio $dname
 	}
 
 	cm dump step
