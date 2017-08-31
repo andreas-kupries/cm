@@ -134,7 +134,8 @@ proc ::cm::conference::cmd_list {config} {
     db show-location
 
     set cid [config get* @current-conference {}]
-
+    set ne  [$config @no-errors]
+    
     # FUTURE: Options to sort by
     # - C.title
     # - CC.name, CC.state, CC.nation
@@ -156,10 +157,12 @@ proc ::cm::conference::cmd_list {config} {
 	    set start "[date 2external $start] [hwday $start]"
 	    set end   "[date 2external $end] [hwday $end]"
 
-	    set city    [city label $city $state $nation]
-	    set issues  [issues [details $id]]
-	    if {[llength $issues]} {
-		append title \n [fmt-issues-cli $issues]
+	    set city [city label $city $state $nation]
+	    if {!$ne} {
+		set issues  [issues [details $id]]
+		if {[llength $issues]} {
+		    append title \n [fmt-issues-cli $issues]
+		}
 	    }
 
 	    util highlight-current cid $id current title start end city
@@ -723,7 +726,7 @@ proc ::cm::conference::cmd_committee_ping {config} {
 	lappend map @mg:sender@ [color red <<sender>>]
 	lappend map @mg:name@   [color red <<name>>]
 	lappend map @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 	$t add [util adjust [util tspace 0 60] \
 		    [insert $conference [string map $map $template]]]
     }] show
@@ -1454,7 +1457,7 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	lappend tmap @mg:sender@ [color red <<sender>>]
 	lappend tmap @mg:name@   [color red <<name>>]
 	lappend tmap @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 
 	set str [insert $conference [string map $tmap $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
@@ -1576,7 +1579,7 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
 	lappend map @mg:sender@ [color red <<sender>>]
 	lappend map @mg:name@   [color red <<name>>]
 	lappend map @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 
 	set str [insert $conference [string map $map $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
@@ -1725,7 +1728,7 @@ proc ::cm::conference::cmd_submission_nag {config} {
 	lappend tmap @mg:sender@ [color red <<sender>>]
 	lappend tmap @mg:name@   [color red <<name>>]
 	lappend tmap @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 
 	set str [insert $conference [string map $tmap $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
@@ -2081,7 +2084,7 @@ proc ::cm::conference::cmd_sponsor_ping {config} {
     [table t Text {
 	lappend map @mg:sender@ [color red <<sender>>]
 	lappend map @mg:name@   [color red <<name>>]
-	$t noheader
+	$t headers 0
 	$t add [util adjust [util tspace 0 60] \
 		    [string map $map $template]]
     }] show
@@ -2959,7 +2962,7 @@ proc ::cm::conference::cmd_registration_nag {config} {
 	lappend map @mg:sender@ [color red <<sender>>]
 	lappend map @mg:name@   [color red <<name>>]
 	lappend map @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 
 	set str [insert $conference [string map $map $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
@@ -3170,7 +3173,7 @@ proc ::cm::conference::cmd_booking_nag {config} {
 	lappend map @mg:sender@ [color red <<sender>>]
 	lappend map @mg:name@   [color red <<name>>]
 	lappend map @origins@   [color red $origins]
-	$t noheader
+	$t headers 0
 
 	set str [insert $conference [string map $map $template]]
 	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
@@ -5113,7 +5116,7 @@ proc ::cm::conference::make_sidebar {conference} {
 
     append sidebar [[table t {Event When} {
 	$t style cmdr/table/html
-	$t noheader
+	$t headers 0
 
 	switch -exact -- [set m [registration-mode $conference]] {
 	    pending {

@@ -256,10 +256,10 @@ proc ::cm::location::cmd_contact {config} {
 		puts "${label}: $new"
 	    }
 	} else {
-	    set v [dict get $details x$key]
-	    set new [ask string $label $v]
+	    set v [string trim [dict get $details x$key]]
+	    set new [string trim [ask string $label $v]]
 	}
-	dict set details x$key $new
+	dict set details x$key [string trim $new "\t\r\n "]
     }
 
     puts -nonewline "Saving ... "
