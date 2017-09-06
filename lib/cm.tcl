@@ -1843,6 +1843,13 @@ cmdr create cm::cm [file tail $::argv0] {
 		with them, in other words, cannot be not reached
 		by campaigns.
 	    } { presence }
+	    option undescribed {
+		Show only entries which have no biography associated
+		with them.
+	    } { presence }
+	    option no-relations {
+		Suppress the display of relations, to unclutter the list.
+	    } { presence }
 	} [cm::call contact cmd_list]
 
 	private show {

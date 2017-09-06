@@ -261,6 +261,8 @@ proc ::cm::contact::cmd_list {config} {
     set pattern  [string trim [$config @pattern]]
     set withmail [$config @with-mails]
     set unreach  [$config @unreachable]
+    set undesc   [$config @undescribed]
+    set norel    [$config @no-relations]
     set types    [$config @only] ;# type-codes!
 
     set titles {\# Type Tag Name Mails Flags Relations}
@@ -272,6 +274,7 @@ proc ::cm::contact::cmd_list {config} {
 	           C.tag          AS tag,
 	           C.dname        AS name,
 	           C.type         AS typecode,
+	           C.biography    AS bio,
 	           CT.text        AS type,
 	           C.can_recvmail AS crecv,
 	    	   C.can_register AS creg,
@@ -285,11 +288,20 @@ proc ::cm::contact::cmd_list {config} {
 	    AND   CT.id = C.type
 	    ORDER BY name
 	} {
+	    # Ignore contacts not of the requested types
 	    if {[llength $types] && ($typecode ni $types)} continue
+	    
+	    # Ignore contacts with proper biographies when
+	    # --undescribed is requested.
+	    if {$undesc && [string length [string trim $bio]]} continue
 
 	    incr counter
 
-	    set related [related-formatted $contact $typecode]
+	    if {$norel} {
+		set related {}
+	    } else {
+		set related [related-formatted $contact $typecode]
+	    }
 
 	    set    flags {}
 	    append flags [expr {$crecv ? "M" :"-"}]
@@ -299,14 +311,17 @@ proc ::cm::contact::cmd_list {config} {
 	    append flags [expr {$csubm ? "S" :"-"}]
 
 	    if {$withmail} {
+		# Show mail addresses in detail
 		set mails {}
 		db do eval {
-		    SELECT email, inactive
+		    SELECT email, inactive, public
 		    FROM   email
 		    WHERE  contact = :contact
 		    ORDER BY email
 		} {
-		    lappend mails "[expr {$inactive ? "-":" "}] $email"
+		    set i [expr {$inactive ? "[color bad -]":" "}]
+		    set p [expr {$public   ? "[color good P]":" "}]
+		    lappend mails "$i$p $email"
 		}
 
 		# Ignore reachable contacts when --unreachable requested.
@@ -315,6 +330,7 @@ proc ::cm::contact::cmd_list {config} {
 		set mails [join $mails \n]
 		$t add $counter $type $tag $name $mails $flags $related
 	    } else {
+		# Show only mail address counts
 		set mails [db do eval {
 		    SELECT count(email)
 		    FROM   email
@@ -358,7 +374,7 @@ proc ::cm::contact::cmd_create_mlist {config} {
 	    set id [get-mlist $name]
 	}
 
-	new-mail  $id $mail
+	new-mail  $id $mail 1 ;# public
 	add-links $id $config
     }
     # TODO: handle conflict with non list contacts
@@ -390,7 +406,7 @@ proc ::cm::contact::cmd_create_company {config} {
 	    set id [get-company $name]
 	}
 
-	add-mails $id $config
+	add-mails $id $config 0 1 ; # active, public
 	add-links $id $config
     }
 
@@ -423,7 +439,7 @@ proc ::cm::contact::cmd_create_person {config} {
 	    set id [get-person $name]
 	}
 
-	add-mails $id $config
+	add-mails $id $config ; # active, private
 	add-links $id $config
 
 	if {[$config @tag set?]} {
@@ -444,11 +460,13 @@ proc ::cm::contact::cmd_add_mail {config} {
 
     set contact  [$config @name]
     set disabled [$config @disabled]
-
+    # Consider override of public by option.
+    set public [expr {[get-type $contact] ni {1}}]
+    
     puts -nonewline "Add mails to \"[color name [get $contact]]\" ... "
     flush stdout
 
-    add-mails $contact $config $disabled
+    add-mails $contact $config $disabled $public
 
     puts [color good OK]
     return
@@ -1127,13 +1145,13 @@ proc ::cm::contact::related-formatted {contact type} {
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::contact::add-mails {id config {disabled 0}} {
+proc ::cm::contact::add-mails {id config {disabled 0} {public 0}} {
     debug.cm/contact {}
     foreach mail [$config @email] {
 	set mail [string trim $mail]
 	if {[has-mail $mail]} continue
 
-	set mailid [new-mail $id $mail]
+	set mailid [new-mail $id $mail $public]
 	if {$disabled} {
 	    disable-mail $mailid
 	}
@@ -1160,7 +1178,7 @@ proc ::cm::contact::new-mlist {dname} {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
 		3, :name, :dname,	-- mailing list, name, dname
-		NULL, 0,		-- no initial description, not generally public
+		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,0)              -- can flags
     }
     return [db do last_insert_rowid]
@@ -1175,7 +1193,7 @@ proc ::cm::contact::new-company {dname} {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
 		2, :name, :dname,	-- company, name, dname
-		NULL, 0,		-- no initial description, not generally public
+		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,1)              -- can flags
 
 	-- TODO/Note: talker for a company submission should have company affiliation.
@@ -1199,7 +1217,7 @@ proc ::cm::contact::new-person {dname} {
     return [db do last_insert_rowid]
 }
 
-proc ::cm::contact::new-mail {contact mail} {
+proc ::cm::contact::new-mail {contact mail {public 0}} {
     debug.cm/contact {}
     Setup
 
@@ -1209,7 +1227,12 @@ proc ::cm::contact::new-mail {contact mail} {
 
     db do eval {
 	INSERT INTO email
-	VALUES (NULL, :mail, :contact, 0)
+	VALUES (NULL      -- auto-id
+	,	:mail     -- address
+	,	:contact  -- owner reference
+	,	0         -- active
+	,	:public   -- public/private, default: private
+	)
     }
     set id [db do last_insert_rowid]
 
@@ -1945,17 +1968,17 @@ proc ::cm::contact::Dump {} {
 	    WHERE contact = :id
 	    ORDER BY link
 	}]
-	set mail [db do eval {
+	set mails [db do eval {
 	    SELECT email, inactive, public
 	    FROM   email
 	    WHERE contact = :id
 	    ORDER BY email
 	}]
-
+	
 	switch $type {
 	    1 {	cm dump save  contact create-person  $dname }
 	    2 {	cm dump save  contact create-company $dname }
-	    3 {	cm dump save  contact create-list    $dname [lindex $mail 0] }
+	    3 {	cm dump save  contact create-list    $dname [lindex $mails 0] }
 	}
 
 	if {!$can_recvmail} {
@@ -1966,14 +1989,27 @@ proc ::cm::contact::Dump {} {
 	}
 
 	if {$type != 3} {
-	    foreach {mail inactive public} $mail {
+	    # not a list, multiple mails, can be inactive.
+	    foreach {mail inactive public} $mails {
 		cm dump save  contact add-mail $dname -E $mail
-		if {$inactive} {
-		    cm dump save  contact disable-mail $mail
-		}
-		if {!$public} {
-		    cm dump save  contact hide-mail $mail
-		}
+	    }
+	    foreach {mail inactive public} $mails {
+		if {!$inactive} continue
+		cm dump save  contact disable-mail $mail
+	    }
+	}
+	if {$type == 1} {
+	    # person - mail private by default
+	    foreach {mail inactive public} $mails {
+		if {!$public} continue
+		cm dump save  contact publish-mail $mail
+	    }
+	}
+	if {$type == 2} {
+	    # company/project - mail public by default
+	    foreach {mail inactive public} $mails {
+		if {$public} continue
+		cm dump save  contact hide-mail $mail
 	    }
 	}
 
@@ -1987,14 +2023,27 @@ proc ::cm::contact::Dump {} {
 		contact set-bio $dname \
 		< [cm dump write contact$id $biography]
 	}
-	if {!$bio_public} {
-	    cm dump save contact hide-bio $dname
+	switch -exact $type {
+	    1 {
+		# person - bio private by default
+		if {$bio_public} {
+		    cm dump save contact publish-bio $dname
+		}
+	    }
+	    2 - 3 {
+		# list, project/company - bio public by default
+		if {!$bio_public} {
+		    cm dump save contact hide-bio $dname
+		}
+	    }
 	}
 
 	cm dump step
     }
 
-    # Step II. Relationships (Affiliations & Liaisons)
+    # Step II. Relationships
+    # (Affiliations & Liaisons (aka Representatives, Points of Contact))
+
     db do eval {
 	SELECT C.dname AS ncompany,
 	       P.dname AS nperson
@@ -2006,7 +2055,7 @@ proc ::cm::contact::Dump {} {
 	ORDER BY nperson, ncompany
     } {
 	cm dump save \
-	    contact affiliate $nperson $ncompany
+	    contact add-affiliate $nperson $ncompany
     }
 
     cm dump step
