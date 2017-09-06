@@ -7117,8 +7117,7 @@ proc ::cm::conference::Dump {} {
 	    WHERE  conference = :id
 	    ORDER BY submitdate, sid
 	} {
-	    #if {$first} { cm dump step  ; set first 0 }
-	    cm dump step
+	    if {$first} { cm dump step  ; set first 0 }
 
 	    set authors [db do eval {
 		SELECT dname
@@ -7169,8 +7168,7 @@ proc ::cm::conference::Dump {} {
 	    AND    S.conference = :id
 	    ORDER BY S.title
 	} {
-	    #if {$first} { cm dump step  ; set first 0 }
-	    cm dump step
+	    if {$first} { cm dump step  ; set first 0 }
 
 	    cm dump save \
 		submission accept -type $type $title
@@ -7212,6 +7210,8 @@ proc ::cm::conference::Dump {} {
 			   -encoding binary \
 			   -translation binary]
 	    }
+	    
+	    cm dump step
 	}
 
 	# booked
