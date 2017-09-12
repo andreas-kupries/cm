@@ -42,6 +42,7 @@ package require cm::db
 package require cm::location
 package require cm::mailer
 package require cm::mailgen
+package require cm::series
 package require cm::template
 package require cm::tutorial
 package require cm::util
@@ -54,7 +55,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::conference {
     namespace export \
-	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel \
+	cmd_create cmd_list cmd_select cmd_show cmd_facility cmd_hotel cmd_series \
 	cmd_timeline_init cmd_timeline_clear cmd_timeline_show cmd_timeline_shift \
 	cmd_timeline_set cmd_timeline_done cmd_sponsor_show cmd_sponsor_link cmd_sponsor_unlink \
 	cmd_sponsor_ping cmd_committee_ping cmd_website_make cmd_end_set cmd_start_set cmd_rate_show \
@@ -74,7 +75,7 @@ namespace eval ::cm::conference {
 	\
 	cmd_schedule_set cmd_schedule_show cmd_schedule_edit \
 	\
-	select label current get insert known-sponsor known-timeline \
+	select label current get insert known known-sponsor known-timeline \
 	select-sponsor select-staff-role known-staff-role select-staff known-staff \
 	known-rstatus known-pvisible get-role select-timeline get-timeline select-submission get-submission \
 	get-submission-handle known-submissions-vt known-timeline-validation \
@@ -101,6 +102,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::mailer
     namespace import ::cm::mailgen
     namespace import ::cm::template
+    namespace import ::cm::series
     namespace import ::cm::tutorial
     namespace import ::cm::util
 
@@ -307,18 +309,21 @@ proc ::cm::conference::cmd_show {config} {
 	if {$xhotel    ne {}} { set xhotel    [location get $xhotel] }
 	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
 
+	set xseries     [series  get       $xseries]
 	set xmanagement [contact get       $xmanagement]
 	set xsubmission [contact get-email $xsubmission]
 
+	$t add Series           $xseries
 	$t add Year             $xyear
 	$t add Management       $xmanagement
 	$t add {Submissions To} $xsubmission
-	$t add Registrations    [get-rstatus $xrstatus]   ;# TODO: colorize the status
-	$t add Proceedings      [get-pvisible $xpvisible] ;# TODO: colorize the status
 	$t add Start            $xstart
 	$t add End              $xend
 	$t add Aligned          $xalign
 	$t add Days             $xlength
+	$t add {} {}
+	$t add Registrations    [get-rstatus $xrstatus]   ;# TODO: colorize the status
+	$t add Proceedings      [get-pvisible $xpvisible] ;# TODO: colorize the status
 	$t add {} {}
 	$t add In               $xcity
 	$t add @Hotel           $xhotel
@@ -430,6 +435,27 @@ proc ::cm::conference::cmd_show {config} {
 
 	# - -- --- ----  -------- ------------- talk summary /TODO
     }] show
+    return
+}
+
+proc ::cm::conference::cmd_series {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set id      [current]
+    set details [details $id]
+    dict with details {}
+
+    set series [$config @series]
+
+    puts "Conference \"[color name [get $id]]\":"
+    puts "- Set series to \"[color name [series get $series]]\""
+    puts -nonewline "Saving ... "
+
+    dict set details xseries $series
+    write $id $details
+    puts [color good OK]
     return
 }
 
@@ -2134,7 +2160,7 @@ proc ::cm::conference::cmd_sponsor_show {config} {
 	    # get liaisons of the sponsor companies.
 	    # get affiliations of sponsoring persons.
 
-	    set related [contact related-formatted $contact $type]
+	    set related [contact related-formatted $contact $type 1]
 
 	    $t add $name $related
 	}
@@ -3267,6 +3293,9 @@ proc ::cm::conference::cmd_website_make {config} {
 
     # # ## ### ##### ######## #############
     puts "Filling in..."
+
+    # Reference to the index for the series, from the navbar.
+    lappend navbar Related [insert $conference @c:series:link@]
 
     if {[have-speakers $conference]} {
 	make_page Overview  index  make_overview_speakers $conference
@@ -5250,15 +5279,18 @@ proc ::cm::conference::insert {id text} {
 
     # Basic conference information
 
-    set xstart [dict get $details xstart]
-    set xend   [dict get $details xend]
-    set xmgmt  [dict get $details xmanagement]
+    set xstart  [dict get $details xstart]
+    set xend    [dict get $details xend]
+    set xmgmt   [dict get $details xmanagement]
+    set xseries [dict get $details xseries]
 
     +map @c:name@            [get $id]
     +map @c:year@            [dict get $details xyear]
     +map @c:contact@         [contact get-email [dict get $details xsubmission]]
     +map @c:management@      [contact get-name $xmgmt]
     +map @c:management:link@ [contact get-the-link $xmgmt]
+    +map @c:series@          [series get       $xseries]
+    +map @c:series:link@     [series get-index $xseries]
     +map @c:start@           [hdate $xstart]
     +map @c:end@             [hdate $xend]
     +map @c:when@            [when $xstart $xend]
@@ -6074,7 +6106,8 @@ proc ::cm::conference::details {id} {
 	       'xsesslen',    sessionlen,
 	       'xrstatus',    rstatus,
 	       'xpvisible',   pvisible,
-	       'xpschedule',  pschedule
+	       'xpschedule',  pschedule,
+	       'xseries',     series
 	FROM  conference
 	WHERE id = :id
     }]
@@ -6089,6 +6122,7 @@ proc ::cm::conference::write {id details} {
 	UPDATE conference
 	SET    year       = :xyear,
 	       management = :xmanagement,
+	       series     = :xseries,
 	       submission = :xsubmission,
 	       city       = :xcity,
 	       hotel      = :xhotel,
@@ -6562,6 +6596,8 @@ proc ::cm::conference::Setup {} {
 	    title	TEXT	NOT NULL UNIQUE,
 	    year	INTEGER NOT NULL,
 
+	    series	INTEGER	NOT NULL REFERENCES series,	-- Overall con series
+	    
 	    management	INTEGER	NOT NULL REFERENCES contact,	-- Org/company/person managing the conference
 	    submission	INTEGER	NOT NULL REFERENCES email,	-- Email to receive submissions.
 
@@ -6609,6 +6645,7 @@ proc ::cm::conference::Setup {} {
 	    {id			INTEGER 1 {} 1}
 	    {title		TEXT    1 {} 0}
 	    {year		INTEGER 1 {} 0}
+	    {series		INTEGER 1 {} 0}
 	    {management		INTEGER 1 {} 0}
 	    {submission		INTEGER 1 {} 0}
 	    {city		INTEGER 0 {} 0}
@@ -6970,12 +7007,13 @@ proc ::cm::conference::Dump {} {
 
     db do eval {
 	SELECT id, title, year, management, submission,
-	       city, hotel, facility,
+	       city, hotel, facility, series,
 	       startdate, enddate, alignment, length,
 	       talklength, sessionlen, rstatus, pvisible, pschedule
 	FROM   conference
 	ORDER BY title
     } {
+	set series     [cm series get $series]
 	set management [cm contact get-name  $management]
 	set submission [cm contact get-email $submission]
 	set startdate  [isodate $startdate]
@@ -6990,7 +7028,7 @@ proc ::cm::conference::Dump {} {
 
 	cm dump save \
 	    conference create $title $year $alignment $startdate $length \
-	    $management $submission
+	    $management $submission $series
 	# auto-select conference as current
 
 	if {$hotel ne {}} {

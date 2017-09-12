@@ -2,7 +2,7 @@
 # # ## ### ##### ######## ############# ######################
 
 # @@ Meta Begin
-# Package cm::validate::contact 0
+# Package cm::validate::series 0
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
@@ -16,7 +16,7 @@
 # # ## ### ##### ######## ############# ######################
 
 package require Tcl 8.5
-package require cm::contact
+package require cm::series
 package require cmdr::validate::common
 
 # # ## ### ##### ######## ############# ######################
@@ -26,37 +26,37 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::validate {
-    namespace export contact
+    namespace export series
     namespace ensemble create
 }
-namespace eval ::cm::validate::contact {
+namespace eval ::cm::validate::series {
     namespace export release validate default complete
     namespace ensemble create
 
-    namespace import ::cm::contact
+    namespace import ::cm::series
     namespace import ::cmdr::validate::common::fail
     namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# ######################
 
-proc ::cm::validate::contact::default  {p}   { return {} }
-proc ::cm::validate::contact::release  {p x} { return }
-proc ::cm::validate::contact::validate {p x} {
-    set known [contact known validation]
+proc ::cm::validate::series::default  {p}   { return {} }
+proc ::cm::validate::series::release  {p x} { return }
+proc ::cm::validate::series::validate {p x} {
+    set known [series known] ;# [validation]
 
-    set lx [string tolower $x]
+    set lx $x ;#[string tolower $x]
     if {[dict exists $known $lx]} {
 	# An exact match is prefered over partials.
 	# This resolves where a name is a prefix of something else.
 	return [dict get $known $lx]
     }
     
-    set matches [complete-enum [dict keys $known] 1 $x]
+    set matches [complete-enum [dict keys $known] 0 $x]
 
     set n [llength $matches]
     if {!$n} {
-	fail $p CONTACT "a contact identifier" $x
+	fail $p SERIES "a series identifier" $x
     }
 
     # Multiple matches may map to the same id. Conversion required to
@@ -69,17 +69,17 @@ proc ::cm::validate::contact::validate {p x} {
     set n [llength $idmatches]
 
     if {$n > 1} {
-	fail $p CONTACT "an unambigous contact identifier" $x
+	fail $p SERIES "an unambigous series identifier" $x
     }
 
     # Uniquely identified
     return [lindex $idmatches 0]
 }
 
-proc ::cm::validate::contact::complete {p x} {
-    complete-enum [dict keys [contact known validation]] 1 $x
+proc ::cm::validate::series::complete {p x} {
+    complete-enum [dict keys [series known]] 0 $x
 }
 
 # # ## ### ##### ######## ############# ######################
-package provide cm::validate::contact 0
+package provide cm::validate::series 0
 return

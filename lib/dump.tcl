@@ -60,6 +60,7 @@ proc ::cm::dump::cmd {config} {
     Dump    contact
     Dump    tutorial
     DumpX   pschedule ;# -- physical schedule
+    Dump    series
     Dump    conference
     #       - timeline
     #       - rate

@@ -376,6 +376,17 @@ proc ::cm::contact::cmd_create_mlist {config} {
 
 	new-mail  $id $mail 1 ;# public
 	add-links $id $config
+	if {[$config @biography set?]} {
+	    update-bio $id [string trim [join [$config @biography] \n]]
+	}
+	if {[$config @tag set?]} {
+	    update-tag $id [$config @tag]
+	}
+	if {[$config @org set?]} {
+	    foreach company [$config @org] {
+		add-affiliation $id $company
+	    }
+	}
     }
     # TODO: handle conflict with non list contacts
 
@@ -408,6 +419,17 @@ proc ::cm::contact::cmd_create_company {config} {
 
 	add-mails $id $config 0 1 ; # active, public
 	add-links $id $config
+	if {[$config @biography set?]} {
+	    update-bio $id [string trim [join [$config @biography] \n]]
+	}
+	if {[$config @tag set?]} {
+	    update-tag $id [$config @tag]
+	}
+	if {[$config @affiliate set?]} {
+	    foreach aff [$config @affiliate] {
+		add-affiliation $aff $id
+	    }
+	}
     }
 
     # TODO: Handle conflict with non company contacts
@@ -441,9 +463,16 @@ proc ::cm::contact::cmd_create_person {config} {
 
 	add-mails $id $config ; # active, private
 	add-links $id $config
-
+	if {[$config @biography set?]} {
+	    update-bio $id [string trim [join [$config @biography] \n]]
+	}
 	if {[$config @tag set?]} {
 	    update-tag $id [string trim [$config @tag]]
+	}
+	if {[$config @org set?]} {
+	    foreach company [$config @org] {
+		add-affiliation $id $company
+	    }
 	}
     }
 
@@ -1092,11 +1121,11 @@ proc ::cm::contact::representing {contact} {
     }]
 }
 
-proc ::cm::contact::related-formatted {contact type} {
+proc ::cm::contact::related-formatted {contact type {short 0}} {
     debug.cm/contact {}
     set related {}
     if {$type != 1} {
-	# liaisons aka representatives of the company
+	# liaisons aka representatives of the company or mailinglist
 	set reps [dict values [liaisons $contact]]
 	if {[llength $reps]} {
 	    # Hanging indent, TODO utility command
@@ -1106,17 +1135,18 @@ proc ::cm::contact::related-formatted {contact type} {
 		append related \n [util indent [join $other \n] "   : "]
 	    }
 	}
-	# ... and inverse, the affiliated people ...
-	set affs [dict values [aff-2-company $contact]]
-	if {[llength $affs]} {
-	    # Hanging indent, TODO utility command
-	    set other [lassign $affs primary]
-	    append related \n "Aff: $primary"
-	    if {[llength $other]} {
-		append related \n [util indent [join $other \n] "   : "]
+	if {!$short} {
+	    # ... and inverse, the affiliated people ...
+	    set affs [dict values [aff-2-company $contact]]
+	    if {[llength $affs]} {
+		# Hanging indent, TODO utility command
+		set other [lassign $affs primary]
+		append related \n "Aff: $primary"
+		if {[llength $other]} {
+		    append related \n [util indent [join $other \n] "   : "]
+		}
 	    }
 	}
-
     } else {
 	# affiliations of the person
 	set affs [dict values [affiliated $contact]]
@@ -1128,14 +1158,16 @@ proc ::cm::contact::related-formatted {contact type} {
 		append related \n [util indent [join $other \n] "  : "]
 	    }
 	}
-	# ... and inverse, the represented companies
-	set reps [dict values [representing $contact]]
-	if {[llength $reps]} {
-	    # Hanging indent, TODO utility command
-	    set other [lassign $reps primary]
-	    append related \n "Rep: $primary"
-	    if {[llength $other]} {
-		append related \n [util indent [join $other \n] "   : "]
+	if {!$short} {
+	    # ... and inverse, the represented companies
+	    set reps [dict values [representing $contact]]
+	    if {[llength $reps]} {
+		# Hanging indent, TODO utility command
+		set other [lassign $reps primary]
+		append related \n "Rep: $primary"
+		if {[llength $other]} {
+		    append related \n [util indent [join $other \n] "   : "]
+		}
 	    }
 	}
     }
