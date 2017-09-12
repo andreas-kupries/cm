@@ -62,12 +62,14 @@ proc ::cm::debug::thelevels {} {
     package require cm::location
     package require cm::mailer
     package require cm::mailgen
+    package require cm::series
     package require cm::template
     package require cm::tutorial
     package require cm::util
     package require cm::validate::attachment
     package require cm::validate::colormode
     package require cm::validate::conference-staff
+    package require cm::validate::conference
     package require cm::validate::config
     package require cm::validate::contact
     package require cm::validate::contact-type
@@ -80,6 +82,7 @@ proc ::cm::debug::thelevels {} {
     package require cm::validate::nottutorial
     package require cm::validate::nottutorialtag
     package require cm::validate::rstatus
+    package require cm::validate::series
     package require cm::validate::speaker
     package require cm::validate::sponsor
     package require cm::validate::staff-role

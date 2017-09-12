@@ -612,6 +612,74 @@ cmdr create cm::cm [file tail $::argv0] {
     alias tutorials = tutorial list
 
     # # ## ### ##### ######## ############# ######################
+    ## Manage conference series
+
+    officer series {
+	description {
+	    Manage conference series
+	}
+	# -- (1:n) conference
+	# title, index page (link)
+
+	common .title {
+	    input title {
+		Name of the conference series
+	    } { validate [cm::vt series] ; optional ; interact ; generate [stop!] }
+	}
+
+	private create {
+	    section {Series Management}
+	    description { Create a new conference series }
+
+	    input title {
+		Name of the conference series
+	    } { optional ; interact ; validate [cm::vt notseries] ; generate [stop!] }
+
+	    input indexpage {
+		Location of the index page for the series
+	    } { optional ; interact ; generate [stop!] }
+
+	} [cm::call series cmd_create]
+	alias new
+	alias add
+
+	private list {
+	    section {Series Management}
+	    description { Show a table of all known conference series }
+	} [cm::call series cmd_list]
+	default
+	
+	private show {
+	    section {Series Management}
+	    description { Show the details of the series }
+	    use .title
+	} [cm::call series cmd_show]
+
+	private rename {
+	    section {Series Management}
+	    description { Show the details of the series }
+	    use .title
+	    input new {
+		New name to use
+	    } { optional ; interact ; validate [cm::vt notseries] ; generate [stop!] }
+	} [cm::call series cmd_rename]
+
+	private redirect {
+	    section {Series Management}
+	    description { Show the details of the series }
+	    use .title
+	    input new {
+		New location of the index
+	    } { optional ; interact ; generate [stop!] }
+	} [cm::call series cmd_redirect]
+
+	private remove {
+	    description { Destroy the named series }
+	    use .title
+	} [cm::call series cmd_remove]
+    }
+    
+    # # ## ### ##### ######## ############# ######################
     ## Manage conferences
 
     officer conference {
@@ -665,6 +733,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; interact ; validate [cm::vt email]
 		generate [stop!] }
 
+	    input series {
+		Name of the series the new conference shall belong to
+	    } { validate [cm::vt series] ; optional ; interact ; generate [stop!] }
+
 	    # Set later: hotel, facility, city
 
 	} [cm::call conference cmd_create]
@@ -688,7 +760,7 @@ cmdr create cm::cm [file tail $::argv0] {
 		Conference to operate on in the future - The "current" conference
 	    } {
 		optional
-		# TODO: validator <=> conference identification (name + city)
+		validate [cm::vt conference]
 		generate [cm::call conference select]
 	    }
 	} [cm::call conference cmd_select]
@@ -762,6 +834,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call conference cmd_timeline_show]
 
 	# - -- --- ----  -------- ------------- ----------------------
+
+	private series {
+	    section {Conference Management}
+	    description { Change the series owning the conference }
+	    input series { Conference series } {
+		optional ; interact
+		validate [cm::vt series]
+		generate [stop!]
+	    }
+	} [cm::call conference cmd_series]
 
 	private facility {
 	    section {Conference Management}
@@ -1621,11 +1703,31 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { list ; optional ; interact ; validate str }
 	}
 
+	common .bio {
+	    option biography {
+		Lines for the biography/description of the contact.
+	    } {	alias B ; list ; validate str }
+	}
+
+	common .orgs {
+	    option org {
+		List of orgs, projects, ... the contact is affiliated with.
+	    } {	alias O ; list ; validate [cm::vt contact] }
+	}
+
+	common .aff {
+	    option affiliate {
+		List of affiliates for the contact.
+	    } {	alias A ; list ; validate [cm::vt contact] }
+	}
+
 	private create-person {
 	    section {Contact Management}
 	    description {Create a new contact for a person}
 	    use .links
 	    use .mails
+	    use .bio
+	    use .orgs
 	    input name   {First name of the person} {}
 	    input tag    {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_person]
@@ -1634,8 +1736,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Contact Management}
 	    description {Create a new contact for a mailing list}
 	    use .links
+	    use .bio
+	    use .orgs
 	    input name {List name} {}
 	    input mail {List address} { validate [cm::vt mail-address] }
+	    input tag  {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_mlist]
 
 	private create-company {
@@ -1643,14 +1748,17 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {Create a new contact for a company}
 	    use .links
 	    use .mails
+	    use .bio
+	    use .aff
 	    input name {Company name} {}
+	    input tag  {Short tag suitable as html anchor} { optional }
 	} [cm::call contact cmd_create_company]
 
 	# TODO: contact delete -- delete a superfluous contact - not referenced...
 
-	private add-company {
+	private add-affiliate {
 	    section {Contact Management}
-	    description {Add one or more companies as the affiliations of the specified person}
+	    description {Add one or more contacts (companies, projects, ...) as the affiliations of the specified person}
 	    input name {
 		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
@@ -1659,9 +1767,11 @@ cmdr create cm::cm [file tail $::argv0] {
 		Names of the companies to add as affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
 	} [cm::call contact cmd_add_company]
-	alias add-affiliate
+	alias add-project
+	alias add-org
+	alias add-company
 
-	private remove-company {
+	private remove-affiliate {
 	    section {Contact Management}
 	    description {Remove one or more companies from the set of affiliations of the specified person}
 	    input name {
@@ -1672,9 +1782,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		Names of the companies to remove from the set of affiliations
 	    } { optional ; list ; interact ; validate [cm::vt contact] } ; # TODO validator only company
 	} [cm::call contact cmd_drop_company]
-	alias remove-affiliate
+	alias remove-org
+	alias remove-company
+	alias remove-project
 
-	# Reverse affiliation. A personal contact into the company ... A liaison, point of contact, representative
+	# Reverse affiliation. A personal contact into the company
+	# ... A liaison, point of contact, representative
 	private add-liaison {
 	    section {Contact Management}
 	    description {Add one or more liaisons to the specified company}
@@ -2405,6 +2518,12 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private series-known {
+	    description {Print validation dictionary}
+	} [cm::call series test-known]
 
 	# - -- --- ----- -------- -------------
 
