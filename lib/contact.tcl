@@ -1239,7 +1239,7 @@ proc ::cm::contact::new-mlist {dname} {
 	VALUES (NULL, NULL,             -- id, tag
 		3, :name, :dname,	-- mailing list, name, dname
 		NULL, 1,		-- no initial description, generally public
-		1,0,0,0,0)              -- can flags
+		1,0,0,0,0,0)            -- can flags, !dead
     }
     return [db do last_insert_rowid]
 }
@@ -1254,7 +1254,7 @@ proc ::cm::contact::new-company {dname} {
 	VALUES (NULL, NULL,             -- id, tag
 		2, :name, :dname,	-- company, name, dname
 		NULL, 1,		-- no initial description, generally public
-		1,0,0,0,1)              -- can flags
+		1,0,0,0,1,0)            -- can flags, !dead
 
 	-- TODO/Note: talker for a company submission should have company affiliation.
 	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
@@ -1272,7 +1272,7 @@ proc ::cm::contact::new-person {dname} {
 	VALUES (NULL, NULL,             -- id, tag
 		1, :name, :dname,	-- type (person), name, dname
 		NULL, 0,		-- no initial bio, not generally public
-		1,1,1,1,1)              -- can flags
+		1,1,1,1,1,0)            -- can flags, !dead
     }
     return [db do last_insert_rowid]
 }
