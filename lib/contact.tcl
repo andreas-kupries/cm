@@ -42,8 +42,7 @@ namespace eval ::cm::contact {
 	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge \
 	cmd_set_tag cmd_set_bio cmd_hide_bio cmd_publish_bio cmd_get_bio cmd_disable \
 	cmd_enable liaisons cmd_disable_mail cmd_hide_mail cmd_publish_mail \
-	cmd_squash_mail cmd_squash_link cmd_mail_fix cmd_retype \
-	cmd_rename \
+	cmd_squash_mail cmd_squash_link cmd_mail_fix cmd_retype cmd_dead cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
 	get-name get-links get-email get-link get-the-link related-formatted
@@ -88,7 +87,8 @@ proc ::cm::contact::cmd_show {config} {
 	    	   C.can_register AS creg,
 	    	   C.can_book     AS cbook,
 	    	   C.can_talk     AS ctalk,
-	    	   C.can_submit   AS csubm
+	    	   C.can_submit   AS csubm,
+	    	   C.is_dead      AS cisdead
 	    FROM  contact      C,
 	          contact_type CT
 	    WHERE C.id   = :contact
@@ -101,11 +101,14 @@ proc ::cm::contact::cmd_show {config} {
 	    }
 
 	    set flags {}
-	    if {$crecv} { lappend flags Receive  }
-	    if {$creg } { lappend flags Register }
-	    if {$cbook} { lappend flags Book     }
-	    if {$ctalk} { lappend flags Talk     }
-	    if {$csubm} { lappend flags Submit   }
+	    if {$crecv}   { lappend flags Receive  }
+	    if {$creg }   { lappend flags Register }
+	    if {$cbook}   { lappend flags Book     }
+	    if {$ctalk}   { lappend flags Talk     }
+	    if {$csubm}   { lappend flags Submit   }
+
+	    set annotations ""
+	    if {$cisdead} { append annotations "[color bad \u2020]" }
 
 	    set biodisplay [util adjust $w $bio]
 	    if {!$bio_public} {
@@ -113,7 +116,7 @@ proc ::cm::contact::cmd_show {config} {
 	    }
 	    
 	    $t add Tag                $tag
-	    $t add Name               [color name $name]
+	    $t add Name               [color name $name]$annotations
 	    $t add Type               $type
 	    $t add Flags              [join $flags {, }]
 	    $t add Biography          $biodisplay
@@ -280,7 +283,8 @@ proc ::cm::contact::cmd_list {config} {
 	    	   C.can_register AS creg,
 	    	   C.can_book     AS cbook,
 	    	   C.can_talk     AS ctalk,
-	    	   C.can_submit   AS csubm
+	    	   C.can_submit   AS csubm,
+	    	   C.is_dead      AS cisdead
 	    FROM  contact      C,
 	          contact_type CT
 	    WHERE (C.name  GLOB :pattern
@@ -304,11 +308,12 @@ proc ::cm::contact::cmd_list {config} {
 	    }
 
 	    set    flags {}
-	    append flags [expr {$crecv ? "M" :"-"}]
-	    append flags [expr {$creg  ? "R" :"-"}]
-	    append flags [expr {$cbook ? "B" :"-"}]
-	    append flags [expr {$ctalk ? "T" :"-"}]
-	    append flags [expr {$csubm ? "S" :"-"}]
+	    append flags [expr {$cisdead ? "[color bad \u2020]" :""}]
+	    append flags [expr {$crecv   ? "M" :"-"}]
+	    append flags [expr {$creg    ? "R" :"-"}]
+	    append flags [expr {$cbook   ? "B" :"-"}]
+	    append flags [expr {$ctalk   ? "T" :"-"}]
+	    append flags [expr {$csubm   ? "S" :"-"}]
 
 	    if {$withmail} {
 		# Show mail addresses in detail
@@ -673,6 +678,28 @@ proc ::cm::contact::cmd_squash_link {config} {
     return
 }
 
+proc ::cm::contact::cmd_dead {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    foreach contact [$config @name] {
+	puts -nonewline "Marking contact \"[color name [get $contact]]\" as dead ... "
+	flush stdout
+
+	db do transaction {
+	    db do eval {
+		UPDATE contact
+		SET    is_dead = 1
+		WHERE  id   = :contact
+	    }
+	}
+
+	puts [color good OK]
+    }
+    return
+}
+
 proc ::cm::contact::cmd_retype {config} {
     debug.cm/contact {}
     Setup
@@ -692,6 +719,7 @@ proc ::cm::contact::cmd_retype {config} {
 		WHERE  id   = :contact
 	    }
 	    # wish for more dynamic behaviour here
+	    # is_dead is not influenced by the type change
 	    switch -exact -- $type {
 		1 { # Person
 		    db do eval {
@@ -1639,7 +1667,8 @@ proc ::cm::contact::details {id} {
 	       'xcan_register', can_register,
 	       'xcan_book',     can_book,
 	       'xcan_talk',     can_talk,
-	       'xcan_submit',   can_submit
+	       'xcan_submit',   can_submit,
+	       'xis_dead',      is_dead
 	FROM  contact
 	WHERE id = :id
     }]
@@ -1867,6 +1896,7 @@ proc ::cm::contact::Setup {} {
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
 	    can_talk	 INTEGER NOT NULL,	-- actual person can do presentation
 	    can_submit	 INTEGER NOT NULL	-- actual person, or company can submit talks
+	    is_dead	 INTEGER NOT NULL	-- contact is deceased
 	} {
 	    {id			INTEGER 1 {} 1}
 	    {tag		TEXT    0 {} 0}
@@ -1880,6 +1910,7 @@ proc ::cm::contact::Setup {} {
 	    {can_book		INTEGER 1 {} 0}
 	    {can_talk		INTEGER 1 {} 0}
 	    {can_submit		INTEGER 1 {} 0}
+	    {is_dead		INTEGER 1 {} 0}
 	} {
 	    type
 	}
@@ -1990,7 +2021,14 @@ proc ::cm::contact::Dump {} {
 
     # Step I. Core contact information.
     db do eval {
-	SELECT id, tag, type, dname, biography, bio_public, can_recvmail
+	SELECT id
+	,      tag
+	,      type
+	,      dname
+	,      biography
+	,      bio_public
+	,      can_recvmail
+	,      is_dead
 	FROM   contact
 	ORDER BY dname
     } {
@@ -2018,6 +2056,9 @@ proc ::cm::contact::Dump {} {
 	}
 	if {$tag ne {}} {
 	    cm dump save  contact set-tag $dname $tag
+	}
+	if {$is_dead} {
+	    cm dump save  contact mark-dead $dname
 	}
 
 	if {$type != 3} {

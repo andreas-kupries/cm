@@ -2012,6 +2012,14 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [stop!] }
 	} [cm::call contact cmd_merge]
 
+	private mark-dead {
+	    section {Contact Management}
+	    description { Mark the contacts as deceased }
+	    input name {
+		Name of the contacts to modify.
+	    } { list ; optional ; interact ; validate [cm::vt contact] }
+	} [cm::call contact cmd_dead]
+
 	# TODO: change flags?
 	# TODO: set link title
     }
