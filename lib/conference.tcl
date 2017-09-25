@@ -188,6 +188,7 @@ proc ::cm::conference::cmd_create {config} {
     set length  [$config @length]     ; debug.cm/conference {length  = $length}
     set manager [$config @manager]    ; debug.cm/conference {manager = $manager}
     set subrecv [$config @submission] ; debug.cm/conference {subrecv = $subrecv}
+    set series  [$config @series]     ; debug.cm/conference {series  = $series}
 
     puts -nonewline "Creating conference \"[color name $title]\" ... "
     flush stdout
@@ -224,6 +225,7 @@ proc ::cm::conference::cmd_create {config} {
 		VALUES (NULL,     -- id, auto-assigned
 			:title,
 			:year,
+			:series,
 			:manager,
 			:subrecv,
 			NULL,     -- city
@@ -4639,6 +4641,7 @@ proc ::cm::conference::make_admin {conference} {
     append text "* " [link Campaign    {} campaign] \n
     append text "* " [link Events      {} events] \n
     append text "* " [link Schedule    {} schedule] \n
+    append text "* " [link Materials   {} materials] \n
     append text \n
 
     if {[llength $issues]} {
@@ -4649,18 +4652,45 @@ proc ::cm::conference::make_admin {conference} {
 	append text \n
     }
 
+    set materials {}
+    
     make_admin_registered  $conference text registered
     make_admin_booked      $conference text booked
-    make_admin_accepted    $conference text accepted
+    make_admin_accepted    $conference text accepted    materials
     make_admin_submissions $conference text submissions
     make_admin_campaign    $conference text campaign
     make_admin_timeline    $conference text events
     make_admin_schedule    $conference text schedule
+    make_admin_materials   $conference text materials $materials
 
     # What else ...
 
     debug.cm/conference {/done}
     return $text
+}
+
+proc ::cm::conference::make_admin_materials {conference textvar tag materials} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # Materials for all talks in one section.
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Materials\n\n"
+
+    if {![llength $materials]} {
+	append text "__No materials available__" \n
+	return
+    }
+    
+    append text |Talk|Attachment|\n|-|-|\n
+    foreach {title links} $materials {
+	foreach link $links {
+	    append text | $title | $link |\n
+	    set title ""
+	}
+    }
+    append text \n
 }
 
 proc ::cm::conference::make_admin_registered {conference textvar tag} {
@@ -4908,12 +4938,12 @@ proc ::cm::conference::make_admin_campaign {conference textvar tag} {
     return
 }
 
-proc ::cm::conference::make_admin_accepted {conference textvar tag} {
+proc ::cm::conference::make_admin_accepted {conference textvar tag materialsvar} {
     debug.cm/conference {}
-    upvar 1 dstdir dstdir $textvar text
+    upvar 1 dstdir dstdir $textvar text $materialsvar materials
 
-    # Table of accepted submissions aka talks, plus one side page per to
-    # hold the larger associated texts.
+    # Table of accepted submissions, i.e. talks, plus one side page
+    # per talk to hold the larger associated texts (abstract, summary, attachments).
 
     append text \n
     append text [anchor $tag] \n
@@ -4950,8 +4980,14 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag} {
 	}]
 
 	# Side page per submission, holding the entire data.
+	set talkmaterials {}
 	make_internal_page $title __s$id \
-	    make_submission $id $submitters $submitdate $invited $abstract $summary
+	    make_submission $id $submitters $submitdate $invited $abstract $summary \
+	    talkmaterials
+
+	if {[llength $talkmaterials]} {
+	    lappend materials $title $talkmaterials
+	}
 
 	set invited    [expr {$invited ? "__yes__" : ""}]
 	set submitters [join [dict keys $submitters] {, }]
@@ -5040,9 +5076,9 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     return
 }
 
-proc ::cm::conference::make_submission {submission submitters date invited abstract summary} {
+proc ::cm::conference::make_submission {submission submitters date invited abstract summary materialsvar} {
     debug.cm/conference {}
-    upvar 1 dstdir dstdir
+    upvar 1 dstdir dstdir $materialsvar materials
 
     append text "\# Submitted\n\n"
     if {$invited} { set invited " (by invitation)" } else { set invited {} }
@@ -5094,6 +5130,8 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
 
 	set prefix Attachment
 	foreach {aid title} $attachments {
+	    lappend materials [link $title assets/talk$talk/$title]
+	    
 	    append text | $prefix | [link $title assets/talk$talk/$title] |\n
 	    set prefix {}
 	}
