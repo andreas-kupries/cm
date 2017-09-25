@@ -35,7 +35,7 @@ namespace eval ::cm {
     namespace ensemble create
 }
 namespace eval ::cm::city {
-    namespace export cmd_create cmd_list \
+    namespace export cmd_create cmd_list cmd_show test-known \
 	select label get known-validation
     namespace ensemble create
 
@@ -45,12 +45,23 @@ namespace eval ::cm::city {
     namespace import ::cm::db
 
     namespace import ::cmdr::table::general ; rename general table
+    namespace import ::cmdr::table::dict    ; rename dict    table/d
 }
 
 # # ## ### ##### ######## ############# ######################
 
 debug level  cm/city
 debug prefix cm/city {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::city::test-known {config} {
+    debug.cm/city {}
+    Setup
+    db show-location
+    util pdict [known-validation]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 
@@ -67,6 +78,22 @@ proc ::cm::city::cmd_list {config} {
 	} {
 	    $t add $name $state $nation
 	}
+    }] show
+    return
+}
+
+proc ::cm::city::cmd_show {config} {
+    debug.cm/city {}
+    Setup
+    db show-location
+
+    set city [$config @city]
+    lassign [details $city] name state nation
+   
+    [table/d t {
+	$t add Name   $name
+	$t add State  $state
+	$t add Nation $nation
     }] show
     return
 }
@@ -118,6 +145,19 @@ proc ::cm::city::get {id} {
     return [label $name $state $nation]
 }
 
+proc ::cm::city::details {id} {
+    debug.cm/city {}
+    Setup
+
+    lassign [db do eval {
+	SELECT name, state, nation
+	FROM  city
+	WHERE id = :id
+    }] name state nation
+
+    return [list $name $state $nation]
+}
+
 proc ::cm::city::label {name state nation} {
     debug.cm/city {}
 
@@ -134,7 +174,7 @@ proc ::cm::city::known-validation {} {
 	SELECT id, name AS city, state, nation
 	FROM   city
     } {
-	dict lappend map $id [label $city $state $nation]
+	dict lappend map $id [string tolower [label $city $state $nation]]
 
 	if {$state ne {}} {
 	    set label "$city $state $nation"
@@ -145,7 +185,7 @@ proc ::cm::city::known-validation {} {
 	set llabel    [string tolower $label]
 	set linitials [string tolower $initials]
 
-	dict lappend map $id $label  "$initials $label"
+	#dict lappend map $id $label  "$initials $label"
 	dict lappend map $id $llabel "$linitials $llabel"
     }
 
