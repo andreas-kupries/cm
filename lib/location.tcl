@@ -38,7 +38,7 @@ namespace eval ::cm {
 namespace eval ::cm::location {
     namespace export \
 	cmd_create cmd_list cmd_select cmd_show cmd_contact \
-	cmd_map cmd_staff_show cmd_map_get \
+	cmd_map cmd_staff_show cmd_map_get test-known \
 	cmd_staff_link cmd_staff_unlink known-validation \
 	select label get details known-staff select-staff get-name
     namespace ensemble create
@@ -59,6 +59,16 @@ namespace eval ::cm::location {
 
 debug level  cm/location
 debug prefix cm/location {[debug caller] | }
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::location::test-known {config} {
+    debug.cm/location {}
+    Setup
+    db show-location
+    util pdict [known-validation]
+    return
+}
 
 # # ## ### ##### ######## ############# ######################
 
