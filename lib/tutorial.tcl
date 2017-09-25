@@ -702,7 +702,7 @@ proc ::cm::tutorial::Dump {} {
 
     db do eval {
 	SELECT T.id          AS id,
-	       C.dname       AS nspeaker,
+	       C.tag         AS nspeaker,
 	       T.tag         AS tag,
 	       T.title       AS title,
 	       T.prereq      AS req,
@@ -718,7 +718,7 @@ proc ::cm::tutorial::Dump {} {
 
 	if {$req ne {}} {
 	    cm dump save \
-		tutorial set-prereq $req
+		tutorial set-prereq @${nspeaker}:$tag $req
 	}
 
 	cm dump step
