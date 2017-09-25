@@ -1895,7 +1895,7 @@ proc ::cm::contact::Setup {} {
 	    can_register INTEGER NOT NULL,	-- actual person can register for attendance
 	    can_book	 INTEGER NOT NULL,	-- actual person can book hotels
 	    can_talk	 INTEGER NOT NULL,	-- actual person can do presentation
-	    can_submit	 INTEGER NOT NULL	-- actual person, or company can submit talks
+	    can_submit	 INTEGER NOT NULL,	-- actual person, or company can submit talks
 	    is_dead	 INTEGER NOT NULL	-- contact is deceased
 	} {
 	    {id			INTEGER 1 {} 1}
@@ -1923,7 +1923,7 @@ proc ::cm::contact::Setup {} {
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    email	TEXT	NOT NULL UNIQUE,
 	    contact	INTEGER	NOT NULL REFERENCES contact,
-	    inactive	INTEGER	NOT NULL	-- mark outdated addresses
+	    inactive	INTEGER	NOT NULL,	-- mark outdated addresses
 	    public	INTEGER	NOT NULL	-- mark visible addresses
 	} {
 	    {id		INTEGER 1 {} 1}
