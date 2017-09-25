@@ -381,6 +381,16 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description { Show a table of all known cities }
 	} [cm::call city cmd_list]
 
+	private show {
+	    section {City Management}
+	    description { Show data for the chosen city }
+	    input city { City to show } {
+		optional
+		validate [cm::vt city]
+		generate [cm::call city select]
+	    }
+	} [cm::call city cmd_show]
+
 	# remove - if not used
 	# modify - change state, nation
     }
@@ -2526,6 +2536,18 @@ cmdr create cm::cm [file tail $::argv0] {
 		The destination address to send the test mail to.
 	    } { }
 	} [cm::call mailer cmd_test_mail_config]
+
+	# - -- --- ----- -------- -------------
+
+	private city-known {
+	    description {Print validation dictionary}
+	} [cm::call city test-known]
+
+	# - -- --- ----- -------- -------------
+
+	private location-known {
+	    description {Print validation dictionary}
+	} [cm::call location test-known]
 
 	# - -- --- ----- -------- -------------
 
