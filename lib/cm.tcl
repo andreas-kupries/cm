@@ -1890,16 +1890,6 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [stop!] }
 	} [cm::call contact cmd_add_mail]
 
-	private add-link {
-	    section {Contact Management}
-	    description {Add more links to a contact}
-	    use .links
-	    input name {
-		Name of the contact to extend.
-	    } { optional ; interact ; validate [cm::vt contact]
-		generate [stop!] }
-	} [cm::call contact cmd_add_link]
-
 	private disable-mail {
 	    section {Contact Management}
 	    description {Disable one or more email addresses}
@@ -1927,11 +1917,48 @@ cmdr create cm::cm [file tail $::argv0] {
 	} [cm::call contact cmd_squash_mail]
 	alias squash-mail
 
+	private add-link {
+	    section {Contact Management}
+	    description {Add more links to a contact}
+	    use .links
+	    input name {
+		Name of the contact to extend.
+	    } { optional ; interact ; validate [cm::vt contact]
+		generate [stop!] }
+	} [cm::call contact cmd_add_link]
+
 	private remove-link {
 	    section {Contact Management}
 	    description {Fully remove one or more links}
 	    use .ilinks
 	} [cm::call contact cmd_squash_link]
+
+	private rename-link {
+	    section {Contact Management}
+	    description {Rename a link in all contacts using it}
+	    input link {
+		Name of the link to rename
+	    } { validate str }
+	    input new {
+		New name of the link
+	    } { validate str }
+	} [cm::call contact cmd_rename_link]
+
+	private set-link-title {
+	    section {Contact Management}
+	    description {Set the title for a link in all contacts}
+	    input link {
+		Name of the link to (re)title
+	    } { validate str }
+	    input title {
+		Title for the link
+	    } { validate str }
+	} [cm::call contact cmd_title_link]
+
+	private links {
+	    section {Contact Management}
+	    description {Show a table of the known links}
+	} [cm::call contact cmd_links]
 
 	private disable {
 	    section {Contact Management}

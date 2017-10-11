@@ -6,7 +6,7 @@
 # Meta author      {Andreas Kupries}
 # Meta category    ?
 # Meta description ?
-# Meta location    http:/core.tcl.tk/akupries/cm
+# Meta location    https://core.tcl.tk/akupries/cm
 # Meta platform    tcl
 # Meta require     ?
 # Meta subject     ?
@@ -45,7 +45,8 @@ namespace eval ::cm::contact {
 	cmd_squash_mail cmd_squash_link cmd_mail_fix cmd_retype cmd_dead cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
-	get-name get-links get-email get-link get-the-link related-formatted
+	get-name get-links get-email get-link get-the-link related-formatted \
+	cmd_rename_link cmd_title_link cmd_links
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -175,7 +176,7 @@ proc ::cm::contact::cmd_show {config} {
 	    # Links for the contact
 	    set first 1
 	    db do eval {
-		SELECT link
+		SELECT link, title
 		FROM   link
 		WHERE  contact = :id
 		ORDER BY link
@@ -183,6 +184,8 @@ proc ::cm::contact::cmd_show {config} {
 		if {$first} { $t add Links {} }
 		set first 0
 		$t add - $link
+		if {$title in [list {} $link]} continue
+		$t add {} ([color name $title])
 	    }
 
 	    # Affiliations. Expected for persons, to list companies,
@@ -675,6 +678,77 @@ proc ::cm::contact::cmd_squash_link {config} {
 
 	puts [color good OK]
     }
+    return
+}
+
+proc ::cm::contact::cmd_rename_link {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set link [$config @link]
+    set new  [$config @new]
+
+    puts -nonewline "Renaming link \"[color name $link]\" to \"[color note $new]\" ... "
+    flush stdout
+
+    db do transaction {
+	db do eval {
+	    UPDATE link
+	    SET    link = :new
+	    WHERE  link = :link
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+proc ::cm::contact::cmd_title_link {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set link  [$config @link]
+    set title [$config @title]
+
+    puts -nonewline "Titling link \"[color name $link]\" as \"[color note $title]\" ... "
+    flush stdout
+
+    db do transaction {
+	db do eval {
+	    UPDATE link
+	    SET    title = :title
+	    WHERE  link = :link
+	}
+    }
+
+    puts [color good OK]
+
+    return
+}
+
+proc ::cm::contact::cmd_links {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    # Table of links, with title, and contact it belongs to.
+    
+    set titles {Link Title Contact}
+    [table t $titles {
+	db do eval {
+	    SELECT L.link  AS link
+	    ,      L.title AS title
+	    ,      C.dname AS contact
+	    FROM link    L
+	    ,    contact C
+	    WHERE L.contact = C.id
+	    ORDER BY L.link
+	} {
+	    $t add $link $title $contact
+	}
+    }] show
     return
 }
 
