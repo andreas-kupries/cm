@@ -919,6 +919,26 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	# - -- --- ----  -------- ------------- ----------------------
 
+	private attach {
+	    section {Conference Management}
+	    description { Add a link for the proceedings }
+	    input link {
+		URI of the link
+	    } {
+		validate str
+	    }
+	    input title {
+		Label to use for the link, defaults to the link itself.
+	    } { optional }
+	} [cm::call conference cmd_link_add]
+
+	private links {
+	    section {Conference Management}
+	    description { Show the attached links }
+	} [cm::call conference cmd_link_show]
+
+	# - -- --- ----  -------- ------------- ----------------------
+
 	private add-staff {
 	    section {Conference Management}
 	    description { Add one or more staff }

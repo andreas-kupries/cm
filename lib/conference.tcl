@@ -83,7 +83,7 @@ namespace eval ::cm::conference {
 	known-attachment get-attachment known-submitter its-hotel \
 	known-talks-vt \
 	\
-	test-timeline-known
+	test-timeline-known cmd_link_add cmd_link_drop cmd_link_show
     namespace ensemble create
 
     namespace import ::cmdr::ask
@@ -335,7 +335,7 @@ proc ::cm::conference::cmd_show {config} {
 	$t add Talks/Session    $xsesslen
 
 	if {$xpschedule eq {}} {
-	    $t add Schedule "[color bad {Undefined}]\n(=> conference schedule)"
+	    $t add Schedule "[color bad {Undefined}] (=> conference schedule)"
 	} else {
 	    $t add Schedule [pschedule piece $xpschedule dname]
 	}
@@ -349,9 +349,9 @@ proc ::cm::conference::cmd_show {config} {
 	    WHERE  conference = :id
 	    AND    location   = :xhotelid
 	}]} {
-	    $t add [color bad Rate]  "[color bad Undefined]\n(=> conference rate)"
+	    $t add [color bad Rate]  "[color bad Undefined] (=> conference rate)"
 	} else {
-	    $t add [color note Rate] "[color note ok]\n(=> conference rates)"
+	    $t add [color note Rate] "[color note ok] (=> conference rates)"
 	}
 
 	# - -- --- ----  -------- ------------- timeline
@@ -363,10 +363,10 @@ proc ::cm::conference::cmd_show {config} {
 	if {!$tcount} {
 	    set tcount Undefined
 	    set color  bad
-	    set suffix "\n(=> conference timeline-init)"
+	    set suffix " (=> conference timeline-init)"
 	} else {
 	    set color  note
-	    set suffix "\n(=> conference timeline)"
+	    set suffix " (=> conference timeline)"
 	}
 	$t add [color $color Timeline] [color $color $tcount]$suffix
 
@@ -380,10 +380,10 @@ proc ::cm::conference::cmd_show {config} {
 	if {!$scount} {
 	    set scount None
 	    set color  bad
-	    set suffix "\n(=> conference add-sponsor)"
+	    set suffix " (=> conference add-sponsor)"
 	} else {
 	    set color  note
-	    set suffix "\n(=> conference sponsors)"
+	    set suffix " (=> conference sponsors)"
 	}
 	$t add [color $color Sponsors] [color $color $scount]$suffix
 
@@ -396,10 +396,10 @@ proc ::cm::conference::cmd_show {config} {
 	if {!$scount} {
 	    set scount None
 	    set color  bad
-	    set suffix "\n(=> conference add-staff)"
+	    set suffix " (=> conference add-staff)"
 	} else {
 	    set color  note
-	    set suffix "\n(=> conference staff)"
+	    set suffix " (=> conference staff)"
 	}
 	$t add [color $color Staff] [color $color $scount]$suffix
 
@@ -412,10 +412,10 @@ proc ::cm::conference::cmd_show {config} {
 	if {!$tcount} {
 	    set tcount None
 	    set color  bad
-	    set suffix "\n(=> conference add-tutorial)"
+	    set suffix " (=> conference add-tutorial)"
 	} else {
 	    set color  note
-	    set suffix "\n(=> conference tutorials)"
+	    set suffix " (=> conference tutorials)"
 	}
 	$t add [color $color Tutorials] [color $color $tcount]$suffix
 
@@ -428,15 +428,30 @@ proc ::cm::conference::cmd_show {config} {
 	if {!$scount} {
 	    set scount None
 	    set color  bad
-	    set suffix "\n(=> submit)"
+	    set suffix " (=> submit)"
 	} else {
 	    set color  note
-	    set suffix "\n(=> submissions)"
+	    set suffix " (=> submissions)"
 	}
 	$t add [color $color Submissions] [color $color $scount]$suffix
 
-	# - -- --- ----  -------- ------------- talk summary /TODO
+    	# - -- --- ----  -------- ------------- link summary (global "attachments")
+	set lcount [db do eval {
+	    SELECT count (id)
+	    FROM   clink
+	    WHERE  conference = :id
+	}]
+	if {!$lcount} {
+	    set lcount None
+	    set color  bad
+	    set suffix " (=> conference attach)"
+	} else {
+	    set color  note
+	    set suffix " (=> conference links)"
+	}
+	$t add [color $color Links] [color $color $lcount]$suffix
     }] show
+    # - -- --- ----  -------- ------------- talk summary /TODO
     return
 }
 
@@ -2436,6 +2451,55 @@ proc ::cm::conference::cmd_tutorial_unlink {config} {
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::conference::cmd_link_show {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    puts "Links attached to \"[color name [get $conference]]\":"
+    [table t {Title Link} {
+	db do eval {
+	    SELECT C.title AS title
+	    ,      C.link AS link
+	    FROM   clink C
+	    WHERE  C.conference = :conference
+	    ORDER BY title, link
+	} {
+	    $t add $title $link
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_link_add {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set link  [$config @link]
+    set title [$config @title]
+    set id    [current]
+
+    if {$title eq {}} { set title $link }
+    
+    puts -nonewline "Add link \"[color name $link]\" to \"[color name [get $id]]\" ... "
+    flush stdout
+
+    db do transaction {
+	db do eval {
+	    INSERT INTO clink
+	    VALUES (NULL, :id, :link, :title)
+	}
+    }
+
+    puts [color good OK]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::conference::cmd_rate_show {config} {
     debug.cm/conference {}
     Setup
@@ -3354,7 +3418,7 @@ proc ::cm::conference::cmd_website_make {config} {
     if {$pvisible eq "visible"} {
 	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings $conference]
     } else {
-	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings_none]
+	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings_none $conference]
     }
 
     #lappend navbar {*}[make_page Contact           contact     make_contact]
@@ -4157,6 +4221,23 @@ proc ::cm::conference::general-talks {conference} {
     }]
 }
 
+proc ::cm::conference::md-links {links} {
+    foreach {title link} $links {
+	lappend lines "   * [link $title $link]"
+    }
+    join $lines \n
+}
+
+proc ::cm::conference::links {conference} {
+    debug.cm/conference {}
+    return [db do eval {
+	SELECT DISTINCT title, link
+	FROM   clink
+	WHERE  conference = :conference
+	ORDER BY title, link
+    }]
+}
+
 proc ::cm::conference::talk-speakers {talk} {
     debug.cm/conference {}
     return [db do eval {
@@ -4565,6 +4646,7 @@ proc ::cm::conference::make_proceedings {conference} {
 
     set text [template use www-proceedings]
     append text \n
+    append text \n [md-links $conference] \n
 
     set first 1
     set n 1
@@ -4619,9 +4701,16 @@ proc ::cm::conference::make_proceedings {conference} {
     return $text
 }
 
-proc ::cm::conference::make_proceedings_none {} {
+proc ::cm::conference::make_proceedings_none {conference} {
     debug.cm/conference {}
-    return [template use www-proceedings.none]
+
+    set links [links $conference]
+    if {[llength $links]} {
+	lappend map @links@ [md-links $links]
+	return [string map $map [template use www-proceedings.none+links]]
+    } else {
+	return [template use www-proceedings.none]
+    }	
 }
 
 proc ::cm::conference::make_admin {conference} {
@@ -7034,6 +7123,26 @@ proc ::cm::conference::Setup {} {
 	}
     }
 
+    if {![dbutil initialize-schema ::cm::db::do error clink {
+	{
+	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	    conference	INTEGER	NOT NULL REFERENCES conference,
+	    link	TEXT	NOT NULL, -- same link text can be used by multiple contacts
+	    title	TEXT,
+	    UNIQUE (conference, link)
+	} {
+	    {id		INTEGER 1 {} 1}
+	    {conference	INTEGER 1 {} 0}
+	    {link	TEXT    1 {} 0}
+	    {title	TEXT    0 {} 0}
+	} {
+	    conference link
+	}
+    }]} {
+	db setup-error link $error
+    }
+
+    
     # Shortcircuit further calls
     proc ::cm::conference::Setup {args} {}
     return
@@ -7288,6 +7397,25 @@ proc ::cm::conference::Dump {} {
 	    }
 	    
 	    cm dump step
+	}
+
+	# (attached links)
+	set first 1
+	db do eval {
+	    SELECT C.title AS title
+	    ,      C.link  AS link
+	    FROM   clink C
+	    WHERE  C.conference = :id
+	    ORDER BY title, link
+	} {
+	    if {$first} { cm dump step ; set first 0 }
+	    if {$title eq $link} {
+		cm dump save \
+		    conference attach $link
+	    } else {
+		cm dump save \
+		    conference attach $link $title
+	    }
 	}
 
 	# booked
