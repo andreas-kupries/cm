@@ -4684,7 +4684,7 @@ proc ::cm::conference::make_proceedings {conference} {
 
     set text [template use www-proceedings]
     append text \n
-    append text \n [md-links $conference] \n
+    append text \n [md-links [links $conference]] \n
 
     set first 1
     set n 1
