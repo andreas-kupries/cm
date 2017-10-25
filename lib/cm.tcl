@@ -667,7 +667,7 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private rename {
 	    section {Series Management}
-	    description { Show the details of the series }
+	    description { Rename the series }
 	    use .title
 	    input new {
 		New name to use
@@ -676,7 +676,7 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private redirect {
 	    section {Series Management}
-	    description { Show the details of the series }
+	    description { Change the index url for the series }
 	    use .title
 	    input new {
 		New location of the index
@@ -1425,6 +1425,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    section {Submission Management}
 	    description { Show accepted submissions, aka presentations for the current conference }
 	} [cm::call conference cmd_submission_list_accepted]
+
+	private attachments {
+	    section {Submission Management}
+	    description { Show all attachments to the submissions for the current conference }
+	} [cm::call conference cmd_submission_attachments]
 
 	private accept {
 	    section {Submission Management}

@@ -67,7 +67,7 @@ namespace eval ::cm::conference {
 	cmd_submission_settitle cmd_submission_setdate cmd_submission_addsubmitter \
 	cmd_submission_dropsubmitter cmd_submission_list_accepted cmd_submission_ping_accepted \
 	cmd_submission_ping_speakers cmd_submission_done_accepted cmd_submission_clear_accepted \
-	cmd_submission_nag \
+	cmd_submission_nag cmd_submission_attachments \
 	cmd_tutorial_show cmd_tutorial_link cmd_tutorial_unlink cmd_debug_speakers \
 	\
 	cmd_booking_list cmd_booking_add cmd_booking_remove cmd_booking_nag \
@@ -1151,6 +1151,44 @@ proc ::cm::conference::cmd_submission_show {config} {
 
 	    $t add Abstract [util adjust $w $abstract]
 	    $t add Summary  [util adjust $w $summary]
+	}
+    }] show
+    return
+}
+
+proc ::cm::conference::cmd_submission_attachments {config} {
+    debug.cm/conference {}
+    Setup
+    db show-location
+
+    set conference [current]
+
+    [table t {Talk Name Mime} {
+	set previous {}
+    	db do eval {
+	    SELECT S.title AS talk
+	    ,      A.type  AS name
+	    ,      A.mime  AS mime
+	    FROM attachment A
+	    ,    talk       T
+	    ,    submission S
+	    WHERE A.talk       = T.id
+	    AND   T.submission = S.id
+	    AND   S.conference = :conference
+	    ORDER BY talk, name
+	} {
+	    if {$talk eq $previous} {
+		set talk {}
+	    } else {
+		if {$previous ne {}} {
+		    $t add {} {} {}
+		}
+		set previous $talk
+	    }
+	    if {[string length $talk] > 25} {
+		set talk [string range $talk 0 20]...
+	    }
+	    $t add $talk $name $mime
 	}
     }] show
     return
