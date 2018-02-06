@@ -5656,7 +5656,7 @@ proc ::cm::conference::web-committee {id} {
 	# Get link for affiliation, if any.
 	set contact     [dict get $cdata $cname]
 	set affiliation {}
-	foreach {aid aname} [contact affiliated $contact] {
+	foreach {aid aname} [contact affiliated $contact 1] {
 	    set alink [contact get-the-link $aid]
 	    if {$alink ne {}} {
 		set aname [link $aname $alink]
@@ -5692,7 +5692,7 @@ proc ::cm::conference::mail-committee {id} {
 	set affiliation {}
 	set prefix      "   * "
 
-	foreach {aid aname} [contact affiliated $contact] {
+	foreach {aid aname} [contact affiliated $contact 1] {
 	    lappend affiliation $aname
 	}
 

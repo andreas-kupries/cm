@@ -46,7 +46,7 @@ namespace eval ::cm::contact {
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
 	get-name get-links get-email get-link get-the-link related-formatted \
-	cmd_rename_link cmd_title_link cmd_links
+	cmd_rename_link cmd_title_link cmd_links cmd_flag_company
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -194,15 +194,20 @@ proc ::cm::contact::cmd_show {config} {
 	    set first 1
 	    db do eval {
 		SELECT C.dname
-		FROM   contact     C,
-		       affiliation A
+		,      A.mailable
+		FROM   contact     C
+		,      affiliation A
 		WHERE  A.person  = :contact
 		AND    A.company = C.id
 		ORDER BY C.dname
 	    } {
 		if {$first} { $t add Affiliations {} }
 		set first 0
-		$t add - [color name $dname]
+		if {$mailable} {
+		    $t add - "[color name $dname] ([color note mailable])"
+		} else {
+		    $t add - [color name $dname]
+		}
 	    }
 
 	    # Liaisons. Expected for companies, to list persons, their
@@ -1029,16 +1034,19 @@ proc ::cm::contact::cmd_add_company {config} {
     Setup
     db show-location
 
-    set contact [$config @name]
+    set contact  [$config @name]
+    set mailable [$config @mailable]
+
+    set m [expr {$mailable ? " ([color note mailable])" : ""}]
 
     db do transaction {
 	puts "Extend affiliations of \"[color name [get $contact]]\" ... "
 
 	foreach company [$config @company] {
-	    puts -nonewline "+ \"[color name [get $company]]\" ... "
+	    puts -nonewline "+ \"[color name [get $company]]\"$m ... "
 	    flush stdout
 
-	    add-affiliation $contact $company
+	    add-affiliation $contact $company $mailable
 
 	    puts [color good OK]
 	}
@@ -1061,6 +1069,30 @@ proc ::cm::contact::cmd_drop_company {config} {
 	    flush stdout
 
 	    drop-affiliation $contact $company
+
+	    puts [color good OK]
+	}
+    }
+    return
+}
+
+proc ::cm::contact::cmd_flag_company {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set mailable [$config @mailable]
+    set m [expr {$mailable ? " mailable" : "[color bad not] mailable"}]
+
+    db do transaction {
+	puts "Flag mailability of affiliations for \"[color name [get $contact]]\" ... "
+
+	foreach company [$config @company] {
+	    puts -nonewline "- \"[color name [get $company]]\": $m ... "
+	    flush stdout
+
+	    flag-affiliation $contact $company $mailable
 
 	    puts [color good OK]
 	}
@@ -1171,17 +1203,29 @@ proc ::cm::contact::+issue {text} {
     return
 }
 
-proc ::cm::contact::affiliated {contact} {
+proc ::cm::contact::affiliated {contact {mailable {}}} {
     debug.cm/contact {}
     Setup
-    return [db do eval {
-	SELECT C.id, C.dname
-	FROM   contact     C,
-	       affiliation A
-	WHERE  A.person  = :contact
-	AND    A.company = C.id
-	ORDER BY C.dname
-    }]
+    if {$mailable eq {}} {
+        return [db do eval {
+	    SELECT C.id, C.dname
+	    FROM   contact     C
+	    ,      affiliation A
+	    WHERE  A.person  = :contact
+	    AND    A.company = C.id
+	    ORDER BY C.dname
+	}]
+    } else {
+        return [db do eval {
+	    SELECT C.id, C.dname
+	    FROM   contact     C
+	    ,      affiliation A
+	    WHERE  A.person  = :contact
+	    AND    A.company = C.id
+	    AND    A.mailable == :mailable
+	    ORDER BY C.dname
+	}]
+    }
 }
 
 proc ::cm::contact::liaisons {contact} {
@@ -1459,14 +1503,27 @@ proc ::cm::contact::retrieve-bio {contact} {
     }]
 }
 
-proc ::cm::contact::add-affiliation {contact affiliation} {
+proc ::cm::contact::add-affiliation {contact affiliation {mailable 0}} {
     debug.cm/contact {}
     Setup
 
     db do eval {
 	INSERT
 	INTO affiliation
-	VALUES (NULL, :contact, :affiliation)
+	VALUES (NULL, :contact, :affiliation, :mailable)
+    }
+    return
+}
+
+proc ::cm::contact::flag-affiliation {contact affiliation mailable} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE affiliation
+	SET    mailable = :mailable
+	WHERE  person  = :contact
+	AND    company = :affiliation
     }
     return
 }
@@ -2052,15 +2109,19 @@ proc ::cm::contact::Setup {} {
 	    -- Relationship between contacts.
 	    -- People may be affiliated with an organization, like their employer
 	    -- A table is used as a person may be affiliated with several orgs.
+	    -- The flag `mailable` allows the person to control which of the
+            -- affiliations should be listed in campaign mails.
 
 	    id		INTEGER NOT NULL PRIMARY KEY,
 	    person	INTEGER NOT NULL REFERENCES contact,
 	    company	INTEGER NOT NULL REFERENCES contact,
+	    mailable    INTEGER NOT NULL,
 	    UNIQUE (person, company)
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {person	INTEGER 1 {} 0}
 	    {company	INTEGER 1 {} 0}
+	    {mailable	INTEGER 1 {} 0}
 	} {}
     }]} {
 	db setup-error affiliation $error
@@ -2192,17 +2253,23 @@ proc ::cm::contact::Dump {} {
     # (Affiliations & Liaisons (aka Representatives, Points of Contact))
 
     db do eval {
-	SELECT C.dname AS ncompany,
-	       P.dname AS nperson
-	FROM   affiliation A,
-	       contact     C,
-	       contact     P
+	SELECT C.dname AS ncompany
+	,      P.dname AS nperson
+	,      A.mailable AS mailable
+	FROM   affiliation A
+	,      contact     C
+	,      contact     P
 	WHERE  A.company = C.id
 	AND    A.person  = P.id
 	ORDER BY nperson, ncompany
     } {
-	cm dump save \
-	    contact add-affiliate $nperson $ncompany
+	if {$mailable} {
+	    cm dump save \
+		contact add-affiliate $nperson $ncompany --mailable
+	} else {
+	    cm dump save \
+		contact add-affiliate $nperson $ncompany --no-mailable
+	}
     }
 
     cm dump step

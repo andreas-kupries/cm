@@ -1794,6 +1794,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	private add-affiliate {
 	    section {Contact Management}
 	    description {Add one or more contacts (companies, projects, ...) as the affiliations of the specified person}
+	    option mailable {
+		Indicator that this affiliation can be used in
+		campaign mails.
+	    } { validate boolean }
 	    input name {
 		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
@@ -1820,6 +1824,25 @@ cmdr create cm::cm [file tail $::argv0] {
 	alias remove-org
 	alias remove-company
 	alias remove-project
+
+	private flag-affiliate {
+	    section {Contact Management}
+	    description {Set or reset the mailable flag for the combination of person and affiliation}
+	    option mailable {
+		Indicator that this affiliation can be used in
+		campaign mails.
+	    } { validate boolean }
+	    input name {
+		Name of the contact to modify
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator only persons
+		generate [stop!] }
+	    input company {
+		Names of the companies to change the mailable-flag for
+	    } { optional ; list; interact ; validate [cm::vt contact] } ; # TODO validator only company
+	} [cm::call contact cmd_flag_company]
+	alias flag-org
+	alias flag-company
+	alias flag-project
 
 	# Reverse affiliation. A personal contact into the company
 	# ... A liaison, point of contact, representative
