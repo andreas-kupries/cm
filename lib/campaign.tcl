@@ -746,6 +746,7 @@ proc ::cm::campaign::check-template {text} {
 	0 c:sponsors
 	0 c:committee
 	1 c:t:wipopen
+	1 c:t:regopen
 	1 c:t:submitdead
 	1 c:t:authornote
 	1 c:t:writedead
