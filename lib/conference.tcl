@@ -5181,7 +5181,8 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 
 	# Side page per submission, holding the entire data.
 	make_internal_page $title __s$id \
-	    make_submission $id $submitters $submitdate $invited $abstract $summary
+	    make_submission $id $submitters $submitdate $invited $abstract $summary \
+	    __dummy__
 
 	set invited    [expr {$invited ? "__yes__" : ""}]
 	set submitters [join [dict keys $submitters] {, }]
