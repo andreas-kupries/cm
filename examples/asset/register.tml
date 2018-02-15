@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>    
+  <head>
+    <meta charset="UTF-8">   
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="canonical" href="https://core.tcl.tk/conference/tcl@c:year@/index.html">
+      <link rel="icon" href="./images/favicon.png">
+    <title>Register an attendant | @c:name@</title>  
+    <!-- Bootstrap core CSS -->
+    <link href="./external/bootstrap-3.3.1-dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap theme -->
+    <link href="./external/bootstrap-3.3.1-dist/css/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- Custom stylesheets, if any -->
+      <link href="./tclssg.css" rel="stylesheet">
+  </head>
+
+[Doc_Dynamic]
+
+    <div class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-colapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="index.html"><div class="pull-left"> <img src="http://www.tclcommunityassociation.org/wub/imgs/tcla_logo2c-tiny.gif" style="height: 33px; margin-top: -10px;"> @c:name@</div></a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="http://www.tcl.tk/community/conferences.html">Related</a></li>
+            <li><a href="./cfp.html">Call For Papers</a></li>
+            <li><a href="./location.html">Location</a></li>
+            <li><a href="./register.html">Registration</a></li>
+            <li><a href="./tutorials.html">Tutorials</a></li>
+            <li><a href="./schedule.html">Schedule</a></li>
+            <li><a href="./proceedings.html">Proceedings</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+   
+<!-- DO NOT CHANGE CODE BETWEEN COMMENTS -->
+[
+# forms2.tcl and desSupport.tcl exist in "custom"
+# EXCEPT on www.tcl.tk
+#catch {
+#set of [open /tmp/argh w]
+#puts $of "START $::page(filename)"; flush $of
+#puts $of "EXIST: [file exists $::page(filename)]"; flush $of
+source [file dirname $::page(filename)]/forms2.tcl
+
+#set formID "[file tail [ file root $page(filename)]][clock format [clock seconds] -format %Y ]"
+set formID "[file tail [ file root $page(filename)]]"
+#puts $of "FORMID: $formID"
+
+namespace eval ::$formID {
+  source [file root $page(filename)]/$formID.cfg
+
+  if {[info procs validate] eq ""} {
+    source [file root $page(filename)]/$formID.procs
+  }
+
+  ::form2::Form_MultiPostProcess $formID $formData confirm.html 1234
+}
+#} shit
+#puts $of $shit
+#close $of
+
+]
+<!-- DO NOT CHANGE CODE BETWEEN COMMENTS -->
+
+</body>
+</html>

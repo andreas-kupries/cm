@@ -1,0 +1,7 @@
+www-forms2		forms2.tcl    
+www-regform		register_form.tml  
+www-register-config	register/register.cfg
+www-register-procs	register/register.procs
+www-subform		submit_form.tml
+www-submit-config	submit/submit.cfg
+www-submit-procs	submit/submit.procs

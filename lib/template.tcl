@@ -36,7 +36,7 @@ namespace eval ::cm {
 namespace eval ::cm::template {
     namespace export \
 	cmd_create cmd_remove cmd_set cmd_list cmd_show \
-	get details known select find find-by-name use
+	get details known select find find-by-name use have
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -216,6 +216,12 @@ proc ::cm::template::find-by-name {name} {
 
     # Map to id
     return [dict get $templates $name]
+}
+
+proc ::cm::template::have {name} {
+    debug.cm/template {}
+    # dict: label -> id
+    return [dict exists [known] $name]
 }
 
 proc ::cm::template::find {name p} {

@@ -1,0 +1,64 @@
+# -*- tcl -*-
+
+proc validate {fields} {
+    set result 1
+
+    foreach {type required key label post} $fields {
+	if {[string match $key number]} {
+	    set label [string trim $label :]
+	    set payType [string trim [form2::data type]]
+	    set acct [string trim [form2::data number]]
+	    regsub -all {[ -]} $acct {} acct
+	    array set nums {{} 0 amex 15 visa 16 mastercard 16 discover 16 check 0}
+
+	    if {[string length $acct] != $nums($payType)} {
+		form2::appendIndex invalid $label
+		set result 0
+	    }
+	    set d2 [string trim [form2::data exp]]
+	    if {([string length $d2] != 4) && ![string equal "check" $payType]} {
+		form2::appendIndex invalid "Expiration date"
+		set result 0
+	    }
+	}
+
+	if {[string match $key discount]} {
+	    if {[string match "corporate" [form2::data discount]]} {
+		set id [string trim [form2::data corpid]]
+		if {$id >= [form2::data memberNum] ||
+		    [string match $id ""]} {
+		    form2::appendIndex invalid "Co-Worker Membership number"
+		    set result 0
+		}
+	    }
+	}
+
+	if {$required} {
+	    set val [string trim [form2::data $key]]
+	    if {[string equal {} $val]} {
+		form2::appendIndex invalid "Need to fill in $label"
+		set result 0
+	    }
+	}
+    }
+
+    return $result
+}
+
+################################################################
+# proc calculate {fields nextPage}--
+#    calculate final cost, create confirm page, 
+#    put data into gpg encrypted file, keyed on formid value.
+#    gpg --gen-key  to create key
+#    gpg -r $formID -o InProcess_$memberNum -e --  to wrote file
+#    use ::form2::saveEncrypted
+# Arguments
+#   
+# 
+# Results
+#   
+# 
+proc calculate {fields} {
+    global Config
+    return 0
+}

@@ -137,7 +137,7 @@ proc ::cm::conference::cmd_list {config} {
 
     set cid [config get* @current-conference {}]
     set ne  [$config @no-errors]
-    
+
     # FUTURE: Options to sort by
     # - C.title
     # - CC.name, CC.state, CC.nation
@@ -556,7 +556,7 @@ proc ::cm::conference::cmd_timeline_shift {config} {
 
     db do transaction {
 	set old [db do onecolumn {
-	    SELECT date 
+	    SELECT date
 	    FROM   timeline
 	    WHERE  con  = :conference
 	    AND    type = :entry
@@ -899,7 +899,7 @@ proc ::cm::conference::cmd_submission_setsummary {config} {
     db show-location
 
     set conference [current]
-    set submission [$config @submission] 
+    set submission [$config @submission]
     set summary    [string trim [read stdin]]
 
     puts -nonewline "Set summary of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
@@ -921,7 +921,7 @@ proc ::cm::conference::cmd_submission_setabstract {config} {
     db show-location
 
     set conference [current]
-    set submission [$config @submission] 
+    set submission [$config @submission]
     set abstract   [string trim [read stdin]]
 
     puts -nonewline "Set abstract of \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
@@ -1038,7 +1038,7 @@ proc ::cm::conference::cmd_submission_show {config} {
     db show-location
 
     set conference [current]
-    set submission [$config @submission] 
+    set submission [$config @submission]
 
     set w [util tspace [expr {[string length Abstract]+7}] 72]
 
@@ -2066,7 +2066,7 @@ proc ::cm::conference::cmd_registration {config} {
     db show-location
 
     set conference [current]
-    set newstatus  [$config @status] 
+    set newstatus  [$config @status]
 
     puts -nonewline "Conference \"[color name [get $conference]]\" registration = [get-rstatus $newstatus] ... "
     flush stdout
@@ -2089,7 +2089,7 @@ proc ::cm::conference::cmd_proceedings {config} {
     db show-location
 
     set conference [current]
-    set newvisible [$config @status] 
+    set newvisible [$config @status]
 
     puts -nonewline "Conference \"[color name [get $conference]]\" proceedings = [get-pvisible $newvisible] ... "
     flush stdout
@@ -2521,7 +2521,7 @@ proc ::cm::conference::cmd_link_add {config} {
     set id    [current]
 
     if {$title eq {}} { set title $link }
-    
+
     puts -nonewline "Add link \"[color name $link]\" to \"[color name [get $id]]\" ... "
     flush stdout
 
@@ -2782,7 +2782,7 @@ proc ::cm::conference::cmd_schedule_show {config} {
     }
 
     set pslabel [pschedule piece $xpschedule dname]
-    puts "Schedule \"[color name $pslabel]\": " 
+    puts "Schedule \"[color name $pslabel]\": "
 
     if {[$config @merged]} {
 	set map       [ScheduleMap $conference]
@@ -2833,7 +2833,7 @@ proc ::cm::conference::cmd_schedule_edit {config} {
     }
 
     set pslabel [pschedule piece $xpschedule dname]
-    puts -nonewline "Schedule \"[color name $pslabel]\": " 
+    puts -nonewline "Schedule \"[color name $pslabel]\": "
     flush stdout
 
     set slot  [$config @label]
@@ -2841,7 +2841,7 @@ proc ::cm::conference::cmd_schedule_edit {config} {
     set type  [$config @type]
     set value [$config @value]
 
-    puts -nonewline "Slot \"[color name $sname]\" := " 
+    puts -nonewline "Slot \"[color name $sname]\" := "
     flush stdout
 
     # TODO: Ensure uniqueness of talk/tutorial assignments.
@@ -2850,7 +2850,7 @@ proc ::cm::conference::cmd_schedule_edit {config} {
 	talk {
 	    # value = talk-id
 	    set title [get-talk-title $value]
-	    puts -nonewline "Talk \"[color name $title]\" ... " 
+	    puts -nonewline "Talk \"[color name $title]\" ... "
 	    flush stdout
 
 	    schedule set_talk $slot $value
@@ -2859,14 +2859,14 @@ proc ::cm::conference::cmd_schedule_edit {config} {
 	    # value = (scheduled-id day half tutorial)
 	    lassign $value value _ _ _
 	    set title [cm::tutorial get-scheduled $value]
-	    puts -nonewline "Tutorial \"[color name $title]\" ... " 
+	    puts -nonewline "Tutorial \"[color name $title]\" ... "
 	    flush stdout
 
 	    schedule set_tutorial $slot $value
 	}
 	fixed {
 	    # value = string
-	    puts -nonewline "\"$value\" ... " 
+	    puts -nonewline "\"$value\" ... "
 	    flush stdout
 
 	    schedule set_fixed $slot $value
@@ -3462,8 +3462,11 @@ proc ::cm::conference::cmd_website_make {config} {
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
     make_page   {Registration Confirmation}        confirm     make_confirm
+    make_page   {Submission Confirmation}          thanks      make_thanks
 
     make_internal_page Administrivia __dwarf make_admin $conference
+
+    make_templated_assets $conference
 
     # # ## ### ##### ######## #############
     # Configuration file.
@@ -3500,12 +3503,49 @@ proc ::cm::conference::ssg {args} {
 # # ## ### ##### ######## ############# ######################
 ## Internal import support commands.
 
+proc ::cm::conference::make_templated_assets {conference} {
+    debug.cm/conference {}
+
+    if {![template have www-assets]} {
+	puts "\tNo configured assets ..."
+	return
+    }
+    
+    upvar 1 dstdir dstdir
+    set assetmap [split [string trim [template use www-assets]] \n]
+    # dict of assets: template --> site path (under /static, always)
+
+    puts "\tPlacing configured assets ..."
+    incr a
+    foreach line $assetmap {
+	#puts <<$line>>
+	lassign [split [L $line]] template path
+	incr a
+	puts "\tAsset:\t[color name $template] as [color note $path] ..."
+	#continue
+	file mkdir [file dirname $dstdir/static/$path]
+	fileutil::writeFile $dstdir/static/$path \
+	    [insert $conference [template use $template]]
+    }
+
+    if {$a} return
+
+    puts "\t[color bad {No assets}]"
+    return
+}
+
+proc ::cm::conference::L {x} {
+    set x [string trim $x]
+    regsub -all {[ 	]+} $x { } x
+    return $x
+}
+
 proc ::cm::conference::make_page {title fname args} {
     debug.cm/conference {}
 
     set generatorcmd $args
     upvar 1 dstdir dstdir conference conference
-    puts \t${title}...
+    puts \t[prefix?]${title}...
 
     set text [make_page_header $title]
 
@@ -3528,7 +3568,7 @@ proc ::cm::conference::make_internal_page {title fname args} {
 
     set generatorcmd $args
     upvar 1 dstdir dstdir conference conference
-    puts "\t${title}... ([color note Internal])"
+    puts "\t[prefix?]${title}... ([color note Internal])"
 
     set text [make_internal_page_header $title]
 
@@ -3661,9 +3701,9 @@ proc ::cm::conference::make_tutorials {conference} {
     set start [dict get [details $conference] xstart]
 
     # Table header
-    # 
+    #
     # - | morning | afternoon | evening |
-    # 
+    #
     append text |  ;# empty header cell, top left corner
     append sep  |- ;# empty header cell, top left corner
     db do eval {
@@ -3724,7 +3764,7 @@ proc ::cm::conference::make_tutorials {conference} {
 		# Keep information to make assembly of the next
 		# section easier, no need to query the databse again.
 		dict set map $tutorial [list $title $tag $speaker $stag $desc $req]
-	    }	    
+	    }
 	    append text |\n ;# close row of current track
 	    set wday ""     ;# clear prefix following tracks
 	}
@@ -3961,7 +4001,7 @@ proc ::cm::conference::make_schedule {conference} {
 	    set col      [dict get $cmap $trackname]
             set rowstart [dict get $rmap $start]
             set rowend   [dict get $rmap $end]
-            set rspan    [expr {$rowend - $rowstart}]      
+            set rspan    [expr {$rowend - $rowstart}]
 
             # Mark the shadowed areas for this item.
             for {set r $rowstart} {$r < $rowend} {incr r} {
@@ -3991,7 +4031,7 @@ proc ::cm::conference::make_schedule {conference} {
 
 	    set rowstart [dict get $rmap $start]
 	    set rowend   [dict get $rmap $end]
-	    set rspan    [expr {$rowend - $rowstart}]	   
+	    set rspan    [expr {$rowend - $rowstart}]
 	    set cspan    [M columns]
 
 	    # Mark row/col shadowed area for this cell.
@@ -4183,7 +4223,7 @@ proc ::cm::conference::make_abstracts {conference} {
 
     foreach {talk title abstract} [general-abstracts $conference] {
 	if {[string trim $abstract] eq {}} {
-	    set abstract "__Missing abstract__" 
+	    set abstract "__Missing abstract__"
 	}
 	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
 	append text [anchor T$talk] \n
@@ -4673,6 +4713,11 @@ proc ::cm::conference::make_confirm {} {
     return [template use www-confirm]
 }
 
+proc ::cm::conference::make_thanks {} {
+    debug.cm/conference {}
+    return [template use www-thanks]
+}
+
 proc ::cm::conference::make_disclaimer {} {
     debug.cm/conference {}
     return [template use www-disclaimer]
@@ -4749,7 +4794,7 @@ proc ::cm::conference::make_proceedings_none {conference} {
 	return [string map $map [template use www-proceedings.none+links]]
     } else {
 	return [template use www-proceedings.none]
-    }	
+    }
 }
 
 proc ::cm::conference::make_admin {conference} {
@@ -4781,7 +4826,7 @@ proc ::cm::conference::make_admin {conference} {
     }
 
     set materials {}
-    
+
     make_admin_registered  $conference text registered
     make_admin_booked      $conference text booked
     make_admin_accepted    $conference text accepted    materials
@@ -4810,7 +4855,7 @@ proc ::cm::conference::make_admin_materials {conference textvar tag materials} {
 	append text "__No materials available__" \n
 	return
     }
-    
+
     append text |Talk|Attachment|\n|-|-|\n
     foreach {title links} $materials {
 	foreach link $links {
@@ -5077,6 +5122,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag materialsvar}
     append text [anchor $tag] \n
     append text "# Accepted Talks\n\n"
 
+    prefix+ "Acc:\t"
     set first 1
     set n 1
     db do eval {
@@ -5129,6 +5175,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag materialsvar}
 	append text | $n | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
 	incr n
     }
+    prefix-
 
     if {$first} {
 	append text "No accepted talks" \n
@@ -5149,6 +5196,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
     append text [anchor $tag] \n
     append text "# Submissions\n\n"
 
+    prefix+ "Sub:\t"
     set first 1
     set n 1
     db do eval {
@@ -5196,6 +5244,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	append text | $n | [hdate $submitdate] | $issue | $invited | $submitters | [link $title __s${id}.html] |\n
 	incr n
     }
+    prefix-
 
     if {$first} {
 	append text "No submissions yet" \n
@@ -5260,7 +5309,7 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
 	set prefix Attachment
 	foreach {aid title} $attachments {
 	    lappend materials [link $title assets/talk$talk/$title]
-	    
+
 	    append text | $prefix | [link $title assets/talk$talk/$title] |\n
 	    set prefix {}
 	}
@@ -5334,6 +5383,37 @@ proc ::cm::conference::make_sidebar {conference} {
     }] show return]
     append sidebar </table>
     return [insert $conference $sidebar]
+}
+
+# Indentation control for stdout (operational logging)
+proc ::cm::conference::prefix-init {} {
+    debug.cm/conference {}
+    variable cprefix {}
+    variable sprefix {}
+    return
+}
+
+proc ::cm::conference::prefix? {} {
+    debug.cm/conference {}
+    variable cprefix
+    return $cprefix
+}
+
+proc ::cm::conference::prefix+ {prefix} {
+    debug.cm/conference {}
+    variable cprefix
+    variable sprefix
+    lappend sprefix $cprefix
+    set cprefix $prefix
+    return
+}
+
+proc ::cm::conference::prefix- {} {
+    debug.cm/conference {}
+    variable cprefix
+    variable sprefix
+    set sprefix [lreverse [lassign [lreverse $sprefix] cprefix]]
+    return
 }
 
 proc ::cm::conference::link {name page {tag {}}} {
@@ -6103,19 +6183,19 @@ proc ::cm::conference::fmt-issues-cli {issues} {
 proc ::cm::conference::issues {details} {
     debug.cm/conference {}
     dict with details {}
-    # xconference 
-    # xyear       
-    # xmanagement 
-    # xsubmission 
-    # xcity       
-    # xhotel      
-    # xfacility   
-    # xstart      
-    # xend        
-    # xalign      
-    # xlength     
-    # xtalklen    
-    # xsesslen    
+    # xconference
+    # xyear
+    # xmanagement
+    # xsubmission
+    # xcity
+    # xhotel
+    # xfacility
+    # xstart
+    # xend
+    # xalign
+    # xlength
+    # xtalklen
+    # xsesslen
     # xrstatus
     # xpvisible
 
@@ -6747,6 +6827,8 @@ proc ::cm::conference::get-talk-title {talk} {
 proc ::cm::conference::Setup {} {
     debug.cm/conference {}
 
+    prefix-init
+
     ::cm::config::core::Setup
     ::cm::city::Setup
     ::cm::location::Setup
@@ -6764,7 +6846,7 @@ proc ::cm::conference::Setup {} {
 	    year	INTEGER NOT NULL,
 
 	    series	INTEGER	NOT NULL REFERENCES series,	-- Overall con series
-	    
+
 	    management	INTEGER	NOT NULL REFERENCES contact,	-- Org/company/person managing the conference
 	    submission	INTEGER	NOT NULL REFERENCES email,	-- Email to receive submissions.
 
@@ -6858,7 +6940,7 @@ proc ::cm::conference::Setup {} {
 	    -- public items are for use within mailings, the website, etc.
 	    -- internal items are for the mgmt only.
 	    -- the offset [in days] is used to compute the initial proposal
-	    -- of a timeline for the conference. 
+	    -- of a timeline for the conference.
 
 	    id		INTEGER NOT NULL PRIMARY KEY,
 	    ispublic	INTEGER NOT NULL,
@@ -7182,7 +7264,7 @@ proc ::cm::conference::Setup {} {
 	db setup-error link $error
     }
 
-    
+
     # Shortcircuit further calls
     proc ::cm::conference::Setup {args} {}
     return
@@ -7235,7 +7317,7 @@ proc ::cm::conference::Dump {} {
 	    conference proceedings [get-pvisible $pvisible]
 
 	# timeline
-	cm dump step 
+	cm dump step
 	cm dump save \
 	    conference timeline-init
 	db do eval {
@@ -7266,7 +7348,7 @@ proc ::cm::conference::Dump {} {
 	    set factor 10e$decimal
 	    set rate [format %.${decimal}f [expr {$rate / $factor}]]
 
-	    cm dump step 
+	    cm dump step
 	    cm dump save \
 		conference rate \
 		-G $groupcode \
@@ -7435,7 +7517,7 @@ proc ::cm::conference::Dump {} {
 			   -encoding binary \
 			   -translation binary]
 	    }
-	    
+
 	    cm dump step
 	}
 
@@ -7560,7 +7642,7 @@ proc ::cm::conference::Dump {} {
 	# Campaign for the conference.
 	cm::campaign::Dump $id
 
-	cm dump step 
+	cm dump step
     }
     return
 }
