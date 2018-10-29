@@ -3407,7 +3407,7 @@ proc ::cm::conference::cmd_website_make {config} {
 	make_page Overview  index  make_overview
     }
 
-    lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers]
+    lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers $conference]
 
     if {[rate-have-group-code $conference]} {
 	lappend navbar {*}[make_page Location  location  make_location]
@@ -3506,8 +3506,8 @@ proc ::cm::conference::ssg {args} {
 proc ::cm::conference::make_templated_assets {conference} {
     debug.cm/conference {}
 
-    set campaign [campaign get-for $conference]
-    set hascampaign [expr {($campaign ne {}) && [campaign isactive $campaign]}]
+    set campaign [cm campaign get-for $conference]
+    set hascampaign [expr {($campaign ne {}) && [cm campaign isactive $campaign]}]
     set regopen [expr {[registration-mode $conference] eq "open"}]
 
     switch -exact -- $hascampaign$regopen {
@@ -3638,9 +3638,9 @@ proc ::cm::conference::make_overview_speakers {conference} {
 		[template use www-main-speakers]]
 }
 
-proc ::cm::conference::make_callforpapers {} {
-    set campaign [campaign get-for $conference]
-    if {($campaign ne {}) && [campaign isactive $campaign]} {
+proc ::cm::conference::make_callforpapers {conference} {
+    set campaign [cm campaign get-for $conference]
+    if {($campaign ne {}) && [cm campaign isactive $campaign]} {
 	return [template use www-cfp]
     } else {
 	return [template use www-cfp-closed]
