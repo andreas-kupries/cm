@@ -3506,6 +3506,20 @@ proc ::cm::conference::ssg {args} {
 proc ::cm::conference::make_templated_assets {conference} {
     debug.cm/conference {}
 
+    set campaign [campaign get-for $conference]
+    set hascampaign [expr {($campaign ne {}) && [campaign isactive $campaign]}]
+    set regopen [expr {[registration-mode $conference] eq "open"}]
+
+    switch -exact -- $hascampaign$regopen {
+	00 {
+	    puts "\tNo assets needed ..."
+	    return
+	}
+	01 { set template www-assets-registration }
+	10 { set template www-assets-submission }
+	11 { set template www-assets }
+    }
+    
     if {![template have www-assets]} {
 	puts "\tNo configured assets ..."
 	return
@@ -3625,7 +3639,12 @@ proc ::cm::conference::make_overview_speakers {conference} {
 }
 
 proc ::cm::conference::make_callforpapers {} {
-    return [template use www-cfp]
+    set campaign [campaign get-for $conference]
+    if {($campaign ne {}) && [campaign isactive $campaign]} {
+	return [template use www-cfp]
+    } else {
+	return [template use www-cfp-closed]
+    }
 }
 
 proc ::cm::conference::make_location {} {
