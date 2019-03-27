@@ -842,11 +842,9 @@ proc ::cm::conference::cmd_submission_add {config} {
 	    VALUES (NULL, :conference, :title, :abstract, NULL, :invited, :now)
 	}
 	set submission [db do last_insert_rowid]
+
 	foreach author $authors {
-	    db do eval {
-		INSERT INTO submitter
-		VALUES (NULL, :submission, :author, NULL)
-	    }
+	    AddSubmitter $submission $author
 	}
     }
 
@@ -991,16 +989,28 @@ proc ::cm::conference::cmd_submission_addsubmitter {config} {
 
     puts "Adding submitters to \"[color name [get-submission $submission]]\" in conference \"[color name [get $conference]]\" ... "
 
-    foreach submitter [$config @submitter] {
-	puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
-	flush stdout
+    db do transaction {
+	foreach submitter [$config @submitter] {
+	    puts -nonewline "  \"[color name [cm contact get $submitter]]\" ... "
+	    flush stdout
 
-	db do eval {
-	    INSERT INTO submitter
-	    VALUES (NULL, :submission, :submitter, NULL)
+	    AddSubmitter $submission $submitter
 	}
+    }
+    puts [color good OK]
+    return
+}
 
-	puts [color good OK]
+proc ::cm::conference::AddSubmitter {submission author} {
+    db do eval {
+	INSERT INTO submitter
+	VALUES (NULL, :submission, :author, NULL, -1)
+    }
+    set id [db do last_insert_rowid]
+    db do eval {
+	UPDATE submitter
+	SET ordering = :id
+	WHERE id = :id
     }
     return
 }
@@ -1049,15 +1059,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    FROM   submission
 	    WHERE  id = :submission
 	} {
-	    set authors [join [db do eval {
-		SELECT dname
-		FROM   contact
-		WHERE  id IN (SELECT contact
-			      FROM   submitter
-			      WHERE  submission = :id)
-		ORDER BY dname
-	    }] \n]
-
+	    set authors [join [submission-authors $id] \n]
 	    set issues {}
 
 	    if {([string trim $abstract] eq {}) &&
@@ -1133,7 +1135,7 @@ proc ::cm::conference::cmd_submission_show {config} {
 	    $t add Authors  $authors
 
 	    if {$accepted} {
-		set speakers [talk-speakers $talk]
+		set speakers [talk-tagged-speakers $talk]
 		if {[llength $speakers]} {
 		    $t add Speakers [join [p1 $speakers] \n]
 		}
@@ -1311,15 +1313,8 @@ proc ::cm::conference::cmd_submission_list_accepted {config} {
 	    AND    T.state      = TS.id
 	    ORDER BY S.submitdate, S.id
 	} {
-	    set authors [join [db do eval {
-		SELECT dname
-		FROM   contact
-		WHERE  id IN (SELECT contact
-			      FROM   submitter
-			      WHERE  submission = :id)
-		ORDER BY dname
-	    }] \n]
-	    set speakers [join [talk-speakers $tid] \n]
+	    set authors     [join [submission-authors $id] \n]
+	    set speakers    [join [talk-tagged-speakers $tid] \n]
 	    set attachments [join [db do eval {
 		SELECT type
 		FROM   attachment
@@ -1941,7 +1936,13 @@ proc ::cm::conference::cmd_submission_addspeaker {config} {
 
 	db do eval {
 	    INSERT INTO talker
-	    VALUES (NULL, :talk, :speaker)
+	    VALUES (NULL, :talk, :speaker, -1)
+	}
+	set id [db do last_insert_rowid]
+	db do eval {
+	    UPDATE talker
+	    SET ordering = :id
+	    WHERE id = :id
 	}
 
 	puts [color good OK]
@@ -4235,7 +4236,7 @@ proc ::cm::conference::make_abstracts {conference} {
 	if {[string trim $abstract] eq {}} {
 	    set abstract "__Missing abstract__"
 	}
-	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	set speakers [join [link-speakers [talk-tagged-speakers $talk]] {, }]
 	append text [anchor T$talk] \n
 	append text "\#\# Keynote &mdash; $title\n\n$speakers\n\n$abstract\n\n"
     }
@@ -4244,7 +4245,7 @@ proc ::cm::conference::make_abstracts {conference} {
 	if {[string trim $abstract] eq {}} {
 	    set abstract "__Missing abstract__"
 	}
-	set speakers [join [link-speakers [talk-speakers $talk]] {, }]
+	set speakers [join [link-speakers [talk-tagged-speakers $talk]] {, }]
 	append text [anchor T$talk] \n
 	append text "\#\# $title\n\n$speakers\n\n$abstract\n\n"
     }
@@ -4335,15 +4336,55 @@ proc ::cm::conference::links {conference} {
     }]
 }
 
+proc ::cm::conference::submission-authors+notes {submission} {
+    debug.cm/conference {}
+
+    return [db do eval {
+	SELECT C.dname, S.note
+	FROM   submitter S
+	,      contact   C
+	WHERE  S.submission = :id
+	AND    C.id = S.contact
+	ORDER BY S.ordering
+    }]
+}
+
+proc ::cm::conference::submission-authors {submission} {
+    debug.cm/conference {}
+    
+    return [db do eval {
+	SELECT C.dname
+	FROM   submitter S
+	,      contact   C
+	WHERE  S.submission = :submission
+	AND    C.id = S.contact
+	ORDER BY S.ordering
+    }]
+}
+
+proc ::cm::conference::talk-tagged-speakers {talk} {
+    debug.cm/conference {}
+    
+    return [db do eval {
+	SELECT C.dname, C.tag
+	FROM   talker  T
+	,      contact C
+	WHERE  T.talk = :talk
+	AND    C.id   = T.contact
+	ORDER BY T.ordering
+    }]
+}
+
 proc ::cm::conference::talk-speakers {talk} {
     debug.cm/conference {}
+
     return [db do eval {
-	SELECT DISTINCT dname, tag
-	FROM   contact
-	WHERE  id IN (SELECT contact
-		      FROM   talker
-		      WHERE  talk = :talk)
-	ORDER BY dname
+	SELECT C.dname
+	FROM   talker  T
+	,      contact C
+	WHERE  T.talk = :talk
+	AND    C.id   = T.contact
+	ORDER BY T.ordering
     }]
 }
 
@@ -4780,7 +4821,7 @@ proc ::cm::conference::make_proceedings {conference} {
 	    ORDER BY type
 	}]
 
-	set speakers [talk-speakers $talk]
+	set speakers [talk-tagged-speakers $talk]
 	if {[llength $speakers]} {
 	    set speakers [join [link-speakers $speakers] {, }]
 	}
@@ -5163,14 +5204,7 @@ proc ::cm::conference::make_admin_accepted {conference textvar tag materialsvar}
 	    set first 0
 	}
 
-	set submitters [db do eval {
-	    SELECT C.dname, S.note
-	    FROM   submitter S,
-	           contact   C
-	    WHERE  S.submission = :id
-	    AND    C.id = S.contact
-	    ORDER BY C.dname
-	}]
+	set submitters [submission-authors+notes $id]
 
 	# Side page per submission, holding the entire data.
 	set talkmaterials {}
@@ -5237,14 +5271,7 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 	    set first 0
 	}
 
-	set submitters [db do eval {
-	    SELECT C.dname, S.note
-	    FROM   submitter S,
-	           contact   C
-	    WHERE  S.submission = :id
-	    AND    C.id = S.contact
-	    ORDER BY C.dname
-	}]
+	set submitters [submission-authors+notes $id]
 
 	# Side page per submission, holding the entire data.
 	make_internal_page $title __s$id \
@@ -5301,14 +5328,7 @@ proc ::cm::conference::make_submission {submission submitters date invited abstr
     if {$talk ne {}} {
 	append text |__Accepted__||\n
 
-	set speakers [db do eval {
-	    SELECT C.dname
-	    FROM   talker  T,
-	           contact C
-	    WHERE  T.talk = :talk
-	    AND    C.id   = T.contact
-	    ORDER BY C.dname
-	}]
+	set speakers [talk-speakers $talk]
 
 	set prefix Speaker
 	foreach name $speakers {
@@ -7120,12 +7140,14 @@ proc ::cm::conference::Setup {} {
 	    submission	INTEGER	NOT NULL REFERENCES submission,
 	    contact	INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk||can_submit
 	    note	TEXT,					-- distinguish author, co-author, if wanted
+	    ordering    INTEGER NOT NULL,
 	    UNIQUE (submission, contact)
 	} {
 	    {id		INTEGER 1 {} 1}
 	    {submission	INTEGER 1 {} 0}
 	    {contact	INTEGER 1 {} 0}
 	    {note	TEXT    0 {} 0}
+	    {ordering   INTEGER 1 {} 0}
 	} {contact}
     }]} {
 	db setup-error submitter $error
@@ -7195,6 +7217,7 @@ proc ::cm::conference::Setup {} {
 	    id		INTEGER	NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    talk	INTEGER	NOT NULL REFERENCES talk,
 	    contact	INTEGER	NOT NULL REFERENCES contact,	-- can_register||can_book||can_talk||can_submit
+	    ordering    INTEGER NOT NULL,
 
 	    UNIQUE (talk, contact)
 
@@ -7204,6 +7227,7 @@ proc ::cm::conference::Setup {} {
 	    {id		INTEGER 1 {} 1}
 	    {talk	INTEGER 1 {} 0}
 	    {contact	INTEGER 1 {} 0}
+	    {ordering   INTEGER 1 {} 0}
 	} {contact}
     }]} {
 	db setup-error talker $error
@@ -7445,14 +7469,7 @@ proc ::cm::conference::Dump {} {
 	} {
 	    if {$first} { cm dump step  ; set first 0 }
 
-	    set authors [db do eval {
-		SELECT dname
-		FROM   contact
-		WHERE  id IN (SELECT contact
-			      FROM   submitter
-			      WHERE  submission = :sid)
-		ORDER BY dname
-	    }]
+	    set authors [submission-authors $sid]
 
 	    if {$invited} {
 		cm dump save \
@@ -7507,14 +7524,7 @@ proc ::cm::conference::Dump {} {
 		    submission accepted-ping-clear $title
 	    }
 
-	    db do eval {
-		SELECT dname
-		FROM   contact
-		WHERE  id IN (SELECT contact
-			  FROM   talker
-			  WHERE  talk = :tid)
-		ORDER BY dname
-	    } {
+	    foreach dname [talk-speakers $tid] {
 		cm dump save \
 		    submission add-speaker $title $dname
 	    }
