@@ -995,9 +995,9 @@ proc ::cm::conference::cmd_submission_addsubmitter {config} {
 	    flush stdout
 
 	    AddSubmitter $submission $submitter
+	    puts [color good OK]
 	}
     }
-    puts [color good OK]
     return
 }
 
