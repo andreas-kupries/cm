@@ -4933,27 +4933,27 @@ proc ::cm::conference::make_admin_sponsors {conference textvar tag} {
 	# get affiliations of sponsoring persons.
 
 	if {$first} {
-	    append textresult |Sponsor|Reference|\n|-|-|\n
+	    append text |Sponsor|Reference|\n|-|-|\n
 	    set first 0
 	}
 
 	set related [split [contact related-formatted $contact $type 1] \n]
 
 	if {![llength $related]} {
-	    append textresult |$contact||\n
+	    append text |$name||\n
 	    continue
 	}
-	append textresult |$contact|[lindex $related 0]|\n
+	append text |$name|[lindex $related 0]|\n
 	foreach r [lrange $related 1 end] {
-	    append textresult |$contact|$r|\n
+	    append text |$name|$r|\n
 	}
     }
 
     if {$first} {
-	append textresult "__No sponsors defined__"
+	append text "__No sponsors defined__"
     }
 
-    append textresult \n
+    append text \n
 
     debug.cm/conference {/done}
 }
@@ -5133,6 +5133,7 @@ proc ::cm::conference::make_admin_staff {conference textvar tag} {
 	ON        R.id = S.role
 	LEFT JOIN contact          C
 	ON        C.id = S.contact
+	WHERE S.conference = :conference
 	ORDER BY R.text, C.dname
     } {
 	if {$first} {
