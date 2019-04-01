@@ -142,18 +142,21 @@ proc ::cm::conference::cmd_list {config} {
     # - C.title
     # - CC.name, CC.state, CC.nation
 
-    [table t {{} Name Start End City} {
+    [table t {{} Name Series Start End City} {
 	db do eval {
-	    SELECT C.id                    AS id,
-                   C.title                 AS title,
-	           C.startdate             AS start,
-	           c.enddate               AS end,
-	           CC.name                 AS city,
-	           CC.state                AS state,
-	           CC.nation               AS nation
+	    SELECT C.id                    AS id
+            ,      C.title                 AS title
+	    ,      C.startdate             AS start
+	    ,      C.enddate               AS end
+	    ,      S.title                 AS series
+	    ,      CC.name                 AS city
+	    ,      CC.state                AS state
+	    ,      CC.nation               AS nation
 	    FROM      conference C
-            LEFT JOIN city      CC
+            LEFT JOIN city       CC
 	    ON        CC.id = C.city
+            LEFT JOIN series     S
+	    ON        S.id = C.series
 	    ORDER BY C.startdate
 	} {
 	    set start "[date 2external $start] [hwday $start]"
@@ -168,7 +171,7 @@ proc ::cm::conference::cmd_list {config} {
 	    }
 
 	    util highlight-current cid $id current title start end city
-	    $t add $current $title $start $end $city
+	    $t add $current $title $series $start $end $city
 	}
     }] show
     return
@@ -4867,12 +4870,14 @@ proc ::cm::conference::make_admin {conference} {
 	append text "* " [link Issues      {} issues] \n
     }
 
+    append text "* " [link Events      {} events] \n
+    append text "* " [link Staff       {} staff] \n
+    append text "* " [link Sponsors    {} sponsors] \n
     append text "* " [link Registered  {} registered] \n
     append text "* " [link Booked      {} booked] \n
     append text "* " [link Accepted    {} accepted] \n
     append text "* " [link Submissions {} submissions] \n
     append text "* " [link Campaign    {} campaign] \n
-    append text "* " [link Events      {} events] \n
     append text "* " [link Schedule    {} schedule] \n
     append text "* " [link Materials   {} materials] \n
     append text \n
@@ -4887,12 +4892,14 @@ proc ::cm::conference::make_admin {conference} {
 
     set materials {}
 
+    make_admin_timeline    $conference text events
+    make_admin_staff       $conference text staff
+    make_admin_sponsors    $conference text sponsors
     make_admin_registered  $conference text registered
     make_admin_booked      $conference text booked
     make_admin_accepted    $conference text accepted    materials
     make_admin_submissions $conference text submissions
     make_admin_campaign    $conference text campaign
-    make_admin_timeline    $conference text events
     make_admin_schedule    $conference text schedule
     make_admin_materials   $conference text materials $materials
 
@@ -4900,6 +4907,55 @@ proc ::cm::conference::make_admin {conference} {
 
     debug.cm/conference {/done}
     return $text
+}
+
+proc ::cm::conference::make_admin_sponsors {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar text
+    # Materials for all talks in one section.
+
+    append text \n
+    append text [anchor $tag] \n
+    append text "# Sponsors\n\n"
+
+    set first 1
+    db do eval {
+	SELECT C.id          AS contact
+	,      C.dname       AS name
+	,      C.type        AS type
+	FROM   sponsors S
+	,      contact  C
+	WHERE  S.conference = :conference
+	AND    S.contact    = C.id
+	ORDER BY C.dname
+    } {
+	# get liaisons of the sponsor companies.
+	# get affiliations of sponsoring persons.
+
+	if {$first} {
+	    append textresult |Sponsor|Reference|\n|-|-|\n
+	    set first 0
+	}
+
+	set related [split [contact related-formatted $contact $type 1] \n]
+
+	if {![llength $related]} {
+	    append textresult |$contact||\n
+	    continue
+	}
+	append textresult |$contact|[lindex $related 0]|\n
+	foreach r [lrange $related 1 end] {
+	    append textresult |$contact|$r|\n
+	}
+    }
+
+    if {$first} {
+	append textresult "__No sponsors defined__"
+    }
+
+    append textresult \n
+
+    debug.cm/conference {/done}
 }
 
 proc ::cm::conference::make_admin_materials {conference textvar tag materials} {
@@ -5054,6 +5110,49 @@ proc ::cm::conference::make_admin_schedule {conference textvar tag} {
     }
 
     append text \n
+    return
+}
+
+proc ::cm::conference::make_admin_staff {conference textvar tag} {
+    debug.cm/conference {}
+    upvar 1 $textvar textresult
+
+    # Table of staff.
+    # Shows all roles, even if not assigned. That is important.
+    append textresult \n
+    append textresult [anchor $tag] \n
+    append textresult "# Staff\n\n"
+
+    set first 1
+    set lastrole {}
+    db do eval {
+	SELECT C.dname AS name
+	,      R.text  AS role
+	FROM      staff_role       R
+	LEFT JOIN conference_staff S
+	ON        R.id = S.role
+	LEFT JOIN contact          C
+	ON        C.id = S.contact
+	ORDER BY R.text, C.dname
+    } {
+	if {$first} {
+	    append textresult |Role|Who|\n|-|-|\n
+	    set first 0
+	}
+	if {$role ne $lastrole} {
+	    append textresult |$role|$name|\n
+	} else {
+	    append textresult ||$name|\n
+	}
+	set lastrole $role
+    }
+    if {$first} {
+	append textresult "__No staff defined__"
+    }
+
+    append textresult \n
+
+    debug.cm/conference {/done}
     return
 }
 
