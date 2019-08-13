@@ -1,3 +1,4 @@
+www-tca-logo		images/tca-logo2c-tiny.gif	base64,no-template
 www-forms2		forms2.tcl    
 www-regform		register_form.tml  
 www-register-config	register_form/register_form.cfg

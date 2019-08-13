@@ -28,6 +28,7 @@ package require debug::caller
 package require struct::set
 package require struct::matrix
 package require try
+package require base64
 
 package provide cm::conference 0 ;# circular via contact, campaign
 
@@ -3499,8 +3500,8 @@ proc ::cm::conference::cmd_website_make {config} {
 
 proc ::cm::conference::ssg {args} {
     # option to switch verbosity
-    #exec >@stdout 2>@stderr <@stdin ssg {*}$args
-    exec 2>@stderr <@stdin ssg {*}$args
+    exec >@stdout 2>@stderr <@stdin ssg {*}$args
+    #exec 2>@stderr <@stdin ssg {*}$args
     return
 }
 
@@ -3537,13 +3538,25 @@ proc ::cm::conference::make_templated_assets {conference} {
     incr a
     foreach line $assetmap {
 	#puts <<$line>>
-	lassign [split [L $line]] template path
+	lassign [split [L $line]] template path flags
 	incr a
-	puts "\tAsset:\t[color name $template] as [color note $path] ..."
+	puts -nonewline "\tAsset:\t[color name $template] as [color note $path] ..."
+	set content [template use $template]
+	set options {}
+	if {[string match *base64* $flags]} {
+	    set content [base64::decode $content]
+	    puts -nonewline {, base64}
+	    lappend options -translation binary -encoding binary
+	}
+	if {![string match *no-template* $flags]} {
+	    puts -nonewline {, templated}
+	    set content [insert $conference $content]
+	}
 	#continue
 	file mkdir [file dirname $dstdir/static/$path]
-	fileutil::writeFile $dstdir/static/$path \
-	    [insert $conference [template use $template]]
+	fileutil::writeFile {*}$options $dstdir/static/$path $content]
+
+        puts " [color good OK]: $dstdir/static/$path"
     }
 
     if {$a} return
