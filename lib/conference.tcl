@@ -3554,7 +3554,7 @@ proc ::cm::conference::make_templated_assets {conference} {
 	}
 	#continue
 	file mkdir [file dirname $dstdir/static/$path]
-	fileutil::writeFile {*}$options $dstdir/static/$path $content]
+	fileutil::writeFile {*}$options $dstdir/static/$path $content
 
         puts " [color good OK]: $dstdir/static/$path"
     }
