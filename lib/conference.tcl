@@ -4356,10 +4356,11 @@ proc ::cm::conference::submission-authors+notes {submission} {
     debug.cm/conference {}
 
     return [db do eval {
-	SELECT C.dname, S.note
+	SELECT C.dname
+	,      S.note
 	FROM   submitter S
 	,      contact   C
-	WHERE  S.submission = :id
+	WHERE  S.submission = :submission
 	AND    C.id = S.contact
 	ORDER BY S.ordering
     }]
@@ -5386,6 +5387,8 @@ proc ::cm::conference::make_admin_submissions {conference textvar tag} {
 
 	set submitters [submission-authors+notes $id]
 
+	#puts \t[prefix?]S|$id\n[join $submitters "\n\t[prefix?]\t* "]
+	
 	# Side page per submission, holding the entire data.
 	make_internal_page $title __s$id \
 	    make_submission $id $submitters $submitdate $invited $abstract $summary \
