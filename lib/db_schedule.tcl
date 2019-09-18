@@ -192,7 +192,7 @@ proc ::cm::db::schedule::of {conference {links 0}} {
 	# Explicit left outer joins -> talk              -> submission
 	#                           -> tutorial_schedule -> tutorial
 	if {$talk ne {}} {
-	    set s [::cm::conference::talk-speakers $talk]
+	    set s [::cm::conference::talk-tagged-speakers $talk]
 	    if {$links} {
 		set speaker [join [::cm::conference::link-speakers $s] {, }]
 	    } else {

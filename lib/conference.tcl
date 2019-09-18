@@ -1473,7 +1473,7 @@ proc ::cm::conference::cmd_submission_ping_accepted {config} {
 	    AND    T.submission  = S.id         -- with talk (<=> accepted)
 	    AND    SU.submission = S.id         -- submitters
 	    AND    SU.contact    = E.contact    -- and their active emails
-	    AND    NOT inactive
+	    AND    NOT E.inactive
 	}]
 
 	if {[llength $destinations]} {
@@ -4269,7 +4269,7 @@ proc ::cm::conference::make_abstracts {conference} {
 }
 
 proc ::cm::conference::link-speakers {speakers} {
-    set r {}
+    set r {}  
     foreach {dname tag} $speakers {
 	lappend r [link $dname bios.html $tag]
     }
@@ -4382,7 +4382,7 @@ proc ::cm::conference::submission-authors {submission} {
 proc ::cm::conference::talk-tagged-speakers {talk} {
     debug.cm/conference {}
     
-    return [db do eval {
+    set res [db do eval {
 	SELECT C.dname, C.tag
 	FROM   talker  T
 	,      contact C
@@ -4390,12 +4390,13 @@ proc ::cm::conference::talk-tagged-speakers {talk} {
 	AND    C.id   = T.contact
 	ORDER BY T.ordering
     }]
+    return $res
 }
 
 proc ::cm::conference::talk-speakers {talk} {
     debug.cm/conference {}
 
-    return [db do eval {
+    set res [db do eval {
 	SELECT C.dname
 	FROM   talker  T
 	,      contact C
@@ -4403,6 +4404,7 @@ proc ::cm::conference::talk-speakers {talk} {
 	AND    C.id   = T.contact
 	ORDER BY T.ordering
     }]
+    return $res
 }
 
 proc ::cm::conference::p1 {speakers} {
@@ -5082,6 +5084,8 @@ proc ::cm::conference::make_admin_schedule {conference textvar tag} {
 
     set map [ScheduleMap $conference]
 
+    #array set _ $map ; parray _ ; unset _
+    
     #set psd       [pschedule details $xpschedule]
     #dict with psd {} ;# xid, xdname, xname, xactive{day,track,item,open}
 
