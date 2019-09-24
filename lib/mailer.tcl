@@ -35,7 +35,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::mailer {
     namespace export \
-	cmd_test_address cmd_test_mail_config \
+	cmd_ping cmd_test_address cmd_test_mail_config \
 	good-address dedup-addresses drop-address \
 	get-config get has send batch
     namespace ensemble create
@@ -55,6 +55,21 @@ namespace eval ::cm::mailer {
 }
 
 # # ## ### ##### ######## ############# ######################
+
+proc ::cm::mailer::cmd_ping {config} {
+    debug.cm/mailer {}
+
+    set subject [$config @subject]
+    set body    [string trim [read stdin]]
+    
+    send \
+	[get-config] \
+	[$config @destination] \
+	[mailgen call [get sender] {} $subject\n$body] \
+	on
+    #TODO: re-add header, footer?
+    return
+}
 
 proc ::cm::mailer::cmd_test_mail_config {config} {
     debug.cm/mailer {}

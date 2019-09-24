@@ -268,6 +268,23 @@ cmdr create cm::cm [file tail $::argv0] {
     } [cm::call dump cmd]
 
     # # ## ### ##### ######## ############# ######################
+    ## General mail via the CM mail setup (use by external scripts)
+
+    private ping {
+	description {
+	    Send a mail to the given destinations using
+	    the specified subject and a mail body read
+	    from standard input.
+	}
+	input subject {
+	    The subject to put in the mail
+	} {}
+	input destination {
+	    The destination address to send the test mail to.
+	} { list }
+    } [cm::call mailer cmd_ping]
+    
+    # # ## ### ##### ######## ############# ######################
     ## Manage configuration
 
     officer config {
