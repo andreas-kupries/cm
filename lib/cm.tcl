@@ -2704,10 +2704,10 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private speakers {
 	    description {
-		Show speaker information inserted into the overview page.
+		Show speaker information formatted for insertion into the overview page.
 	    }
 	    option mail {
-		When present show speaker information inserted into a CFP.
+		When present show speaker information formatted for insertion into a CFP.
 	    } { alias email ; presence }
 	} [cm::call conference cmd_debug_speakers]
     }
