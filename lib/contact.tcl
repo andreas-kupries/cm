@@ -39,14 +39,14 @@ namespace eval ::cm {
 namespace eval ::cm::contact {
     namespace export \
 	cmd_create_person cmd_create_mlist cmd_create_company \
-	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge \
+	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge cmd_set_honorific \
 	cmd_set_tag cmd_set_bio cmd_hide_bio cmd_publish_bio cmd_get_bio cmd_disable \
 	cmd_enable liaisons cmd_disable_mail cmd_hide_mail cmd_publish_mail \
 	cmd_squash_mail cmd_squash_link cmd_mail_fix cmd_retype cmd_dead cmd_rename \
 	cmd_add_company cmd_add_liaison cmd_drop_company cmd_drop_liaison \
 	select label get known known-email known-type details affiliated \
 	get-name get-links get-email get-link get-the-link related-formatted \
-	cmd_rename_link cmd_title_link cmd_links cmd_flag_company
+	cmd_rename_link cmd_title_link cmd_links cmd_flag_company test-known
     namespace ensemble create
 
     namespace import ::cmdr::color
@@ -67,6 +67,16 @@ debug prefix cm/contact {[debug caller] | }
 
 # # ## ### ##### ######## ############# ######################
 
+proc ::cm::contact::test-known {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+    util pdict [known validation]
+    return
+}
+
+# # ## ### ##### ######## ############# ######################
+
 proc ::cm::contact::cmd_show {config} {
     debug.cm/contact {}
     Setup
@@ -82,6 +92,7 @@ proc ::cm::contact::cmd_show {config} {
                    C.tag          AS tag,
 	           CT.text        AS type,
 	           C.dname        AS name,
+	    	   C.honorific    AS hon,
 	    	   C.biography    AS bio,
 	    	   C.bio_public   AS bio_public,
 	           C.can_recvmail AS crecv,
@@ -115,9 +126,14 @@ proc ::cm::contact::cmd_show {config} {
 	    if {!$bio_public} {
 		set biodisplay [color bad (Private)]\n$biodisplay
 	    }
+
+	    set dname ""
+	    if {$hon ne {}} { append dname $hon " " }
+	    append dname [color name $name] $annotations
 	    
+	    $t add Key                [color name %$id]
 	    $t add Tag                $tag
-	    $t add Name               [color name $name]$annotations
+	    $t add Name               $dname
 	    $t add Type               $type
 	    $t add Flags              [join $flags {, }]
 	    $t add Biography          $biodisplay
@@ -163,7 +179,7 @@ proc ::cm::contact::cmd_show {config} {
 	    } {
 		if {$first} { $t add Emails {} }
 		set first 0
-		set display $email
+		set display [color name $email]
 		if {$inactive} {
 		    append display " ([color bad Disabled])"
 		}
@@ -276,7 +292,7 @@ proc ::cm::contact::cmd_list {config} {
     set norel    [$config @no-relations]
     set types    [$config @only] ;# type-codes!
 
-    set titles {\# Type Tag Name Mails Flags Relations}
+    set titles {\# Type Tag Hon Name Mails Flags Relations}
 
     set counter 0
     [table t $titles {
@@ -285,6 +301,7 @@ proc ::cm::contact::cmd_list {config} {
 	           C.tag          AS tag,
 	           C.dname        AS name,
 	           C.type         AS typecode,
+	           C.honorific    AS hon,
 	           C.biography    AS bio,
 	           CT.text        AS type,
 	           C.can_recvmail AS crecv,
@@ -322,7 +339,7 @@ proc ::cm::contact::cmd_list {config} {
 	    append flags [expr {$cbook   ? "B" :"-"}]
 	    append flags [expr {$ctalk   ? "T" :"-"}]
 	    append flags [expr {$csubm   ? "S" :"-"}]
-
+	    
 	    if {$withmail} {
 		# Show mail addresses in detail
 		set mails {}
@@ -341,7 +358,7 @@ proc ::cm::contact::cmd_list {config} {
 		if {$unreach && [llength $mails]} continue
 
 		set mails [join $mails \n]
-		$t add $counter $type $tag $name $mails $flags $related
+		$t add $counter $type $tag $hon $name $mails $flags $related
 	    } else {
 		# Show only mail address counts
 		set mails [db do eval {
@@ -354,7 +371,7 @@ proc ::cm::contact::cmd_list {config} {
 		if {$unreach && $mails} continue
 
 		if {!$mails} { set mails [color bad None] }
-		$t add $counter $type $tag $name $mails $flags $related
+		$t add $counter $type $tag $hon $name $mails $flags $related
 	    }
 	}
     }] show
@@ -481,6 +498,9 @@ proc ::cm::contact::cmd_create_person {config} {
 	}
 	if {[$config @tag set?]} {
 	    update-tag $id [string trim [$config @tag]]
+	}
+	if {[$config @honorific set?]} {
+	    update-honorific $id [string trim [$config @honorific]]
 	}
 	if {[$config @org set?]} {
 	    foreach company [$config @org] {
@@ -967,6 +987,23 @@ proc ::cm::contact::cmd_set_tag {config} {
     return
 }
 
+proc ::cm::contact::cmd_set_honorific {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact   [$config @name]
+    set honorific [$config @honorific]
+
+    puts -nonewline "Set honorific of \"[color name [get $contact]]\" to \"$honorific\" ... "
+    flush stdout
+
+    update-honorific $contact $honorific
+
+    puts [color good OK]
+    return
+}
+
 proc ::cm::contact::cmd_set_bio {config} {
     debug.cm/contact {}
     Setup
@@ -1355,7 +1392,7 @@ proc ::cm::contact::new-mlist {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		3, :name, :dname,	-- mailing list, name, dname
+		3, :name, :dname, NULL	-- mailing list, name, dname, honorific
 		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,0,0)            -- can flags, !dead
     }
@@ -1370,7 +1407,7 @@ proc ::cm::contact::new-company {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		2, :name, :dname,	-- company, name, dname
+		2, :name, :dname, NULL	-- company, name, dname, honorific
 		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,1,0)            -- can flags, !dead
 
@@ -1388,7 +1425,7 @@ proc ::cm::contact::new-person {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		1, :name, :dname,	-- type (person), name, dname
+		1, :name, :dname, NULL	-- type (person), name, dname, honorific
 		NULL, 0,		-- no initial bio, not generally public
 		1,1,1,1,1,0)            -- can flags, !dead
     }
@@ -1452,6 +1489,18 @@ proc ::cm::contact::update-tag {contact tag} {
 	UPDATE contact
 	SET    tag = :tag
 	WHERE  id  = :contact
+    }
+    return
+}
+
+proc ::cm::contact::update-honorific {contact honorific} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    honorific = :honorific
+	WHERE  id        = :contact
     }
     return
 }
@@ -1876,7 +1925,7 @@ proc ::cm::contact::KnownLimited {limit} {
 
     set map {}
 
-    # Identification by name, tag
+    # Identification by name, tag, internal id
     set sql {SELECT id, tag, name, dname FROM contact}
     if {[llength $limit]} {
 	set slimit [join $limit ,]
@@ -1891,6 +1940,7 @@ proc ::cm::contact::KnownLimited {limit} {
 
 	#puts "|$id -- $tag|$name|$dname|$in|"
 
+	dict lappend map $id "%$id"
 	dict lappend map $id $name
 	dict lappend map $id $dname
 	dict lappend map $id "$il $name"
@@ -2019,6 +2069,7 @@ proc ::cm::contact::Setup {} {
 	    type	 INTEGER NOT NULL REFERENCES contact_type,
 	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	    dname	 TEXT	 NOT NULL,		-- display name
+	    honorific	 TEXT,				-- a person's honorific
 	    biography	 TEXT,                          -- a person's bio, or list/project/company description
 	    bio_public   INTEGER NOT NULL,		-- bio is generally public
 	    
@@ -2034,6 +2085,7 @@ proc ::cm::contact::Setup {} {
 	    {type		INTEGER 1 {} 0}
 	    {name		TEXT    1 {} 0}
 	    {dname		TEXT    1 {} 0}
+	    {honorific		TEXT    0 {} 0}
 	    {biography		TEXT    0 {} 0}
 	    {bio_public		INTEGER 1 {} 0}
 	    {can_recvmail	INTEGER 1 {} 0}
@@ -2160,6 +2212,7 @@ proc ::cm::contact::Dump {} {
 	,      tag
 	,      type
 	,      dname
+	,      honorific
 	,      biography
 	,      bio_public
 	,      can_recvmail
@@ -2188,6 +2241,9 @@ proc ::cm::contact::Dump {} {
 
 	if {!$can_recvmail} {
 	    cm dump save  contact disable $dname
+	}
+	if {$honorific ne {}} {
+	    cm dump save  contact set-honorific $dname $honorific
 	}
 	if {$tag ne {}} {
 	    cm dump save  contact set-tag $dname $tag

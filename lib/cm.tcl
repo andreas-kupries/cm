@@ -1761,6 +1761,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } {	alias B ; list ; validate str }
 	}
 
+	common .honorific {
+	    option honorific {
+		The honorific of the person, if any.
+	    } {	alias H ; validate str }
+	}
+
 	common .orgs {
 	    option org {
 		List of orgs, projects, ... the contact is affiliated with.
@@ -1779,6 +1785,7 @@ cmdr create cm::cm [file tail $::argv0] {
 	    use .links
 	    use .mails
 	    use .bio
+	    use .honorific
 	    use .orgs
 	    input name   {First name of the person} {}
 	    input tag    {Short tag suitable as html anchor} { optional }
@@ -1902,6 +1909,18 @@ cmdr create cm::cm [file tail $::argv0] {
 		Tag to set
 	    } { optional ; interact ; generate [stop!] }
 	} [cm::call contact cmd_set_tag]
+
+	private set-honorific {
+	    section {Contact Management}
+	    description {Set honorifc of the specified contact}
+	    input name {
+		Name of the contact to tag
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding non-persons
+		generate [stop!] }
+	    input honorific {
+		Honorific to set
+	    } { optional ; interact ; generate [stop!] }
+	} [cm::call contact cmd_set_honorific]
 
 	private set-bio {
 	    section {Contact Management}
@@ -2634,6 +2653,12 @@ cmdr create cm::cm [file tail $::argv0] {
 	private city-known {
 	    description {Print validation dictionary}
 	} [cm::call city test-known]
+
+	# - -- --- ----- -------- -------------
+
+	private contact-known {
+	    description {Print validation dictionary}
+	} [cm::call contact test-known]
 
 	# - -- --- ----- -------- -------------
 
