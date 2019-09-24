@@ -57,10 +57,11 @@ debug prefix cm/template {[debug caller] | }
 proc ::cm::template::cmd_show {config} {
     debug.cm/template {}
     Setup
-    db show-location
+    if {![$config @raw]} { db show-location }
 
     set id [$config @name]
-    puts "Template [color name [$config @name string]]:"
+
+    if {![$config @raw]} { puts "Template [color name [$config @name string]]:" }
     puts [details $id]
     return
 }
