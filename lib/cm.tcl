@@ -2095,6 +2095,18 @@ cmdr create cm::cm [file tail $::argv0] {
 		generate [stop!] }
 	} [cm::call contact cmd_show]
 
+	private match {
+	    section {Contact Management}
+	    description {
+		Find contact by name and other things. Essentially the
+		contact validation exposed to the user (and scripts).
+		Difference: For an ambigous match show all the results.
+	    }
+	    input name {
+		Names of the contacts to find
+	    } { list }
+	} [cm::call contact cmd_match]
+
 	private retype {
 	    section {Contact Management}
 	    description {Fix the type of the specified contacts. Resets flags to defaults.}

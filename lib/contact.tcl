@@ -19,6 +19,7 @@ package require Tcl 8.5
 package require cmdr::color
 package require cmdr::table
 package require cmdr::ask
+package require cmdr::validate::common
 package require debug
 package require debug::caller
 package require dbutil
@@ -38,7 +39,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::contact {
     namespace export \
-	cmd_create_person cmd_create_mlist cmd_create_company \
+	cmd_create_person cmd_create_mlist cmd_create_company cmd_match \
 	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge cmd_set_honorific \
 	cmd_set_tag cmd_set_bio cmd_hide_bio cmd_publish_bio cmd_get_bio cmd_disable \
 	cmd_enable liaisons cmd_disable_mail cmd_hide_mail cmd_publish_mail \
@@ -58,6 +59,7 @@ namespace eval ::cm::contact {
 
     namespace import ::cmdr::table::general ; rename general table
     namespace import ::cmdr::table::dict    ; rename dict    table/d
+    namespace import ::cmdr::validate::common::complete-enum
 }
 
 # # ## ### ##### ######## ############# ######################
@@ -73,6 +75,106 @@ proc ::cm::contact::test-known {config} {
     db show-location
     util pdict [known validation]
     return
+}
+
+# # ## ### ##### ######## ############# ######################
+
+proc ::cm::contact::cmd_match {config} {
+    debug.cm/contact {}
+    Setup
+    if {![$config @raw]} { db show-location }
+
+    set known [known validation]
+
+    if {[$config @raw]} {
+	# Raw matches.
+	foreach contact [$config @name] {
+	    set contact [string trim $contact]
+	    set matches [Match $known $contact]
+	    if {![llength $matches]} {
+		puts [list match $contact]
+		continue
+	    }
+	    foreach id $matches {
+		puts [list match $contact %$id [get-name $id]]
+	    }
+	}
+	return
+    }
+    
+    [table t {Pattern # Contact} {
+	foreach contact [$config @name] {
+	    set contact [string trim $contact]
+	    set matches [Match $known $contact]
+	    if {![llength $matches]} {
+		$t add $contact {} {}
+		continue
+	    }
+	    foreach id $matches {
+		$t add $contact %$id [get-name $id]
+		set contact {}
+	    }
+	}
+    }] show
+    return
+}
+
+proc ::cm::contact::Match {known x} {
+    set lx [string tolower $x]
+    if {[dict exists $known $lx]} {
+	# An exact match is prefered over partials.
+	# This resolves where a name is a prefix of something else.
+	return [list [dict get $known $lx]]
+    }
+
+    # Look for partial matches in the pattern dictionary
+    set matches [complete-enum [dict keys $known] 1 $x]
+
+    set n [llength $matches]
+    if {!$n} {
+	# Do a harder search using the space separated pieces of the
+	# pattern. Fail quickly if the pattern is only a single piece,
+	# because then we checked that piece already and cannot get
+	# better.
+	
+	regsub -- {[\t\v\f\r\n ]+} $x { } xs
+	set parts [split $xs]
+	set np [llength $parts]
+
+	if {$np < 2} {
+	    return {}
+	}
+
+	# Voting scheme. Each match for a piece is a vote for that
+	# match. Note that each match can have at most NP votes, the
+	# number of pieces used.
+
+	foreach piece $parts {
+	    foreach match [complete-enum [dict keys $known] 1 $piece] {
+		set id [dict get $known $match]
+		dict incr vote $id
+	    }
+	}
+
+	#array set _v $vote ; parray _v ; unset _v
+
+	# Rekey to vote counts
+	set map [util dict-invert $vote]
+
+	#array set _m $map ; parray _m ; unset _m
+
+	# And take the matches with the highest number of votes.
+	return [dict get $map [lindex [lsort -integer [dict keys $map]] end]]
+    }
+
+    # Note that multiple matches may map to the same id. Conversion
+    # required to distinguish between unique/ambiguous.
+    set idmatches {}
+    foreach m $matches {
+	lappend idmatches [dict get $known $m]
+    }
+
+    return [lsort -unique $idmatches]
 }
 
 # # ## ### ##### ######## ############# ######################
