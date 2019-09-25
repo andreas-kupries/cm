@@ -1194,6 +1194,11 @@ cmdr create cm::cm [file tail $::argv0] {
 	    description {
 		Show the set of registered people.
 	    }
+	    option compact {
+		Show the tutorial information in a single column.
+		Makes the list longer and taller, versus the
+		default of shorter and wider.
+	    } { alias C ; presence }
 	} [cm::call conference cmd_registration_list]
 
 	private add {
@@ -1206,6 +1211,10 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option walkin {
 		Mark a walk-in registration -- late fee
 	    } { alias W ; presence }
+
+	    option tech {
+		Mark attendant of tech sessions. True by default.
+	    } { alias S ; validate boolean ; default 1 }
 
 	    # Presenter flag is automatically determined.
 	    # Simply check against speakers for tutorials, keynotes and general talks.

@@ -2904,13 +2904,50 @@ proc ::cm::conference::cmd_registration_list {config} {
     set speakers   [the-presenters $conference]
     # Tutorial speakers are not required to register, i.e. they can
     # teach without attending the tech sessions.
+
+    # Still, tutorial speakers are presenters in terms of badges.
+    set allspeakers [the-speakers $conference]
+    
     set count 0
 
     puts "Registered for \"[color name [get $conference]]\" ..."
-    [table t {Who Walkin? {Day 1 Morning} {Day 1 Afternoon} {Day 2 Morning} {Day 2 Afternoon}} {
+
+    if {[$config @compact]} {
+	# Long and tall
+	[table t {Who Walkin? Speaker Tech Tutorials} {
+	    # Show the registrations we have.
+	    foreach {dname walkin tech ta tb tc td} [registered listing $conference] {
+		set ts {}
+		if {$ta ne {}} { lappend ts $ta }
+		if {$tb ne {}} { lappend ts $tb }
+		if {$tc ne {}} { lappend ts $tc }
+		if {$td ne {}} { lappend ts $td }
+		set ts [join $ts \n]
+		set speaking [dict exists $allspeakers $dname]
+		$t add $dname [hbool $walkin] [hbool $speaking] [hbool $tech] $ts
+		dict unset speakers $dname
+		incr count
+	    }
+
+	    # Now, if we have speakers which are not registered, show
+	    # these as well, highlighted as issue.
+
+	    if {[dict size $speakers]} {
+		if {$count} { $t add {} {} {} {} {} }
+		foreach dname [lsort -dict [dict keys $speakers]] {
+		    $t add [color bad "MISSING: $dname"] {} {} {} {}
+		}
+	    }
+	}] show
+	return
+    }
+
+    # Short and wide
+    [table t {Who Walkin? Speaker Tech {Morning 1} {Afternoon 1} {Morning 2} {Afternoon 2}} {
 	# Show the registrations we have.
-	foreach {dname walkin ta tb tc td} [registered listing $conference] {
-	    $t add $dname [hbool $walkin] $ta $tb $tc $td
+	foreach {dname walkin tech ta tb tc td} [registered listing $conference] {
+	    set speaking [dict exists $allspeakers $dname]
+	    $t add $dname [hbool $walkin] [hbool $speaking] [hbool $tech] $ta $tb $tc $td
 	    dict unset speakers $dname
 	    incr count
 	}
@@ -2919,9 +2956,9 @@ proc ::cm::conference::cmd_registration_list {config} {
 	# these as well, highlighted as issue.
 
 	if {[dict size $speakers]} {
-	    if {$count} { $t add {} {} {} {} {} {} }
+	    if {$count} { $t add {} {} {} {} {} {} {} }
 	    foreach dname [lsort -dict [dict keys $speakers]] {
-		$t add [color bad "MISSING: $dname"] {} {} {} {} {}
+		$t add [color bad "MISSING: $dname"] {} {} {} {} {} {}
 	    }
 	}
     }] show
@@ -2936,12 +2973,13 @@ proc ::cm::conference::cmd_registration_add {config} {
     set conference [current]
     set person     [$config @person] ;    debug.cm/conference {person = $person}
     set walkin     [$config @walkin] ;    debug.cm/conference {walkin = $walkin}
-    set tutorials  [$config @taking] ;    debug.cm/conference {tut = ([join $tutorials {),(}])}
+    set tech       [$config @tech]   ;    debug.cm/conference {tech   = $tech}
+    set tutorials  [$config @taking] ;    debug.cm/conference {tut    = ([join $tutorials {),(}])}
     # tutorials = ((id,day,half,tutorial)...)
     #        id => in the tutorial __schedule__
 
     if {[llength $tutorials] > 4} {
-	error "Too many tutorials, canonly handle 4."
+	error "Too many tutorials, can only handle 4."
     }
 
     set c [get $conference]
@@ -2952,7 +2990,7 @@ proc ::cm::conference::cmd_registration_add {config} {
 
     try {
 	db do transaction {
-	    set r [registered add $conference $person $walkin]
+	    set r [registered add $conference $person $walkin $tech]
 	    # TODO: tutorials - map day/half into slot number.
 	    # ASSUMES day  in (0,1),  |1st two conference days
 	    #         half in (1,2)   |morning,afternoon

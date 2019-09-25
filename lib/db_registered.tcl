@@ -112,6 +112,7 @@ proc ::cm::db::registered::listing {conference} {
     db do eval {
 	SELECT C.dname   AS dname
 	,      R.walkin  AS walkin
+	,      R.tech    AS tech
 	,      R.tut1    AS ta_id
 	,      R.tut2    AS tb_id
 	,      R.tut3    AS tc_id
@@ -127,7 +128,7 @@ proc ::cm::db::registered::listing {conference} {
 	set tb [get-t-title $tb_id]
 	set tc [get-t-title $tc_id]
 	set td [get-t-title $td_id]
-	lappend r $dname $walkin $ta $tb $tc $td
+	lappend r $dname $walkin $tech $ta $tb $tc $td
     }
     return $r
 
@@ -137,6 +138,7 @@ proc ::cm::db::registered::listing {conference} {
     return [db do eval {
 	SELECT C.dname   AS dname
 	,      R.walkin  AS walkin
+	,      R.tech    AS tech
 	,      TA.title  AS ta_title
 	,      TB.title  AS tb_title
 	,      TC.title  AS tc_title
@@ -165,18 +167,20 @@ proc ::cm::db::registered::listing {conference} {
     }]
 }
 
-proc ::cm::db::registered::add {conference contact walkin} {
+proc ::cm::db::registered::add {conference contact walkin tech} {
     debug.cm/db/registered {}
     setup
 
     db do eval {
 	INSERT
 	INTO registered
-	VALUES (NULL,
-		:conference,
-		:contact,
-		:walkin,
-		NULL, NULL, NULL, NULL) -- tut 1..4
+	VALUES (NULL
+	,	:conference
+	,	:contact
+	,	:walkin
+	,	:tech
+	,	NULL, NULL, NULL, NULL -- tutorials 1..4
+	)
     }
     return [db do last_insert_rowid]
 }
@@ -207,8 +211,9 @@ proc ::cm::db::registered::setup {} {
 	{
 	    id		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	    conference	INTEGER NOT NULL REFERENCES conference,
-	    contact	INTEGER	NOT NULL REFERENCES contact,		-- can_register (person)
-	    walkin	INTEGER NOT NULL,				-- late-register fee
+	    contact	INTEGER	NOT NULL REFERENCES contact,	-- can_register (person)
+	    walkin	INTEGER NOT NULL,			-- late-register fee
+	    tech	INTEGER NOT NULL,			-- flag for tech session attendance
 	    tut1	INTEGER REFERENCES tutorial_schedule,	-- tutorial selection
 	    tut2	INTEGER REFERENCES tutorial_schedule,	-- all nullable
 	    tut3	INTEGER REFERENCES tutorial_schedule,
@@ -220,6 +225,7 @@ proc ::cm::db::registered::setup {} {
 	    {conference INTEGER 1 {} 0}
 	    {contact    INTEGER 1 {} 0}
 	    {walkin     INTEGER 1 {} 0}
+	    {tech       INTEGER 1 {} 0}
 	    {tut1       INTEGER 0 {} 0}
 	    {tut2       INTEGER 0 {} 0}
 	    {tut3       INTEGER 0 {} 0}
