@@ -149,6 +149,7 @@ proc ::cm::contact::Match {known x} {
 	# match. Note that each match can have at most NP votes, the
 	# number of pieces used.
 
+	set vote {}
 	foreach piece $parts {
 	    foreach match [complete-enum [dict keys $known] 1 $piece] {
 		set id [dict get $known $match]
@@ -158,6 +159,11 @@ proc ::cm::contact::Match {known x} {
 
 	#array set _v $vote ; parray _v ; unset _v
 
+	if {![dict size $vote]} {
+	    # Nothing voted for anything.
+	    return {}
+	}
+	
 	# Rekey to vote counts
 	set map [util dict-invert $vote]
 
@@ -1494,7 +1500,7 @@ proc ::cm::contact::new-mlist {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		3, :name, :dname, NULL	-- mailing list, name, dname, honorific
+		3, :name, :dname, NULL,	-- mailing list, name, dname, honorific
 		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,0,0)            -- can flags, !dead
     }
@@ -1509,7 +1515,7 @@ proc ::cm::contact::new-company {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		2, :name, :dname, NULL	-- company, name, dname, honorific
+		2, :name, :dname, NULL,	-- company, name, dname, honorific
 		NULL, 1,		-- no initial description, generally public
 		1,0,0,0,1,0)            -- can flags, !dead
 
@@ -1527,7 +1533,7 @@ proc ::cm::contact::new-person {dname} {
     db do eval {
 	INSERT INTO contact
 	VALUES (NULL, NULL,             -- id, tag
-		1, :name, :dname, NULL	-- type (person), name, dname, honorific
+		1, :name, :dname, NULL,	-- type (person), name, dname, honorific
 		NULL, 0,		-- no initial bio, not generally public
 		1,1,1,1,1,0)            -- can flags, !dead
     }
