@@ -39,7 +39,7 @@ namespace eval ::cm {
 }
 namespace eval ::cm::contact {
     namespace export \
-	cmd_create_person cmd_create_mlist cmd_create_company cmd_match \
+	cmd_create_person cmd_create_mlist cmd_create_company cmd_match cmd_set_badge \
 	cmd_add_mail cmd_add_link cmd_list cmd_show cmd_merge cmd_set_honorific \
 	cmd_set_tag cmd_set_bio cmd_hide_bio cmd_publish_bio cmd_get_bio cmd_disable \
 	cmd_enable liaisons cmd_disable_mail cmd_hide_mail cmd_publish_mail \
@@ -201,6 +201,7 @@ proc ::cm::contact::cmd_show {config} {
 	           CT.text        AS type,
 	           C.dname        AS name,
 	    	   C.honorific    AS hon,
+	    	   C.badge        AS badge,
 	    	   C.biography    AS bio,
 	    	   C.bio_public   AS bio_public,
 	           C.can_recvmail AS crecv,
@@ -242,6 +243,7 @@ proc ::cm::contact::cmd_show {config} {
 	    $t add Key                [color name %$id]
 	    $t add Tag                $tag
 	    $t add Name               $dname
+	    $t add Badge              $badge
 	    $t add Type               $type
 	    $t add Flags              [join $flags {, }]
 	    $t add Biography          $biodisplay
@@ -609,6 +611,9 @@ proc ::cm::contact::cmd_create_person {config} {
 	}
 	if {[$config @honorific set?]} {
 	    update-honorific $id [string trim [$config @honorific]]
+	}
+	if {[$config @badge set?]} {
+	    update-bagde $id [string trim [$config @badge]]
 	}
 	if {[$config @org set?]} {
 	    foreach company [$config @org] {
@@ -1112,6 +1117,23 @@ proc ::cm::contact::cmd_set_honorific {config} {
     return
 }
 
+proc ::cm::contact::cmd_set_badge {config} {
+    debug.cm/contact {}
+    Setup
+    db show-location
+
+    set contact [$config @name]
+    set badge   [$config @badge]
+
+    puts -nonewline "Set badge of \"[color name [get $contact]]\" to \"$badge\" ... "
+    flush stdout
+
+    update-badge $contact $badge
+
+    puts [color good OK]
+    return
+}
+
 proc ::cm::contact::cmd_set_bio {config} {
     debug.cm/contact {}
     Setup
@@ -1499,10 +1521,10 @@ proc ::cm::contact::new-mlist {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,             -- id, tag
-		3, :name, :dname, NULL,	-- mailing list, name, dname, honorific
-		NULL, 1,		-- no initial description, generally public
-		1,0,0,0,0,0)            -- can flags, !dead
+	VALUES (NULL, NULL,             	-- id, tag
+		3, :name, :dname, NULL, NULL,	-- mailing list, name, dname, honorific, badge
+		NULL, 1,			-- no initial description, generally public
+		1,0,0,0,0,0)            	-- can flags, !dead
     }
     return [db do last_insert_rowid]
 }
@@ -1514,10 +1536,10 @@ proc ::cm::contact::new-company {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,             -- id, tag
-		2, :name, :dname, NULL,	-- company, name, dname, honorific
-		NULL, 1,		-- no initial description, generally public
-		1,0,0,0,1,0)            -- can flags, !dead
+	VALUES (NULL, NULL,             	-- id, tag
+		2, :name, :dname, NULL, NULL,	-- company, name, dname, honorific, badge
+		NULL, 1,			-- no initial description, generally public
+		1,0,0,0,1,0)            	-- can flags, !dead
 
 	-- TODO/Note: talker for a company submission should have company affiliation.
 	-- TODO/Note: Not forbidden to not have affiliation, but worth a warning.
@@ -1532,10 +1554,10 @@ proc ::cm::contact::new-person {dname} {
     set name [string tolower $dname]
     db do eval {
 	INSERT INTO contact
-	VALUES (NULL, NULL,             -- id, tag
-		1, :name, :dname, NULL,	-- type (person), name, dname, honorific
-		NULL, 0,		-- no initial bio, not generally public
-		1,1,1,1,1,0)            -- can flags, !dead
+	VALUES (NULL, NULL,             	-- id, tag
+		1, :name, :dname, NULL, NULL,	-- type (person), name, dname, honorific, badge
+		NULL, 0,			-- no initial bio, not generally public
+		1,1,1,1,1,0)            	-- can flags, !dead
     }
     return [db do last_insert_rowid]
 }
@@ -1609,6 +1631,18 @@ proc ::cm::contact::update-honorific {contact honorific} {
 	UPDATE contact
 	SET    honorific = :honorific
 	WHERE  id        = :contact
+    }
+    return
+}
+
+proc ::cm::contact::update-badge {contact badge} {
+    debug.cm/contact {}
+    Setup
+
+    db do eval {
+	UPDATE contact
+	SET    badge = :badge
+	WHERE  id    = :contact
     }
     return
 }
@@ -2178,6 +2212,7 @@ proc ::cm::contact::Setup {} {
 	    name	 TEXT	 NOT NULL UNIQUE,	-- identification NOCASE -- lower(dname)
 	    dname	 TEXT	 NOT NULL,		-- display name
 	    honorific	 TEXT,				-- a person's honorific
+	    badge        TEXT,                          -- a person's badge text (affiliation)
 	    biography	 TEXT,                          -- a person's bio, or list/project/company description
 	    bio_public   INTEGER NOT NULL,		-- bio is generally public
 	    
@@ -2194,6 +2229,7 @@ proc ::cm::contact::Setup {} {
 	    {name		TEXT    1 {} 0}
 	    {dname		TEXT    1 {} 0}
 	    {honorific		TEXT    0 {} 0}
+	    {badge		TEXT    0 {} 0}
 	    {biography		TEXT    0 {} 0}
 	    {bio_public		INTEGER 1 {} 0}
 	    {can_recvmail	INTEGER 1 {} 0}
@@ -2321,6 +2357,7 @@ proc ::cm::contact::Dump {} {
 	,      type
 	,      dname
 	,      honorific
+	,      badge
 	,      biography
 	,      bio_public
 	,      can_recvmail
@@ -2352,6 +2389,9 @@ proc ::cm::contact::Dump {} {
 	}
 	if {$honorific ne {}} {
 	    cm dump save  contact set-honorific $dname $honorific
+	}
+	if {$badge ne {}} {
+	    cm dump save  contact set-badge $dname $badge
 	}
 	if {$tag ne {}} {
 	    cm dump save  contact set-tag $dname $tag

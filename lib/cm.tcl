@@ -1932,15 +1932,27 @@ cmdr create cm::cm [file tail $::argv0] {
 
 	private set-honorific {
 	    section {Contact Management}
-	    description {Set honorifc of the specified contact}
+	    description {Set honorific of the specified contact}
 	    input name {
-		Name of the contact to tag
+		Name of the contact to modify
 	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding non-persons
 		generate [stop!] }
 	    input honorific {
 		Honorific to set
 	    } { optional ; interact ; generate [stop!] }
 	} [cm::call contact cmd_set_honorific]
+
+	private set-badge {
+	    section {Contact Management}
+	    description {Set badge text of the specified contact}
+	    input name {
+		Name of the contact to modify
+	    } { optional ; interact ; validate [cm::vt contact] ; # TODO validator excluding non-persons
+		generate [stop!] }
+	    input badge {
+		Badge text to set
+	    } { optional ; interact ; generate [stop!] }
+	} [cm::call contact cmd_set_badge]
 
 	private set-bio {
 	    section {Contact Management}
