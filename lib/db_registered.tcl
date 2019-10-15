@@ -110,13 +110,15 @@ proc ::cm::db::registered::listing {conference} {
 
     set r {}
     db do eval {
-	SELECT C.dname   AS dname
-	,      R.walkin  AS walkin
-	,      R.tech    AS tech
-	,      R.tut1    AS ta_id
-	,      R.tut2    AS tb_id
-	,      R.tut3    AS tc_id
-	,      R.tut4    AS td_id
+	SELECT C.dname     AS dname
+	,      C.honorific AS honorific
+	,      C.badge     AS badge
+	,      R.walkin    AS walkin
+	,      R.tech      AS tech
+	,      R.tut1      AS ta_id
+	,      R.tut2      AS tb_id
+	,      R.tut3      AS tc_id
+	,      R.tut4      AS td_id
 	FROM registered R
 	,    contact    C
 	WHERE R.conference = :conference
@@ -128,7 +130,7 @@ proc ::cm::db::registered::listing {conference} {
 	set tb [get-t-title $tb_id]
 	set tc [get-t-title $tc_id]
 	set td [get-t-title $td_id]
-	lappend r $dname $walkin $tech $ta $tb $tc $td
+	lappend r $dname $honorific $badge $walkin $tech $ta $tb $tc $td
     }
     return $r
 
@@ -136,13 +138,15 @@ proc ::cm::db::registered::listing {conference} {
     # Unclear on the syntax for the multiple LOJ.
     # Doing it explicitly, see above. __HACK__
     return [db do eval {
-	SELECT C.dname   AS dname
-	,      R.walkin  AS walkin
-	,      R.tech    AS tech
-	,      TA.title  AS ta_title
-	,      TB.title  AS tb_title
-	,      TC.title  AS tc_title
-	,      TD.title  AS td_title
+	SELECT C.dname     AS dname
+	,      C.honorific AS honorific
+	,      C.badge     AS badge
+	,      R.walkin    AS walkin
+	,      R.tech      AS tech
+	,      TA.title    AS ta_title
+	,      TB.title    AS tb_title
+	,      TC.title    AS tc_title
+	,      TD.title    AS td_title
 	FROM registered        R
 	,    contact           C
 	,    tutorial_schedule TSA
