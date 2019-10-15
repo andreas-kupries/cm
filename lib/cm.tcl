@@ -1333,6 +1333,8 @@ cmdr create cm::cm [file tail $::argv0] {
     }
     alias bookings = booking list
     alias booked   = booking list
+    alias book     = booking add
+    alias unbook   = booking remove
 
     # # ## ### ##### ######## ############# ######################
     ## Submission management. Own toplevel ensemble, although it could
