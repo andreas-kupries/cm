@@ -97,7 +97,7 @@ namespace eval ::cm::conference {
     namespace import ::cm::db::pschedule
     namespace import ::cm::db::schedule
     namespace import ::cm::city
-    namespace import ::cm::contact
+    #namespace import ::cm::contact
     namespace import ::cm::db
     namespace import ::cm::location
     namespace import ::cm::mailer
@@ -316,8 +316,8 @@ proc ::cm::conference::cmd_show {config} {
 	if {$xfacility ne {}} { set xfacility [location get $xfacility] }
 
 	set xseries     [series  get       $xseries]
-	set xmanagement [contact get       $xmanagement]
-	set xsubmission [contact get-email $xsubmission]
+	set xmanagement [cm contact get       $xmanagement]
+	set xsubmission [cm contact get-email $xsubmission]
 
 	$t add Series           $xseries
 	$t add Year             $xyear
@@ -1589,6 +1589,7 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
     set dry        [$config @dry]
     set raw        [$config @raw]
     set template   [$config @template]
+    set excluded   [$config @exclude]
     set tlabel     [template get $template]
 
     puts "Mailing the speakers of accepted talks for \"[color name [get $conference]]\":"
@@ -1596,7 +1597,7 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
     if {$dry} { puts [color note "Dry run"] }
 
     set template     [template details $template]
-    set destinations [db do eval {
+    set destinations [db do eval [string map [list @@ [join $excluded ,]] {
 	-- From the inside out
 	-- -- Locate the submissions for the conference which have
 	--      an associated talk, IOW are accepted.
@@ -1604,15 +1605,16 @@ proc ::cm::conference::cmd_submission_ping_speakers {config} {
 	-- -- Find their active email addresses.
 	SELECT id, email
 	FROM   email
-	WHERE  contact IN (SELECT contact
+	WHERE  contact NOT IN (@@)
+	AND    NOT inactive
+	AND    contact IN (SELECT contact
 			   FROM   talker
 			   WHERE  talk IN (SELECT id
 					   FROM talk
 					   WHERE submission IN (SELECT id
 								FROM submission
 								WHERE conference = :conference)))
-	AND NOT inactive
-    }]
+    }]]
 
     debug.cm/conference {destinations = ($destinations)}
 
@@ -1701,6 +1703,7 @@ proc ::cm::conference::cmd_submission_nag {config} {
     set raw        [$config @raw]
     set template   [$config @template]
     set tlabel     [template get $template]
+    set excluded   [$config @exclude]
 
     puts "Mailing the author of talks with materials due for \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
@@ -1709,9 +1712,10 @@ proc ::cm::conference::cmd_submission_nag {config} {
     set template     [template details $template]
 
     set destinations [db do eval {
-	SELECT E.id    AS id
-	,      E.email AS email
-	,      T.id    AS talk
+	SELECT E.id
+	,      E.email
+	,      T.id
+	,      SU.contact
 	FROM   submission S
 	,      talk       T
 	,      submitter  SU
@@ -1734,8 +1738,6 @@ proc ::cm::conference::cmd_submission_nag {config} {
 
 	set destinations [db do eval {
 	    SELECT E.id    AS id
-	    ,      E.email AS email
-	    ,      T.id    AS talk
 	    FROM   submission S
 	    ,      talk       T
 	    ,      submitter  SU
@@ -1765,7 +1767,8 @@ proc ::cm::conference::cmd_submission_nag {config} {
     set dx        {}
     set addresses {}
     set map       {}
-    foreach {dst dstaddr talk} $destinations {
+    foreach {dst dstaddr talk cid} $destinations {
+	if {$cid in $excluded} continue	
 	lappend addresses $dstaddr
 	lappend dx        $dst
 	dict lappend map $dst $talk ;# single speaker may be part of multiple talks
@@ -1795,7 +1798,7 @@ proc ::cm::conference::cmd_submission_nag {config} {
 
     if {![llength $origins]} {
 	util user-error \
-	    "No chairs." \
+	    "No chair available for sender address." \
 	    MATERIALS PING NO-CHAIRS
     }
 
@@ -1804,15 +1807,15 @@ proc ::cm::conference::cmd_submission_nag {config} {
 
     # TODO: materials-ping - Placeholder for a sender signature ? - maybe just ref to p:chair ?
 
+    lappend tmap @mg:sender@ [color red <<sender>>]
+    lappend tmap @mg:name@   [color red <<name>>]
+    lappend tmap @origins@   [color red $origins]
+
+    set str [insert $conference [string map $tmap $template]]
+    if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
+
     [table t Text {
-	lappend tmap @mg:sender@ [color red <<sender>>]
-	lappend tmap @mg:name@   [color red <<name>>]
-	lappend tmap @origins@   [color red $origins]
 	$t headers 0
-
-	set str [insert $conference [string map $tmap $template]]
-	if {!$raw} { set str [util adjust [util tspace 0 60] $str] }
-
 	$t add $str
     }] show
 
@@ -2220,7 +2223,7 @@ proc ::cm::conference::cmd_sponsor_show {config} {
 	    # get liaisons of the sponsor companies.
 	    # get affiliations of sponsoring persons.
 
-	    set related [contact related-formatted $contact $type 1]
+	    set related [cm contact related-formatted $contact $type 1]
 
 	    $t add $name $related
 	}
@@ -2415,7 +2418,7 @@ proc ::cm::conference::cmd_tutorial_show {config} {
 			set    tdetails [tutorial details $tutorial]
 			set    title    [dict get $tdetails xtitle]
 			set    tag      @
-			append tag      [dict get [contact details [dict get $tdetails xspeaker]] xtag] :
+			append tag      [dict get [cm contact details [dict get $tdetails xspeaker]] xtag] :
 			append tag      [dict get $tdetails xtag]
 		    } else {
 			set tag   [color bad None]
@@ -3062,20 +3065,22 @@ proc ::cm::conference::cmd_registration_nag {config} {
     set raw        [$config @raw]
     set template   [$config @template]
     set tlabel     [template get $template]
+    set excluded   [$config @exclude]
 
     puts "Mailing the unregistered speakers of accepted talks for \"[color name [get $conference]]\":"
     puts "Using template: [color name $tlabel]"
     if {$dry} { puts [color note "Dry run"] }
 
     set template     [template details $template]
-    set destinations [db do eval {
+    set destinations [db do eval [string map [list @@ [join $excluded ,]] {
 	-- From the inside out
 	-- -- Locate the submissions for the conference which have
 	--      an associated talk, IOW are accepted.
 	-- -- Find their speakers
 	-- -- Ignore those which are registered to the conference
 	-- -- Find their active email addresses.
-	SELECT id, email
+	SELECT id
+	,      email
 	FROM   email
 	WHERE  contact IN (SELECT contact
 			   FROM   talker
@@ -3086,9 +3091,10 @@ proc ::cm::conference::cmd_registration_nag {config} {
 								WHERE conference = :conference))
 			   AND contact NOT IN (SELECT contact
 					       FROM registered
-					       WHERE conference = :conference))
+					       WHERE conference = :conference)
+			   AND contact NOT IN (@@))
 	AND NOT inactive
-    }]
+    }]]
 
     debug.cm/conference {destinations = ($destinations)}
 
@@ -3828,7 +3834,7 @@ proc ::cm::conference::make_tutorials {conference} {
 		set req      [dict get $tdetails xprereq]
 
 		set speaker  [dict get $tdetails xspeaker]
-		set sdetails [contact details $speaker]
+		set sdetails [cm contact details $speaker]
 		set speaker  [dict get $sdetails xdname]
 		set stag     [dict get $sdetails xtag]
 		set tag      ${stag}:[dict get $tdetails xtag]
@@ -4991,7 +4997,7 @@ proc ::cm::conference::make_admin_sponsors {conference textvar tag} {
 	    set first 0
 	}
 
-	set related [split [contact related-formatted $contact $type 1] \n]
+	set related [split [cm contact related-formatted $contact $type 1] \n]
 
 	if {![llength $related]} {
 	    append text |$name||\n
@@ -5730,9 +5736,9 @@ proc ::cm::conference::insert {id text} {
 
     +map @c:name@            [get $id]
     +map @c:year@            [dict get $details xyear]
-    +map @c:contact@         [contact get-email [dict get $details xsubmission]]
-    +map @c:management@      [contact get-name $xmgmt]
-    +map @c:management:link@ [contact get-the-link $xmgmt]
+    +map @c:contact@         [cm contact get-email [dict get $details xsubmission]]
+    +map @c:management@      [cm contact get-name $xmgmt]
+    +map @c:management:link@ [cm contact get-the-link $xmgmt]
     +map @c:series@          [series get       $xseries]
     +map @c:series:link@     [series get-index $xseries]
     +map @c:start@           [hdate $xstart]
@@ -5872,7 +5878,7 @@ proc ::cm::conference::web-sponsors-inline {id mgmt} {
 	# Exclude managing org from the enumeration
 	if {$sponsor == $mgmt} continue
 
-	set link [contact get-the-link $sponsor]
+	set link [cm contact get-the-link $sponsor]
 	if {$link ne {}} {
 	    set label [link $label $link]
 	}
@@ -5899,7 +5905,7 @@ proc ::cm::conference::web-sponsors-bullet {id mgmt} {
 	# Exclude managing org from the enumeration
 	if {$sponsor == $mgmt} continue
 
-	set link [contact get-the-link $sponsor]
+	set link [cm contact get-the-link $sponsor]
 	if {$link ne {}} {
 	    set label [link $label $link]
 	}
@@ -5934,8 +5940,8 @@ proc ::cm::conference::web-committee {id} {
 	# Get link for affiliation, if any.
 	set contact     [dict get $cdata $cname]
 	set affiliation {}
-	foreach {aid aname} [contact affiliated $contact 1] {
-	    set alink [contact get-the-link $aid]
+	foreach {aid aname} [cm contact affiliated $contact 1] {
+	    set alink [cm contact get-the-link $aid]
 	    if {$alink ne {}} {
 		set aname [link $aname $alink]
 	    }
@@ -5970,7 +5976,7 @@ proc ::cm::conference::mail-committee {id} {
 	set affiliation {}
 	set prefix      "   * "
 
-	foreach {aid aname} [contact affiliated $contact 1] {
+	foreach {aid aname} [cm contact affiliated $contact 1] {
 	    lappend affiliation $aname
 	}
 

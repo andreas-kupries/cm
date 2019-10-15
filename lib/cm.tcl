@@ -1254,6 +1254,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
+	    option exclude {
+		People to not nag about registration (batch registration, or similar)
+	    } { alias E ; list ; validate [cm::vt contact] }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
@@ -1570,6 +1573,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
+	    option exclude {
+		People to not ping.
+	    } { alias E ; list ; validate [cm::vt contact] }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { validate [cm::vt template] }
@@ -1582,6 +1588,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    option dry {
 		When present do not actually mail anything.
 	    } { presence }
+	    option exclude {
+		People to not nag about materials (like keynote speakers)
+	    } { alias E ; list ; validate [cm::vt contact] }
 	    input template {
 		Name of the template holding mail subject and body.
 	    } { optional ; 
