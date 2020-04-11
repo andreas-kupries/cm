@@ -3679,7 +3679,7 @@ proc ::cm::conference::make_page {title fname args} {
     debug.cm/conference {}
 
     set generatorcmd $args
-    upvar 1 dstdir dstdir conference conference
+    upvar 1 dstdir dstdir conference conference canceled canceled
     puts \t[prefix?]${title}...
 
     set text [make_page_header $title]
@@ -3726,7 +3726,11 @@ proc ::cm::conference::make_page_header {title} {
     # page-header - TODO: Separate hotel and facilities. - header2
     # page-header - TODO: Conditional text for link, phone, and fax, any could be missing.
 
+    upvar 1 canceled canceled
     lappend map @@ $title
+    if {$canceled} {
+	return [string map $map [template use www-headeri]]
+    }
     return [string map $map [template use www-header1]]
 }
 
