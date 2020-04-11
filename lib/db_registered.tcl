@@ -110,7 +110,8 @@ proc ::cm::db::registered::listing {conference} {
 
     set r {}
     db do eval {
-	SELECT C.dname     AS dname
+	SELECT C.id        AS cid
+	,      C.dname     AS dname
 	,      C.honorific AS honorific
 	,      C.badge     AS badge
 	,      R.walkin    AS walkin
@@ -130,7 +131,7 @@ proc ::cm::db::registered::listing {conference} {
 	set tb [get-t-title $tb_id]
 	set tc [get-t-title $tc_id]
 	set td [get-t-title $td_id]
-	lappend r $dname $honorific $badge $walkin $tech $ta $tb $tc $td
+	lappend r $cid $dname $honorific $badge $walkin $tech $ta $tb $tc $td
     }
     return $r
 
@@ -138,7 +139,8 @@ proc ::cm::db::registered::listing {conference} {
     # Unclear on the syntax for the multiple LOJ.
     # Doing it explicitly, see above. __HACK__
     return [db do eval {
-	SELECT C.dname     AS dname
+	SELECT C.id        AS cid
+	,      C.dname     AS dname
 	,      C.honorific AS honorific
 	,      C.badge     AS badge
 	,      R.walkin    AS walkin

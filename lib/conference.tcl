@@ -2913,24 +2913,45 @@ proc ::cm::conference::cmd_registration_list {config} {
 
     if {[$config @raw]} {
 	package require csv
-	puts [csv::join {Honorific Name Affiliation Speaker Tech T1 T2 T3 T4}]
-	foreach {dname hon badge _ tech ta tb tc td} [registered listing $conference] {
-	    set speaking [dict exists $allspeakers $dname]
-	    # Assemble
-	    lappend entry $hon
-	    lappend entry $dname
-	    lappend entry $badge
-	    lappend entry [hbool $speaking]
-	    lappend entry [hbool $tech]
-	    if {$ta ne {}} { lappend entry $ta }
-	    if {$tb ne {}} { lappend entry $tb }
-	    if {$tc ne {}} { lappend entry $tc }
-	    if {$td ne {}} { lappend entry $td }
-	    # Pad.
-	    while {[llength $entry] < 9} { lappend entry {} }
-	    # Emit
-	    puts [csv::join $entry]
-	    unset entry
+	puts [csv::join {Honorific Name Email Affiliation Speaker Tech T1 T2 T3 T4}]
+	foreach {cid dname hon badge _ tech ta tb tc td} [registered listing $conference] {
+
+	    set mails [db do eval {
+		SELECT email
+		FROM   email
+		WHERE contact = :cid
+		AND inactive = 0
+		ORDER BY email
+	    }]
+	    if {![llength $mails]} {
+		set mails [db do eval {
+		    SELECT email
+		    FROM   email
+		    WHERE contact = :cid
+		    ORDER BY email
+		}]
+	    }
+	    if {![llength $mails]} { set mails unknown }
+	    
+	    foreach email $mails {
+		set speaking [dict exists $allspeakers $dname]
+		# Assemble
+		lappend entry $hon
+		lappend entry $dname
+		lappend entry $email
+		lappend entry $badge
+		lappend entry [hbool $speaking]
+		lappend entry [hbool $tech]
+		if {$ta ne {}} { lappend entry $ta }
+		if {$tb ne {}} { lappend entry $tb }
+		if {$tc ne {}} { lappend entry $tc }
+		if {$td ne {}} { lappend entry $td }
+		# Pad.
+		while {[llength $entry] < 9} { lappend entry {} }
+		# Emit
+		puts [csv::join $entry]
+		unset entry
+	    }
 	}
 	return
     }
@@ -2942,7 +2963,7 @@ proc ::cm::conference::cmd_registration_list {config} {
 	# Long and tall
 	[table t {Who Walkin? Speaker Tech Tutorials} {
 	    # Show the registrations we have.
-	    foreach {dname _ _ walkin tech ta tb tc td} [registered listing $conference] {
+	    foreach {_ dname _ _ walkin tech ta tb tc td} [registered listing $conference] {
 		set ts {}
 		if {$ta ne {}} { lappend ts $ta }
 		if {$tb ne {}} { lappend ts $tb }
@@ -2971,7 +2992,7 @@ proc ::cm::conference::cmd_registration_list {config} {
     # Short and wide
     [table t {Who Walkin? Speaker Tech {Morning 1} {Afternoon 1} {Morning 2} {Afternoon 2}} {
 	# Show the registrations we have.
-	foreach {dname _ _ walkin tech ta tb tc td} [registered listing $conference] {
+	foreach {_ dname _ _ walkin tech ta tb tc td} [registered listing $conference] {
 	    set speaking [dict exists $allspeakers $dname]
 	    $t add $dname [hbool $walkin] [hbool $speaking] [hbool $tech] $ta $tb $tc $td
 	    dict unset speakers $dname
@@ -5076,7 +5097,7 @@ proc ::cm::conference::make_admin_registered {conference textvar tag} {
 
     set first 1
     set n 1
-    foreach {dname hon badge walkin ta tb tc td} [registered listing $conference] {
+    foreach {_ dname hon badge walkin ta tb tc td} [registered listing $conference] {
 	if {$first} {
 	    append text |\#|Hon|Who|Badge|Walkin|1-Morning|1-Afternoon|2-Morning|2-Afternoon|\n|-|-|-|-|-|-|-|\n
 	    set first 0
@@ -6521,7 +6542,7 @@ proc ::cm::conference::issues {details} {
     }
 
     set presenters [the-presenters $xconference]
-    foreach {dname _ _ _ _ _ _ _} [registered listing $xconference] {
+    foreach {_ dname _ _ _ _ _ _ _} [registered listing $xconference] {
 	dict unset presenters $dname
     }
     foreach dname [lsort -dict [dict keys $presenters]] {
