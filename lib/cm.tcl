@@ -1115,6 +1115,9 @@ cmdr create cm::cm [file tail $::argv0] {
 	    } { optional ; default conweb
 		;#validate wdirectory - TODO cmdr
 	    }
+	    option canceled {
+		Generate website for a canceled conference. Minimal navbar and content.
+	    } { alias C ; presence }
 	} [cm::call conference cmd_website_make]
 
 	private registration {

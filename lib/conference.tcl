@@ -3437,6 +3437,7 @@ proc ::cm::conference::cmd_website_make {config} {
 
     set conference [current]
     set dstdir     [$config @destination]
+    set canceled   [$config @canceled]
 
     # TODO Fix issues with using a relative destination path moving outside of the CWD.
 
@@ -3452,41 +3453,45 @@ proc ::cm::conference::cmd_website_make {config} {
     # # ## ### ##### ######## #############
     ## Data configuration
 
-    if {[rate-have-group-code $conference]} {
-	puts "Groupcode: [color good Yes]"
+    if {$canceled} {
+	puts "[color bad Canceled]"
     } else {
-	puts "Groupcode: [color bad No]"
+	if {[rate-have-group-code $conference]} {
+	    puts "Groupcode: [color good Yes]"
+	} else {
+	    puts "Groupcode: [color bad No]"
+	}
+
+	if {[have-speakers $conference]} {
+	    puts "Speakers:  [color good Yes]"
+	} else {
+	    puts "Speakers:  [color bad None]"
+	}
+
+	if {[cm::tutorial have-some $conference]} {
+	    puts "Tutorials: [color good Yes]"
+	} else {
+	    puts "Tutorials: [color bad None]"
+	}
+
+	if {[have-talks $conference]} {
+	    puts "Talks:     [color good Yes]"
+	} else {
+	    puts "Talks:     [color bad None]"
+	}
+
+	if {[llength [schedule of $conference]]} {
+	    puts "Schedule:  [color good Yes]"
+	} else {
+	    puts "Schedule:  [color bad None]"
+	}
+
+	set rstatus [registration-mode $conference]
+	puts "Registration: $rstatus"
+
+	set pvisible [proceedings-visible $conference]
+	puts "Proceedings: $pvisible"
     }
-
-    if {[have-speakers $conference]} {
-	puts "Speakers:  [color good Yes]"
-    } else {
-	puts "Speakers:  [color bad None]"
-    }
-
-    if {[cm::tutorial have-some $conference]} {
-	puts "Tutorials: [color good Yes]"
-    } else {
-	puts "Tutorials: [color bad None]"
-    }
-
-    if {[have-talks $conference]} {
-	puts "Talks:     [color good Yes]"
-    } else {
-	puts "Talks:     [color bad None]"
-    }
-
-    if {[llength [schedule of $conference]]} {
-	puts "Schedule:  [color good Yes]"
-    } else {
-	puts "Schedule:  [color bad None]"
-    }
-
-    set rstatus [registration-mode $conference]
-    puts "Registration: $rstatus"
-
-    set pvisible [proceedings-visible $conference]
-    puts "Proceedings: $pvisible"
 
     # # ## ### ##### ######## #############
     puts "Filling in..."
@@ -3494,68 +3499,75 @@ proc ::cm::conference::cmd_website_make {config} {
     # Reference to the index for the series, from the navbar.
     lappend navbar Related [insert $conference @c:series:link@]
 
-    if {[have-speakers $conference]} {
-	make_page Overview  index  make_overview_speakers $conference
+    if {$canceled} {
+	make_page Overview  index  make_overview_canceled
     } else {
-	make_page Overview  index  make_overview
-    }
-
-    lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers $conference]
-
-    if {[rate-have-group-code $conference]} {
-	lappend navbar {*}[make_page Location  location  make_location]
-    } else {
-	lappend navbar {*}[make_page Location  location  make_location_nogc]
-    }
-
-    # The rstatus strings match the contents of table 'rstatus'.
-    switch -exact -- $rstatus {
-	pending {
-	    lappend navbar {*}[make_page Registration register make_registration_pending]
+	if {[have-speakers $conference]} {
+	    make_page Overview  index  make_overview_speakers $conference
+	} else {
+	    make_page Overview  index  make_overview
 	}
-	open {
-	    lappend navbar {*}[make_page Registration              register       make_registration_open]
-	    make_page                   {Registration By Mail/Fax} register_paper make_registration_paper
+
+	lappend navbar {*}[make_page {Call For Papers}  cfp  make_callforpapers $conference]
+
+	if {[rate-have-group-code $conference]} {
+	    lappend navbar {*}[make_page Location  location  make_location]
+	} else {
+	    lappend navbar {*}[make_page Location  location  make_location_nogc]
 	}
-	closed {
-	    lappend navbar {*}[make_page Registration register make_registration_closed]
+
+	# The rstatus strings match the contents of table 'rstatus'.
+	switch -exact -- $rstatus {
+	    pending {
+		lappend navbar {*}[make_page Registration register make_registration_pending]
+	    }
+	    open {
+		lappend navbar {*}[make_page Registration              register       make_registration_open]
+		make_page                   {Registration By Mail/Fax} register_paper make_registration_paper
+	    }
+	    closed {
+		lappend navbar {*}[make_page Registration register make_registration_closed]
+	    }
 	}
-    }
 
-    if {[cm::tutorial have-some $conference]} {
-	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
-    } else {
-	lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
-    }
+	if {[cm::tutorial have-some $conference]} {
+	    lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials $conference]
+	} else {
+	    lappend navbar {*}[make_page Tutorials  tutorials   make_tutorials_none]
+	}
 
-    if {[llength [schedule of $conference]]} {
-	lappend navbar {*}[make_page Schedule   schedule   make_schedule $conference]
-    } else {
-	lappend navbar {*}[make_page Schedule   schedule   make_schedule_none]
-    }
+	if {[llength [schedule of $conference]]} {
+	    lappend navbar {*}[make_page Schedule   schedule   make_schedule $conference]
+	} else {
+	    lappend navbar {*}[make_page Schedule   schedule   make_schedule_none]
+	}
 
-    if {[have-talks $conference]} {
-	make_page   Abstracts  abstracts  make_abstracts $conference
-    } else {
-	make_page   Abstracts  abstracts  make_abstracts_none
-    }
+	if {[have-talks $conference]} {
+	    make_page   Abstracts  abstracts  make_abstracts $conference
+	} else {
+	    make_page   Abstracts  abstracts  make_abstracts_none
+	}
 
-    if {[have-speakers $conference]} {
-	make_page  Speakers  bios  make_speakers $conference
-    } else {
-	make_page  Speakers  bios  make_speakers_none
-    }
+	if {[have-speakers $conference]} {
+	    make_page  Speakers  bios  make_speakers $conference
+	} else {
+	    make_page  Speakers  bios  make_speakers_none
+	}
 
-    if {$pvisible eq "visible"} {
-	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings $conference]
-    } else {
-	lappend navbar {*}[make_page Proceedings  proceedings make_proceedings_none $conference]
+	if {$pvisible eq "visible"} {
+	    lappend navbar {*}[make_page Proceedings  proceedings make_proceedings $conference]
+	} else {
+	    lappend navbar {*}[make_page Proceedings  proceedings make_proceedings_none $conference]
+	}
     }
 
     #lappend navbar {*}[make_page Contact           contact     make_contact]
     make_page                    Disclaimer        disclaimer  make_disclaimer
-    make_page   {Registration Confirmation}        confirm     make_confirm
-    make_page   {Submission Confirmation}          thanks      make_thanks
+
+    if {!$canceled} {
+	make_page   {Registration Confirmation}        confirm     make_confirm
+	make_page   {Submission Confirmation}          thanks      make_thanks
+    }
 
     make_internal_page Administrivia __dwarf make_admin $conference
 
@@ -3571,7 +3583,11 @@ proc ::cm::conference::cmd_website_make {config} {
     set text [template use www-wconf]
     set text [insert $conference $text]
     lappend map @wc:nav@     $navbar
-    lappend map @wc:sidebar@ [make_sidebar $conference]
+    if {$canceled} {
+	lappend map @wc:sidebar@ ""
+    } else {
+	lappend map @wc:sidebar@ [make_sidebar $conference]
+    }
     set    text [string map $map $text]
     unset map
     fileutil::writeFile $dstdir/website.conf $text
@@ -3734,6 +3750,11 @@ proc ::cm::conference::make_internal_page_footer {} {
 proc ::cm::conference::make_overview {} {
     debug.cm/conference {}
     return [template use www-main]
+}
+
+proc ::cm::conference::make_overview_canceled {} {
+    debug.cm/conference {}
+    return [template use www-main-canceled]
 }
 
 proc ::cm::conference::make_overview_speakers {conference} {
